@@ -1,0 +1,166 @@
+\documentclass[11pt]{article} 
+\usepackage[margin=1in]{geometry} % Sets all margins to 1 inch
+\usepackage{amsmath}
+\usepackage{hyperref} 
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{multicol}
+
+\input{rust-listings.tex}  % Include the language definition
+
+\title{TurboGx: A High-Throughput, Non-Cryptographic Hashing Algorithm Leveraging Modern CPU Capabilities}
+\author{Olivier Giniaux}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+In the rapidly evolving landscape of data processing and cybersecurity, hashing algorithms play a pivotal role in ensuring data integrity and security. Traditional hashing methods, while effective, often fail to fully utilize the computational capabilities of modern processors. This paper introduces the TurboGx hashing algorithm, a novel approach that harnesses the power of high instruction-level parallelism (ILP) and Single Instruction, Multiple Data (SIMD) capabilities of contemporary CPUs to achieve high-throughput non-cryptographic hashing. Through a comprehensive analysis, including benchmarks and comparisons with existing methods, we demonstrate that TurboGx significantly outperforms conventional algorithms in terms of speed and computational efficiency without compromising on security. The paper also explores the implications, limitations, and avenues for future research in this burgeoning field.
+
+\end{abstract}
+
+\begin{multicols}{2}
+\tableofcontents
+\end{multicols}
+
+\clearpage
+\section{Introduction}
+
+\subsection{Motivations}
+
+\colorbox{yellow}{TODO}
+
+\begin{lstlisting}[language=Rust, style=boxed]
+use std::hint::black_box;
+
+fn sum1(x: u32) -> u32 {
+    let mut sum = x;
+    for i in 0..1000 {
+        sum = black_box(sum + i);
+    }
+    sum
+}
+\end{lstlisting}
+
+\section{Related Work}
+
+Let \( h: \{0,1\}^{n_b \times s_b} \to \{0,1\}^{s_h} \) be a cryptographic hash function where: 
+
+\begin{itemize}
+    \item Input \( M \) is a binary message composed of \( n_b \) blocks of size \( s_b \), such as \( M = M_1 \parallel M_2 \parallel \ldots \parallel M_{n_b} \).
+    \item Output is a binary hash of size \( s_h \).
+\end{itemize}
+
+\subsection{Merkle–Damgård Construction}
+
+In the \textbf{Merkle–Damgård} construction, given:
+\begin{itemize}
+    \item The compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \)
+    \item The pipe function \( g: \{0,1\}^{s_b} \to \{0,1\}^{s_h} \)
+    \item A zero-filled vector \( 0^{s_b} \) of length \( s_b \)
+\end{itemize}
+The hash function \( h \) can be expressed as:
+\begin{align*}
+    h(M) &= g\left( f(\ldots f(f(0^{s_b}, M_1), M_2) \ldots, M_{n_b}) \right)
+\end{align*}
+
+\subsection{Wide-Pipe Construction} \label{widepipe}
+
+The \textbf{Merkle–Damgård} construction has certain limitations, such as susceptibility to length extension and multicollision attacks. To address these issues, a variant known as the \textbf{wide-pipe} construction was introduced. This construction employs a larger internal state, so that:
+\begin{align*}
+    s_b \gg s_h
+\end{align*}
+By taking in a larger internal chaining value, the algorithm strengthens the integrity of the hash function, making it more challenging to reverse-engineer or compromise.
+
+\subsection{Alternatives}
+
+\href{https://www.researchgate.net/publication/322094216_Merkle-Damgard_Construction_Method_and_Alternatives_A_Review}{Alternatives}.
+
+\section{High ILP Construction} \label{highilp}
+
+Most modern general-purpose CPUs employ a superscalar architecture which enables instruction level parallelism (ILP). 
+Minimizing dependencies in an algorithm allows a superscalar processor to execute more instructions concurrently, thus maximizing its inherent parallelism and overall performance.
+The key limitation for ILP in the Merkle–Damgård construction is the inherent sequential dependency: each block's hash depends on the result of hashing the previous block.
+
+In order to improve ILP, a construction can processes the message by groups of \( k_b \) blocks. This way, each group is hashed independently and intermediate hashes are compressed altogether thereafter.
+
+\subsection{Intermediate Hashes}
+
+Let's define \( n_g = \lfloor {n_b}/{k_b} \rfloor \) as the number of whole groups of \( k_b \) message blocks. \\
+For each group we compute an intermediate hash, \( H_i \), as follows:
+
+\begin{align*}
+H_{1} &= f(\ldots f(f(0^{s_b}, M_1), M_2)\ldots, M_{k_b}), \\
+H_{2} &= f(\ldots f(f(0^{s_b}, M_{k_g+1}), M_{k_g+2})\ldots, M_{2k_b}), \\
+&\vdots \\
+H_{n_g} &= f(\ldots f(f(0^{s_b}, M_{n_g+1}), M_{n_g+2})\ldots, M_{n_g+k_b})
+\end{align*}
+
+\subsection{Final Hash}
+
+The final hash \( H \) is calculated using \( f \) to compress the intermediate hashes and the remaining message blocks (if any), which is then passed through \( g \):
+
+\begin{equation*}
+h(M) = g\left( f( \ldots f(f(\ldots f(f(0^s, H_1), H_2) \ldots, H_{n_g}), M_{4{n_g}+1}) \ldots, M_{n_b} ) \right).
+\end{equation*}
+
+\section{TurboGx Hashing Algorithm}
+
+The \textbf{TurboGx} hashing algorithm employs an high ILP construction as described in section \ref{highilp}. In practice, this construction not only enables instruction level paralellism but also enables loop unrolling, disminishing the looping overhead, thus maximizing computational efficiency and overall performance. 
+
+\subsection{Pipe Width}
+As for the wide-pipe construction (as seen in section \ref{widepipe}) with \( s_b \) set to the executing CPU SIMD register size.
+TODO
+
+\subsection{Compression}
+
+TODO
+
+\subsection{Hashing}
+
+TODO
+
+\subsection{Folding}
+
+TODO
+
+\subsection{Implementation Details}
+
+SIMD
+ILP
+Vectorized
+Parallelized
+Optimized
+Throughput
+Hashing
+
+HIGH ILP CONSTRUCTION
+
+\subsubsection{Padding}
+
+\subsubsection{Low-Overhead Looping}
+
+\subsubsection{Loop Unrolling}
+
+\subsubsection{CPU Alignement}
+
+\textbf{Merkle–Damgård} and derivatives can actually handle message of an arbitrary size \( s_m \) by padding the message upfront with the padding function \( p: \{0,1\}^{s_m} \to \{0,1\}^{n_b \times s_b} \) where \( n_b = \lceil s_m/s_b \rceil \).
+
+In practice, implementing \( p \) in computer code implies memory copies. Instead, TODO
+
+\section{Benchmarks}
+\subsection{Setup}
+\subsection{Evaluation Metrics}
+\subsection{Comparison with Existing Methods}
+
+\section{Discussion}
+\subsection{Implications}
+\subsection{Limitations}
+\subsection{Future Work}
+
+\section{Conclusion}
+
+\end{document}
