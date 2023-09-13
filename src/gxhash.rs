@@ -3,6 +3,7 @@
 use core::arch::aarch64::*;
 
 use std::{mem, intrinsics::{prefetch_read_data, likely}};
+use std::hint::black_box;
 
 pub unsafe fn gxhash(input: &[i8]) -> u32 {
 
@@ -40,15 +41,6 @@ pub unsafe fn gxhash(input: &[i8]) -> u32 {
         
         hash_vector = compress(hash_vector, block_hash_vector);
 
-        // hash_vector = compress(hash_vector, *v);
-        // hash_vector = compress(hash_vector, *v.offset(1));
-        // hash_vector = compress(hash_vector, *v.offset(2));
-        // hash_vector = compress(hash_vector, *v.offset(3));
-        // hash_vector = compress(hash_vector, *v.offset(4));
-        // hash_vector = compress(hash_vector, *v.offset(5));
-        // hash_vector = compress(hash_vector, *v.offset(6));
-        // hash_vector = compress(hash_vector, *v.offset(7));
-
         v = v.add(UNROLL_FACTOR);
     }
 
@@ -74,5 +66,5 @@ pub unsafe fn gxhash(input: &[i8]) -> u32 {
 
 #[inline]
 unsafe fn compress(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    vaddq_s8(a, b)
+    vaddq_s8(vmulq_s8(a, b), b)
 }
