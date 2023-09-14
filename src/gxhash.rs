@@ -1,4 +1,4 @@
-// For x86_64 architecture
+// For ARM architecture
 #[cfg(target_arch = "aarch64")]
 mod platform_defs {
     use std::mem;
@@ -30,12 +30,12 @@ mod platform_defs {
     }
 }
 
-// For ARM architecture
+// For x86 architecture
 #[cfg(target_arch = "x86_64")]
 mod platform_defs {
     use core::arch::x86_64::*;
 
-    pub type Int8x16 = core::arch::x86_64::__m128i;
+    pub type state = core::arch::x86_64::__m128i;
     
     pub unsafe fn create_empty() -> state {
         _mm_set1_epi8(0)
@@ -43,8 +43,8 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
-        let sum: state = vaddq_s8(a, b);
-        vextq_s8(sum, sum, 1) 
+        let sum: state = _mm_add_epi8(a, b);
+        _mm_alignr_epi8(sum, sum, 1) 
     }
 
     pub unsafe fn mix(hash: state) -> state {
