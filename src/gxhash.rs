@@ -62,62 +62,67 @@ mod platform_defs {
     }
 }
 
+use std::intrinsics::{likely, prefetch_read_data};
+
 use platform_defs::*;
 
-pub unsafe fn gxhash(input: &[i8]) -> u32 {
-
-    const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
-    const UNROLL_FACTOR: isize = 8;
-
-    let len: isize = input.len() as isize;
-
-    //let remaining_bytes = len & (VECTOR_SIZE - 1);
-
-    let p = input.as_ptr();
-    let mut v = p as *const state;
-    let mut end_address: usize;// = v.add(unrollable_blocks_count) as usize;
-
-    let mut hash_vector: state = create_empty();
-
-    if len >= VECTOR_SIZE * UNROLL_FACTOR {
-        let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR; 
-        end_address = v.offset(unrollable_blocks_count) as usize;
-
-        let mut hash_vector_1: state = create_empty();
-        let mut hash_vector_2: state = create_empty();
-        let mut hash_vector_3: state = create_empty();
-        let mut hash_vector_4: state = create_empty();
-        let mut hash_vector_5: state = create_empty();
-        let mut hash_vector_6: state = create_empty();
-        let mut hash_vector_7: state = create_empty();
-        let mut hash_vector_8: state = create_empty();
+pub fn gxhash(input: &[i8]) -> u32 {
+    unsafe {
+        const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
+        const UNROLL_FACTOR: isize = 8;
     
-        while (v as usize) < end_address {
-            hash_vector_1 = compress(hash_vector_1, *v);
-            hash_vector_2 = compress(hash_vector_2, *v.offset(1));
-            hash_vector_3 = compress(hash_vector_3, *v.offset(2));
-            hash_vector_4 = compress(hash_vector_4, *v.offset(3));
-            hash_vector_5 = compress(hash_vector_5, *v.offset(4));
-            hash_vector_6 = compress(hash_vector_6, *v.offset(5));
-            hash_vector_7 = compress(hash_vector_7, *v.offset(6));
-            hash_vector_8 = compress(hash_vector_8, *v.offset(7));
+        let len: isize = input.len() as isize;
     
-            v = v.offset(UNROLL_FACTOR);
+        //let remaining_bytes = len & (VECTOR_SIZE - 1);
+    
+        let p = input.as_ptr();
+        let mut v = p as *const state;
+        let mut end_address: usize;// = v.add(unrollable_blocks_count) as usize;
+    
+        let mut hash_vector: state = create_empty();
+    
+        if len >= VECTOR_SIZE * UNROLL_FACTOR {
+            let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR; 
+            end_address = v.offset(unrollable_blocks_count) as usize;
+    
+            let mut hash_vector_1: state = create_empty();
+            let mut hash_vector_2: state = create_empty();
+            let mut hash_vector_3: state = create_empty();
+            let mut hash_vector_4: state = create_empty();
+            let mut hash_vector_5: state = create_empty();
+            let mut hash_vector_6: state = create_empty();
+            let mut hash_vector_7: state = create_empty();
+            let mut hash_vector_8: state = create_empty();
+        
+            while (v as usize) < end_address {
+                hash_vector_1 = compress(hash_vector_1, *v);
+                hash_vector_2 = compress(hash_vector_2, *v.offset(1));
+                hash_vector_3 = compress(hash_vector_3, *v.offset(2));
+                hash_vector_4 = compress(hash_vector_4, *v.offset(3));
+                hash_vector_5 = compress(hash_vector_5, *v.offset(4));
+                hash_vector_6 = compress(hash_vector_6, *v.offset(5));
+                hash_vector_7 = compress(hash_vector_7, *v.offset(6));
+                hash_vector_8 = compress(hash_vector_8, *v.offset(7));
+        
+                v = v.offset(UNROLL_FACTOR);
+    
+                prefetch_read_data(v, 2);
+            }
+        
+            hash_vector = compress(compress(compress(compress(compress(compress(compress(hash_vector_1, hash_vector_2), hash_vector_3), hash_vector_4), hash_vector_5), hash_vector_6), hash_vector_7), hash_vector_8);
+            let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
+            end_address = v.offset(remaining_blocks_count) as usize;
+        }
+        else
+        {
+            end_address = v.offset(len / VECTOR_SIZE) as usize;
         }
     
-        hash_vector = compress(compress(compress(compress(compress(compress(compress(hash_vector_1, hash_vector_2), hash_vector_3), hash_vector_4), hash_vector_5), hash_vector_6), hash_vector_7), hash_vector_8);
-        let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
-        end_address = v.offset(remaining_blocks_count) as usize;
+        while likely((v as usize) < end_address) {
+            hash_vector = compress(hash_vector, *v);
+            v = v.offset(1);
+        }
+    
+        fold(mix(hash_vector))
     }
-    else
-    {
-        end_address = v.offset(len / VECTOR_SIZE) as usize;
-    }
-
-    while (v as usize) < end_address {
-        hash_vector = compress(hash_vector, *v);
-        v = v.offset(1);
-    }
-
-    fold(mix(hash_vector))
 }
