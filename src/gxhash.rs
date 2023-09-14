@@ -68,7 +68,7 @@ pub unsafe fn gxhash(input: &[i8]) -> u32 {
 #[cfg(target_arch = "aarch64")]
 #[inline]
 unsafe fn compress(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    vaddq_s8(assert!(), b)
+    vaddq_s8(a, b)
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -78,7 +78,7 @@ use core::arch::x86_64::*;
 pub unsafe fn gxhash(input: &[i8]) -> u32 {
 
     const VECTOR_SIZE_SHIFT: usize = 4;
-    const UNROLL_FACTOR_SHIFT: usize = 3;
+    const UNROLL_FACTOR_SHIFT: usize = 2;
 
     const VECTOR_SIZE: usize = 1 << VECTOR_SIZE_SHIFT;
     const UNROLL_FACTOR: usize = 1 << UNROLL_FACTOR_SHIFT;
@@ -93,29 +93,37 @@ pub unsafe fn gxhash(input: &[i8]) -> u32 {
     let mut v = p as *const __m128i;
     let end_address = v.add(unrollable_blocks_count) as usize;
 
-    let mut hash_vector_1: __m128i = _mm_set1_epi8(0);
-    let mut hash_vector_2: __m128i = _mm_set1_epi8(0);
-    let mut hash_vector_3: __m128i = _mm_set1_epi8(0);
-    let mut hash_vector_4: __m128i = _mm_set1_epi8(0);
+    let mut hash_vector1: __m128i = _mm_set1_epi8(0);
+    let mut hash_vector2: __m128i = _mm_set1_epi8(0);
+    let mut hash_vector3: __m128i = _mm_set1_epi8(0);
+    let mut hash_vector4: __m128i = _mm_set1_epi8(0);
 
     // Prefetch is not included in SSE intrinsics
     // Intel CPUs generally have good hardware prefetching
     
     while likely((v as usize) < end_address) {
 
-        hash_vector_1 = compress(hash_vector_1, *v);
-        hash_vector_1 = compress(hash_vector_1, *v.offset(1));
-        hash_vector_2 = compress(hash_vector_2, *v.offset(2));
-        hash_vector_2 = compress(hash_vector_2, *v.offset(3));
-        hash_vector_3 = compress(hash_vector_3, *v.offset(4));
-        hash_vector_3 = compress(hash_vector_3, *v.offset(5));
-        hash_vector_4 = compress(hash_vector_4, *v.offset(6));
-        hash_vector_4 = compress(hash_vector_4, *v.offset(7));
+        // hash_vector1 = compress(hash_vector1, *v);
+        // hash_vector1 = compress(hash_vector1, *v.offset(1));
+        // hash_vector2 = compress(hash_vector2, *v.offset(2));
+        // hash_vector2 = compress(hash_vector2, *v.offset(3));
+        // hash_vector3 = compress(hash_vector3, *v.offset(4));
+        // hash_vector3 = compress(hash_vector3, *v.offset(5));
+        // hash_vector4 = compress(hash_vector4, *v.offset(6));
+        // hash_vector4 = compress(hash_vector4, *v.offset(7));
+
+        hash_vector1 = compress(hash_vector1, *v);
+        hash_vector2 = compress(hash_vector2, *v.offset(1));
+        hash_vector3 = compress(hash_vector3, *v.offset(2));
+        hash_vector4 = compress(hash_vector4, *v.offset(3));
 
         v = v.add(UNROLL_FACTOR);
+
+        //prefetch_read_data(v, 2);
     }
 
-    let mut hash_vector = compress(compress(hash_vector_1, hash_vector_2), compress(hash_vector_3, hash_vector_4));
+    //let mut hash_vector =  compress(hash_vector1, hash_vector2);
+    let mut hash_vector =  compress(compress(hash_vector1, hash_vector2), compress(hash_vector3, hash_vector4));
 
     let end_address = v.add(remaining_blocks_count) as usize;
 
@@ -133,5 +141,6 @@ pub unsafe fn gxhash(input: &[i8]) -> u32 {
 #[cfg(target_arch = "x86_64")]
 #[inline]
 unsafe fn compress(a: __m128i, b: __m128i) -> __m128i {
-    _mm_add_epi8(a, b)
+    let sum = _mm_add_epi8(a, b);
+    _mm_alignr_epi8(sum, sum, 1)
 }
