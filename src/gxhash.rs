@@ -4,8 +4,9 @@ mod platform_defs {
     use std::mem;
     use core::arch::aarch64::*;
 
-    pub type state = core::arch::aarch64::int8x16_t;
-    
+    pub type state = int8x16_t;
+
+    #[inline]
     pub unsafe fn create_empty() -> state {
         vdupq_n_s8(0)
     }
@@ -35,26 +36,29 @@ mod platform_defs {
 mod platform_defs {
     use core::arch::x86_64::*;
 
-    pub type state = core::arch::x86_64::__m128i;
-    
+    pub type state = __m256i;
+
+    #[inline]
     pub unsafe fn create_empty() -> state {
-        _mm_set1_epi8(0)
+        _mm256_set1_epi8(0)
     }
 
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
-        let sum: state = _mm_add_epi8(a, b);
-        _mm_alignr_epi8(sum, sum, 1) 
+        let sum: state = _mm256_add_epi8(a, b);
+        _mm256_alignr_epi8(sum, sum, 1) 
     }
 
+    #[inline]
     pub unsafe fn mix(hash: state) -> state {
         hash
     }
 
+    #[inline]
     pub unsafe fn fold(hash: state) -> u32 {
-        let mut result: [u32; 4] = [0; 4];
-        _mm_storeu_si128(result.as_mut_ptr() as *mut __m128i, hash);
-        result[3]
+        let mut result: [u32; 8] = [0; 8];
+        _mm256_storeu_si256(result.as_mut_ptr() as *mut state, hash);
+        result[7]
     }
 }
 
