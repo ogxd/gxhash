@@ -105,7 +105,7 @@ pub unsafe fn gxhash(input: &[i8]) -> u32 {
             v = v.offset(UNROLL_FACTOR);
         }
     
-        hash_vector = compress(compress(compress(compress(compress(compress(compress(compress(hash_vector_1, hash_vector_2), hash_vector_3), hash_vector_4), hash_vector_5), hash_vector_6), hash_vector_7), hash_vector_8), hash_vector_2);
+        hash_vector = compress(compress(compress(compress(compress(compress(compress(hash_vector_1, hash_vector_2), hash_vector_3), hash_vector_4), hash_vector_5), hash_vector_6), hash_vector_7), hash_vector_8);
         let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
         end_address = v.offset(remaining_blocks_count) as usize;
     }
