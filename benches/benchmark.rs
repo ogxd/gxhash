@@ -1,5 +1,3 @@
-//use std::arch::aarch64::int8x16_t;
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use gxhash::gxhash;
@@ -51,18 +49,16 @@ use rand::Rng;
 
 fn gxhash_benchmark(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
-    let mut random_bytes = [0i8; 16384]; // Create an array of 16 bytes, initialized to 0
-    rng.fill(&mut random_bytes[..]); // Fill the array with random bytes
 
-    // let (prefix, aligned, suffix) = unsafe { random_bytes.align_to_mut::<int8x16_t>() };
-    
-    // // Get the raw pointer and length for the new slice of i8
-    // let ptr = aligned.as_ptr() as *const i8;
-    // let len = aligned.len() * std::mem::size_of::<int8x16_t>();
+    let mut len = 1;
 
-    // // Create the new slice of i8
-    // let i8_slice: &[i8] = unsafe { std::slice::from_raw_parts(ptr, len) };
-    c.bench_function("gxhash", |b| b.iter(|| black_box(unsafe { gxhash(&random_bytes) })));
+    for i in 1..9 {
+        len *= 4;
+        let mut random_bytes: Vec<i8> = vec![0; len];
+        rng.fill(&mut random_bytes[..]);
+
+        c.bench_function(format!("gxhash({})", len).as_str(), |b| b.iter(|| black_box(unsafe { gxhash(&random_bytes) })));
+    }
 }
 
 criterion_group!(benches, gxhash_benchmark);

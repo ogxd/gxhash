@@ -1,137 +1,119 @@
-// Import ARM NEON intrinsics
+// For x86_64 architecture
 #[cfg(target_arch = "aarch64")]
-use core::arch::aarch64::*;
+mod platform_defs {
+    use std::mem;
+    use core::arch::aarch64::*;
 
-use std::{mem, intrinsics::{prefetch_read_data, likely}};
-use std::hint::black_box;
-
-#[cfg(target_arch = "aarch64")]
-pub unsafe fn gxhash(input: &[i8]) -> u32 {
-
-    const VECTOR_SIZE_SHIFT: usize = 4;
-    const UNROLL_FACTOR_SHIFT: usize = 3;
-
-    const VECTOR_SIZE: usize = 1 << VECTOR_SIZE_SHIFT;
-    const UNROLL_FACTOR: usize = 1 << UNROLL_FACTOR_SHIFT;
-
-    let len = input.len();
-
-    let unrollable_blocks_count: usize = (len >> (VECTOR_SIZE_SHIFT + UNROLL_FACTOR_SHIFT)) << UNROLL_FACTOR_SHIFT; 
-    let remaining_blocks_count: usize = (len >> VECTOR_SIZE_SHIFT) - unrollable_blocks_count;
-    let remaining_bytes = len & (VECTOR_SIZE - 1);
-
-    let mut p = input.as_ptr();
-    let mut v = p as *const int8x16_t;
-    let end_address = v.add(unrollable_blocks_count) as usize;
-
-    let mut hash_vector: int8x16_t = vdupq_n_s8(0);
-
-    prefetch_read_data(p, 2);
-
-    while likely((v as usize) < end_address) {
-
-        let mut block_hash_vector: int8x16_t = vdupq_n_s8(0);
-        block_hash_vector = compress(block_hash_vector, *v);
-        block_hash_vector = compress(block_hash_vector, *v.offset(1));
-        block_hash_vector = compress(block_hash_vector, *v.offset(2));
-        block_hash_vector = compress(block_hash_vector, *v.offset(3));
-        block_hash_vector = compress(block_hash_vector, *v.offset(4));
-        block_hash_vector = compress(block_hash_vector, *v.offset(5));
-        block_hash_vector = compress(block_hash_vector, *v.offset(6));
-        block_hash_vector = compress(block_hash_vector, *v.offset(7));
-        
-        hash_vector = compress(hash_vector, block_hash_vector);
-
-        v = v.add(UNROLL_FACTOR);
-    }
-
-    let end_address = v.add(remaining_blocks_count) as usize;
-
-    while (v as usize) < end_address {
-
-        hash_vector = compress(hash_vector, *v);
-        v = v.add(1);
-    }
-
-    // Bit-cast the int8x16_t to uint32x4_t
-    let vec_u32: uint32x4_t = mem::transmute(hash_vector);
-
-    // Get the first u32 value from the vector
-    let first_u32: u32 = vgetq_lane_u32(vec_u32, 3);
+    pub type state = core::arch::aarch64::int8x16_t;
     
+    pub unsafe fn create_empty() -> state {
+        vdupq_n_s8(0)
+    }
 
-    //vaeseq_u8(hash_vector, hash_vector);
+    #[inline]
+    pub unsafe fn compress(a: state, b: state) -> state {
+        let sum: state = vaddq_s8(a, b);
+        vextq_s8(sum, sum, 1) 
+    }
 
-    first_u32
+    #[inline]
+    pub unsafe fn mix(hash: state) -> state {
+        hash
+    }
+
+    #[inline]
+    pub unsafe fn fold(hash: state) -> u32 {
+        // Bit-cast the int8x16_t to uint32x4_t
+        let vec_u32: uint32x4_t = mem::transmute(hash);
+        // Get the first u32 value from the vector
+        vgetq_lane_u32(vec_u32, 3)
+    }
 }
 
-#[cfg(target_arch = "aarch64")]
-#[inline]
-unsafe fn compress(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    vaddq_s8(assert!(), b)
-}
-
+// For ARM architecture
 #[cfg(target_arch = "x86_64")]
-use core::arch::x86_64::*;
+mod platform_defs {
+    use core::arch::x86_64::*;
 
-#[cfg(target_arch = "x86_64")]
-pub unsafe fn gxhash(input: &[i8]) -> u32 {
-
-    const VECTOR_SIZE_SHIFT: usize = 4;
-    const UNROLL_FACTOR_SHIFT: usize = 3;
-
-    const VECTOR_SIZE: usize = 1 << VECTOR_SIZE_SHIFT;
-    const UNROLL_FACTOR: usize = 1 << UNROLL_FACTOR_SHIFT;
-
-    let len = input.len();
-
-    let unrollable_blocks_count: usize = (len >> (VECTOR_SIZE_SHIFT + UNROLL_FACTOR_SHIFT)) << UNROLL_FACTOR_SHIFT;
-    let remaining_blocks_count: usize = (len >> VECTOR_SIZE_SHIFT) - unrollable_blocks_count;
-    let remaining_bytes = len & (VECTOR_SIZE - 1);
-
-    let mut p = input.as_ptr();
-    let mut v = p as *const __m128i;
-    let end_address = v.add(unrollable_blocks_count) as usize;
-
-    let mut hash_vector_1: __m128i = _mm_set1_epi8(0);
-    let mut hash_vector_2: __m128i = _mm_set1_epi8(0);
-    let mut hash_vector_3: __m128i = _mm_set1_epi8(0);
-    let mut hash_vector_4: __m128i = _mm_set1_epi8(0);
-
-    // Prefetch is not included in SSE intrinsics
-    // Intel CPUs generally have good hardware prefetching
+    pub type Int8x16 = core::arch::x86_64::__m128i;
     
-    while likely((v as usize) < end_address) {
-
-        hash_vector_1 = compress(hash_vector_1, *v);
-        hash_vector_1 = compress(hash_vector_1, *v.offset(1));
-        hash_vector_2 = compress(hash_vector_2, *v.offset(2));
-        hash_vector_2 = compress(hash_vector_2, *v.offset(3));
-        hash_vector_3 = compress(hash_vector_3, *v.offset(4));
-        hash_vector_3 = compress(hash_vector_3, *v.offset(5));
-        hash_vector_4 = compress(hash_vector_4, *v.offset(6));
-        hash_vector_4 = compress(hash_vector_4, *v.offset(7));
-
-        v = v.add(UNROLL_FACTOR);
+    pub unsafe fn create_empty() -> state {
+        _mm_set1_epi8(0)
     }
 
-    let mut hash_vector = compress(compress(hash_vector_1, hash_vector_2), compress(hash_vector_3, hash_vector_4));
+    #[inline]
+    pub unsafe fn compress(a: state, b: state) -> state {
+        let sum: state = vaddq_s8(a, b);
+        vextq_s8(sum, sum, 1) 
+    }
 
-    let end_address = v.add(remaining_blocks_count) as usize;
+    pub unsafe fn mix(hash: state) -> state {
+        hash
+    }
+
+    pub unsafe fn fold(hash: state) -> u32 {
+        let mut result: [u32; 4] = [0; 4];
+        _mm_storeu_si128(result.as_mut_ptr() as *mut __m128i, hash);
+        result[3]
+    }
+}
+
+use platform_defs::*;
+
+pub unsafe fn gxhash(input: &[i8]) -> u32 {
+
+    const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
+    const UNROLL_FACTOR: isize = 8;
+
+    let len: isize = input.len() as isize;
+
+    //let remaining_bytes = len & (VECTOR_SIZE - 1);
+
+    let p = input.as_ptr();
+    let mut v = p as *const state;
+    let mut end_address: usize;// = v.add(unrollable_blocks_count) as usize;
+
+    let mut hash_vector: state = create_empty();
+
+    if len >= VECTOR_SIZE * UNROLL_FACTOR {
+        let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR; 
+        end_address = v.offset(unrollable_blocks_count) as usize;
+
+        let mut hash_vector_1: state = create_empty();
+        let mut hash_vector_2: state = create_empty();
+        let mut hash_vector_3: state = create_empty();
+        let mut hash_vector_4: state = create_empty();
+        let mut hash_vector_5: state = create_empty();
+        let mut hash_vector_6: state = create_empty();
+        let mut hash_vector_7: state = create_empty();
+        let mut hash_vector_8: state = create_empty();
+    
+        while (v as usize) < end_address {
+            hash_vector_1 = compress(hash_vector_1, *v);
+            hash_vector_2 = compress(hash_vector_2, *v.offset(1));
+            hash_vector_3 = compress(hash_vector_3, *v.offset(2));
+            hash_vector_4 = compress(hash_vector_4, *v.offset(3));
+            hash_vector_5 = compress(hash_vector_5, *v.offset(4));
+            hash_vector_6 = compress(hash_vector_6, *v.offset(5));
+            hash_vector_7 = compress(hash_vector_7, *v.offset(6));
+            hash_vector_8 = compress(hash_vector_8, *v.offset(7));
+    
+            v = v.offset(UNROLL_FACTOR);
+        }
+    
+        hash_vector = compress(compress(compress(compress(compress(compress(compress(compress(hash_vector_1, hash_vector_2), hash_vector_3), hash_vector_4), hash_vector_5), hash_vector_6), hash_vector_7), hash_vector_8), hash_vector_2);
+        let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
+        end_address = v.offset(remaining_blocks_count) as usize;
+    }
+    else
+    {
+        end_address = v.offset(len / VECTOR_SIZE) as usize;
+    }
 
     while (v as usize) < end_address {
         hash_vector = compress(hash_vector, *v);
-        v = v.add(1);
+        v = v.offset(1);
     }
 
-    // Extract the last lane and use it for the hash value
-    let mut result: [u32; 4] = [0; 4];
-    _mm_storeu_si128(result.as_mut_ptr() as *mut __m128i, hash_vector);
-    result[3]
-}
-
-#[cfg(target_arch = "x86_64")]
-#[inline]
-unsafe fn compress(a: __m128i, b: __m128i) -> __m128i {
-    _mm_add_epi8(a, b)
+    fold(mix(hash_vector))
 }
