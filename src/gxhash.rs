@@ -10,6 +10,11 @@ mod platform_defs {
     pub unsafe fn create_empty() -> state {
         vdupq_n_s8(0)
     }
+    
+    #[inline]
+    pub unsafe fn prefetch(p: *const state) {
+        __pld(p as *const i8);
+    }
 
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
@@ -44,6 +49,11 @@ mod platform_defs {
     }
 
     #[inline]
+    pub unsafe fn prefetch(p: *const state) {
+        _mm_prefetch(p as *const i8, 3);
+    }
+
+    #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
         let sum: state = _mm256_add_epi8(a, b);
         _mm256_alignr_epi8(sum, sum, 1) 
@@ -61,8 +71,6 @@ mod platform_defs {
         result[7]
     }
 }
-
-use std::intrinsics::{likely, prefetch_read_data};
 
 use platform_defs::*;
 
@@ -95,6 +103,9 @@ pub fn gxhash(input: &[i8]) -> u32 {
             let mut hash_vector_8: state = create_empty();
         
             while (v as usize) < end_address {
+
+                //prefetch(v.offset(UNROLL_FACTOR * 2));
+
                 hash_vector_1 = compress(hash_vector_1, *v);
                 hash_vector_2 = compress(hash_vector_2, *v.offset(1));
                 hash_vector_3 = compress(hash_vector_3, *v.offset(2));
@@ -105,8 +116,6 @@ pub fn gxhash(input: &[i8]) -> u32 {
                 hash_vector_8 = compress(hash_vector_8, *v.offset(7));
         
                 v = v.offset(UNROLL_FACTOR);
-    
-                prefetch_read_data(v, 2);
             }
         
             hash_vector = compress(compress(compress(compress(compress(compress(compress(hash_vector_1, hash_vector_2), hash_vector_3), hash_vector_4), hash_vector_5), hash_vector_6), hash_vector_7), hash_vector_8);
@@ -118,7 +127,7 @@ pub fn gxhash(input: &[i8]) -> u32 {
             end_address = v.offset(len / VECTOR_SIZE) as usize;
         }
     
-        while likely((v as usize) < end_address) {
+        while (v as usize) < end_address {
             hash_vector = compress(hash_vector, *v);
             v = v.offset(1);
         }
