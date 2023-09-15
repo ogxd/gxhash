@@ -22,6 +22,11 @@ fn gxhash_benchmark(c: &mut Criterion) {
         
         println!("aligned: {}", len);
 
+        // let (prefix, aligned, suffix) = unsafe { random_bytes.align_to_mut::<gxhash::state>() };
+        // let ptr = aligned.as_ptr() as *const u8;
+        // let len = aligned.len() * std::mem::size_of::<gxhash::state>();
+        // let i8_slice: &[u8] = unsafe { std::slice::from_raw_parts(ptr, len) };
+
         group.throughput(Throughput::Bytes(random_bytes.len() as u64));
         group.bench_with_input(format!("{} bytes", random_bytes.len()), &random_bytes, |bencher, input| {
             bencher.iter(|| gxhash(input))

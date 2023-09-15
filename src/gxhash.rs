@@ -80,7 +80,18 @@ mod platform_defs {
     }
 }
 
+use std::arch::x86_64::{_mm256_loadu_epi8, _mm256_load_si256, _mm256_loadu_si256};
+
 pub use platform_defs::*;
+
+macro_rules! load_unaligned {
+    ($v:expr, $($var:ident),+) => {
+        $(
+            let mut $var = _mm256_loadu_si256($v);
+            $v = $v.offset(1);
+        )+
+    };
+}
 
 #[inline]
 pub fn gxhash(input: &[u8]) -> u32 {
@@ -92,7 +103,7 @@ pub fn gxhash(input: &[u8]) -> u32 {
     
         //let remaining_bytes = len & (VECTOR_SIZE - 1);
     
-        let p = input.as_ptr();
+        let p = input.as_ptr() as *const i8;
         let mut v = p as *const state;
         let mut end_address: usize;// = v.add(unrollable_blocks_count) as usize;
 
@@ -105,30 +116,24 @@ pub fn gxhash(input: &[u8]) -> u32 {
             let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR; 
             end_address = v.offset(unrollable_blocks_count) as usize;
     
-            let mut hash_vector_1: state = create_empty();
-            let mut hash_vector_2: state = create_empty();
-            let mut hash_vector_3: state = create_empty();
-            let mut hash_vector_4: state = create_empty();
-            let mut hash_vector_5: state = create_empty();
-            let mut hash_vector_6: state = create_empty();
-            let mut hash_vector_7: state = create_empty();
-            let mut hash_vector_8: state = create_empty();
-
+            load_unaligned!(v, s0, s1, s2, s3, s4, s5, s6, s7);
+ 
             while (v as usize) < end_address {
 
-                hash_vector_1 = compress(hash_vector_1, *v);
-                hash_vector_2 = compress(hash_vector_2, *v.offset(1));
-                hash_vector_3 = compress(hash_vector_3, *v.offset(2));
-                hash_vector_4 = compress(hash_vector_4, *v.offset(3));
-                hash_vector_5 = compress(hash_vector_5, *v.offset(4));
-                hash_vector_6 = compress(hash_vector_6, *v.offset(5));
-                hash_vector_7 = compress(hash_vector_7, *v.offset(6));
-                hash_vector_8 = compress(hash_vector_8, *v.offset(7));
-        
-                v = v.offset(UNROLL_FACTOR);
+                load_unaligned!(v, v0, v1, v2, v3, v4, v5, v6, v7);
+
+                s0 = compress(s0, v0);
+                s1 = compress(s1, v1);
+                s2 = compress(s2, v2);
+                s3 = compress(s3, v3);
+                s4 = compress(s4, v4);
+                s5 = compress(s5, v5);
+                s6 = compress(s6, v6);
+                s7 = compress(s7, v7);
             }
         
-            hash_vector = compress(compress(compress(compress(compress(compress(compress(hash_vector_1, hash_vector_2), hash_vector_3), hash_vector_4), hash_vector_5), hash_vector_6), hash_vector_7), hash_vector_8);
+            hash_vector = compress(compress(compress(compress(compress(compress(compress(s0, s1), s2), s3), s4), s5), s6), s7);
+            
             let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
             end_address = v.offset(remaining_blocks_count) as usize;
         }
@@ -136,9 +141,9 @@ pub fn gxhash(input: &[u8]) -> u32 {
         {
             end_address = v.offset(len / VECTOR_SIZE) as usize;
         }
-    
+
         while (v as usize) < end_address {
-            hash_vector = compress(hash_vector, *v);
+            hash_vector = compress(hash_vector, _mm256_loadu_si256(v));
             v = v.offset(1);
         }
 
