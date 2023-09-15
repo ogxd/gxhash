@@ -74,7 +74,7 @@ mod platform_defs {
 
 use platform_defs::*;
 
-pub fn gxhash(input: &[i8]) -> u32 {
+pub fn gxhash(input: &[u8]) -> u32 {
     unsafe {
         const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
         const UNROLL_FACTOR: isize = 8;
