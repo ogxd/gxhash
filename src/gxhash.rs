@@ -45,7 +45,7 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn create_empty() -> state {
-        _mm256_set1_epi8(0)
+        _mm256_setzero_si256()
     }
 
     #[inline]
@@ -72,11 +72,17 @@ mod platform_defs {
         // let mut result: [u32; 8] = [0; 8];
         // _mm256_storeu_si256(result.as_mut_ptr() as *mut state, hash);
         // result[7]
+
+        // let sum128 = _mm_add_epi32( 
+        //     _mm256_castsi256_si128(hash),
+        //     _mm256_extracti128_si256(hash, 1)); // silly GCC uses a longer AXV512VL instruction if AVX512 is enabled :/
+        // _mm128_hadd_(sum128);
     }
 }
 
-use platform_defs::*;
+pub use platform_defs::*;
 
+#[inline]
 pub fn gxhash(input: &[u8]) -> u32 {
     unsafe {
         const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
@@ -89,10 +95,13 @@ pub fn gxhash(input: &[u8]) -> u32 {
         let p = input.as_ptr();
         let mut v = p as *const state;
         let mut end_address: usize;// = v.add(unrollable_blocks_count) as usize;
+
+        //prefetch(v);
     
         let mut hash_vector: state = create_empty();
-    
+
         if len >= VECTOR_SIZE * UNROLL_FACTOR {
+
             let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR; 
             end_address = v.offset(unrollable_blocks_count) as usize;
     
@@ -104,10 +113,8 @@ pub fn gxhash(input: &[u8]) -> u32 {
             let mut hash_vector_6: state = create_empty();
             let mut hash_vector_7: state = create_empty();
             let mut hash_vector_8: state = create_empty();
-        
-            while (v as usize) < end_address {
 
-                //prefetch(v.offset(UNROLL_FACTOR * 2));
+            while (v as usize) < end_address {
 
                 hash_vector_1 = compress(hash_vector_1, *v);
                 hash_vector_2 = compress(hash_vector_2, *v.offset(1));
@@ -134,7 +141,7 @@ pub fn gxhash(input: &[u8]) -> u32 {
             hash_vector = compress(hash_vector, *v);
             v = v.offset(1);
         }
-    
+
         fold(mix(hash_vector))
     }
 }
