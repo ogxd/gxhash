@@ -61,7 +61,10 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn mix(hash: state) -> state {
-        hash
+        let salt = _mm256_set_epi64x(-4860325414534694371, 8120763769363581797, -4860325414534694371, 8120763769363581797);
+        let keys = _mm256_mul_epu32(salt, hash);
+        _mm256_aesenc_epi128(hash, keys)
+
     }
 
     #[inline]
@@ -80,7 +83,7 @@ mod platform_defs {
     }
 }
 
-use std::arch::x86_64::{_mm256_loadu_epi8, _mm256_load_si256, _mm256_loadu_si256};
+use std::{arch::x86_64::{_mm256_loadu_epi8, _mm256_load_si256, _mm256_loadu_si256, _mm256_and_si256}, intrinsics::likely};
 
 pub use platform_defs::*;
 
@@ -101,7 +104,7 @@ pub fn gxhash(input: &[u8]) -> u32 {
     
         let len: isize = input.len() as isize;
     
-        //let remaining_bytes = len & (VECTOR_SIZE - 1);
+        let remaining_bytes = len & (VECTOR_SIZE - 1);
     
         let p = input.as_ptr() as *const i8;
         let mut v = p as *const state;
@@ -145,6 +148,15 @@ pub fn gxhash(input: &[u8]) -> u32 {
         while (v as usize) < end_address {
             hash_vector = compress(hash_vector, _mm256_loadu_si256(v));
             v = v.offset(1);
+        }
+
+        if likely(remaining_bytes > 0) {
+            const MASK: [u8; 64] = [
+                0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
+
+            let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(VECTOR_SIZE - remaining_bytes));
+            hash_vector = compress(hash_vector, _mm256_and_si256(_mm256_loadu_si256(v), mask));
         }
 
         fold(mix(hash_vector))
