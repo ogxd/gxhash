@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::{mem::size_of, time::Duration};
 
 use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 
@@ -34,5 +34,11 @@ fn gxhash_benchmark(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, gxhash_benchmark);
+criterion_group! {
+    name = benches;
+    config = Criterion::default()
+        .sample_size(10000)
+        .measurement_time(Duration::from_secs(10));  // Set your custom sample size here
+    targets = gxhash_benchmark,
+}
 criterion_main!(benches);
