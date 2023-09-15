@@ -66,9 +66,12 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn fold(hash: state) -> u32 {
-        let mut result: [u32; 8] = [0; 8];
-        _mm256_storeu_si256(result.as_mut_ptr() as *mut state, hash);
-        result[7]
+        let p = &hash as *const state as *const u32;
+        *p + *p.offset(1) + *p.offset(2) + *p.offset(3) + *p.offset(4) + *p.offset(5) + *p.offset(6)+ *p.offset(7)
+
+        // let mut result: [u32; 8] = [0; 8];
+        // _mm256_storeu_si256(result.as_mut_ptr() as *mut state, hash);
+        // result[7]
     }
 }
 
