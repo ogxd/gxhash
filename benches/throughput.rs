@@ -1,13 +1,10 @@
-use std::{mem::size_of, time::Duration};
-
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
-
-use gxhash::gxhash;
-
-use rand::Rng;
-
+use std::time::Duration;
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
+
+use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use gxhash::gxhash;
+use rand::Rng;
 
 fn gxhash_benchmark(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
@@ -15,7 +12,7 @@ fn gxhash_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("gxhash");
 
     // Allocate 32-bytes-aligned
-    let layout = Layout::from_size_align(100000, 16).unwrap();
+    let layout = Layout::from_size_align(100000, 32).unwrap();
     let ptr = unsafe { alloc(layout) };
     let slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(ptr, 100000) };
 
@@ -44,8 +41,8 @@ fn gxhash_benchmark(c: &mut Criterion) {
 criterion_group! {
     name = benches;
     config = Criterion::default()
-        .sample_size(100)
-        .measurement_time(Duration::from_secs(5));  // Set your custom sample size here
+        .sample_size(1000)
+        .measurement_time(Duration::from_secs(10));
     targets = gxhash_benchmark,
 }
 criterion_main!(benches);

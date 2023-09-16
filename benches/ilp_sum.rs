@@ -25,14 +25,14 @@ fn sum_unrolled() -> u32 {
 fn sum_unrolled_tempsum() -> u32 {
     let mut sum = 0;
     for i in 0..ITERATIONS/5 {
-        let mut tempSum: u32 = 0;
-        tempSum = black_box(tempSum + 1);
-        tempSum = black_box(tempSum + 1);
-        tempSum = black_box(tempSum + 1);
-        tempSum = black_box(tempSum + 1);
-        tempSum = black_box(tempSum + 1);
+        let mut temp_sum: u32 = 0;
+        temp_sum = black_box(temp_sum + 1);
+        temp_sum = black_box(temp_sum + 1);
+        temp_sum = black_box(temp_sum + 1);
+        temp_sum = black_box(temp_sum + 1);
+        temp_sum = black_box(temp_sum + 1);
 
-        sum = black_box(sum + tempSum);
+        sum = black_box(sum + temp_sum);
     }
     sum
 }

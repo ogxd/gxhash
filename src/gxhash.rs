@@ -54,6 +54,21 @@ mod platform_defs {
     }
 
     #[inline]
+    pub unsafe fn load_unaligned(p: *const state) -> state {
+        _mm256_loadu_si256(p)
+    }
+
+    #[inline]
+    pub unsafe fn get_partial(p: *const state, len: isize) -> state {
+        const MASK: [u8; 64] = [
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
+
+        let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
+        _mm256_and_si256(_mm256_loadu_si256(p), mask)
+    }
+
+    #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
         let sum: state = _mm256_add_epi8(a, b);
         _mm256_alignr_epi8(sum, sum, 1) 
@@ -71,26 +86,17 @@ mod platform_defs {
     pub unsafe fn fold(hash: state) -> u32 {
         let p = &hash as *const state as *const u32;
         *p + *p.offset(1) + *p.offset(2) + *p.offset(3) + *p.offset(4) + *p.offset(5) + *p.offset(6)+ *p.offset(7)
-
-        // let mut result: [u32; 8] = [0; 8];
-        // _mm256_storeu_si256(result.as_mut_ptr() as *mut state, hash);
-        // result[7]
-
-        // let sum128 = _mm_add_epi32( 
-        //     _mm256_castsi256_si128(hash),
-        //     _mm256_extracti128_si256(hash, 1)); // silly GCC uses a longer AXV512VL instruction if AVX512 is enabled :/
-        // _mm128_hadd_(sum128);
     }
 }
 
-use std::{arch::x86_64::{_mm256_loadu_epi8, _mm256_load_si256, _mm256_loadu_si256, _mm256_and_si256}, intrinsics::likely};
+use std::intrinsics::likely;
 
 pub use platform_defs::*;
 
 macro_rules! load_unaligned {
     ($v:expr, $($var:ident),+) => {
         $(
-            let mut $var = _mm256_loadu_si256($v);
+            let mut $var = load_unaligned($v);
             $v = $v.offset(1);
         )+
     };
@@ -151,12 +157,8 @@ pub fn gxhash(input: &[u8]) -> u32 {
         }
 
         if likely(remaining_bytes > 0) {
-            const MASK: [u8; 64] = [
-                0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
-
-            let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(VECTOR_SIZE - remaining_bytes));
-            hash_vector = compress(hash_vector, _mm256_and_si256(_mm256_loadu_si256(v), mask));
+            let partial_vector = get_partial(v, remaining_bytes);
+            hash_vector = compress(hash_vector, partial_vector);
         }
 
         fold(mix(hash_vector))
