@@ -32,7 +32,7 @@ fn unrolled_loop(input: &[usize]) -> usize {
     hash
 }
 
-fn unrolled_loop_temp_per_iteration(input: &[usize]) -> usize {
+fn unrolled_temp_loop(input: &[usize]) -> usize {
     let mut hash: usize = 0;
     let mut i: usize = 0;
     while i < input.len() {

@@ -17,5 +17,5 @@ name = "throughput"
 harness = false
 
 [[bench]]
-name = "ilp_sum"
+name = "ilp"
 harness = false
