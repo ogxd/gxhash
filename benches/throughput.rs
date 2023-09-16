@@ -19,7 +19,7 @@ fn gxhash_benchmark(c: &mut Criterion) {
     // Fill with random bytes
     rng.fill(slice);
 
-    for i in 1..9 {
+    for _ in 1..9 {
         len *= 4;
 
         group.throughput(Throughput::Bytes(len as u64));

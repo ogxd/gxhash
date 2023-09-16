@@ -79,7 +79,7 @@ fn ilp_benchmark(c: &mut Criterion) {
     }
     c.bench_function("simple_loop", |b| b.iter(|| black_box(simple_loop(&input))));
     c.bench_function("unrolled_loop", |b| b.iter(|| black_box(unrolled_loop(&input))));
-    c.bench_function("unrolled_loop_temp_per_iteration", |b| b.iter(|| black_box(unrolled_loop_temp_per_iteration(&input))));
+    c.bench_function("unrolled_temp_loop", |b| b.iter(|| black_box(unrolled_temp_loop(&input))));
     c.bench_function("unrolled_laned_loop", |b| b.iter(|| black_box(unrolled_laned_loop(&input))));
 }
 

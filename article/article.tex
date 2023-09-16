@@ -93,10 +93,10 @@ Let's define \( n_g = \lfloor {n_b}/{k_b} \rfloor \) as the number of whole grou
 For each group we compute an intermediate hash, \( H_i \), as follows:
 
 \begin{align*}
-H_{1} &= f(\ldots f(f(0^{s_b}, M_1), M_2)\ldots, M_{k_b}), \\
-H_{2} &= f(\ldots f(f(0^{s_b}, M_{k_g+1}), M_{k_g+2})\ldots, M_{2k_b}), \\
+H_{1} &= f(\ldots f(f(f(0^{s_b}, M_{0k_b + 1}), M_{1k_b + 1}), M_{2k_b + 1})\ldots, M_{n_g + 1}) \\
+H_{2} &= f(\ldots f(f(f(0^{s_b}, M_{0k_b + 2}), M_{1k_b + 2}), M_{2k_b + 2})\ldots, M_{n_g + 2}) \\
 &\vdots \\
-H_{n_g} &= f(\ldots f(f(0^{s_b}, M_{n_g+1}), M_{n_g+2})\ldots, M_{n_g+k_b})
+H_{k_b} &= f(\ldots f(f(f(0^{s_b}, M_{0k_b + k_b}), M_{1k_b + k_b}), M_{2k_b + k_b})\ldots, M_{n_g + k_b}) \\
 \end{align*}
 
 \subsection{Final Hash}
@@ -104,7 +104,7 @@ H_{n_g} &= f(\ldots f(f(0^{s_b}, M_{n_g+1}), M_{n_g+2})\ldots, M_{n_g+k_b})
 The final hash \( H \) is calculated using \( f \) to compress the intermediate hashes and the remaining message blocks (if any), which is then passed through \( g \):
 
 \begin{equation*}
-h(M) = g\left( f( \ldots f(f(\ldots f(f(0^s, H_1), H_2) \ldots, H_{n_g}), M_{4{n_g}+1}) \ldots, M_{n_b} ) \right).
+h(M) = g\left( f( \ldots f(f(\ldots f(f(0^{s_b}, H_1), H_2) \ldots, H_{k_b}), M_{{k_b}{n_g}+1}) \ldots, M_{n_b} ) \right).
 \end{equation*}
 
 \section{TurboGx Hashing Algorithm}
