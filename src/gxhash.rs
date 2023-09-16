@@ -146,8 +146,8 @@ pub fn gxhash(input: &[u8]) -> u32 {
         }
 
         while (v as usize) < end_address {
-            hash_vector = compress(hash_vector, _mm256_loadu_si256(v));
-            v = v.offset(1);
+            load_unaligned!(v, v0);
+            hash_vector = compress(hash_vector, v0);
         }
 
         if likely(remaining_bytes > 0) {
