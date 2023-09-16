@@ -13,7 +13,22 @@ mod platform_defs {
     
     #[inline]
     pub unsafe fn prefetch(p: *const state) {
-        __pld(p as *const i8);
+        //__pld(p as *const i8);
+    }
+
+    #[inline]
+    pub unsafe fn load_unaligned(p: *const state) -> state {
+        vld1q_s8(p as *const i8)
+    }
+
+    #[inline]
+    pub unsafe fn get_partial(p: *const state, len: isize) -> state {
+        const MASK: [u8; 32] = [
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
+
+        let mask = vld1q_s8((MASK.as_ptr() as *const i8).offset(16 - len));
+        vandq_s8(load_unaligned(p), mask)
     }
 
     #[inline]
