@@ -1,5 +1,5 @@
 \documentclass[11pt]{article} 
-\usepackage[margin=1in]{geometry} % Sets all margins to 1 inch
+\usepackage[margin=0.8in]{geometry} % Sets all margins to 1 inch
 \usepackage{amsmath}
 \usepackage{hyperref} 
 \usepackage{listings}
@@ -8,7 +8,7 @@
 
 \input{rust-listings.tex}  % Include the language definition
 
-\title{TurboGx: A High-Throughput, Non-Cryptographic Hashing Algorithm Leveraging Modern CPU Capabilities}
+\title{GxHash: A High-Throughput, Non-Cryptographic Hashing Algorithm Leveraging Modern CPU Capabilities}
 \author{Olivier Giniaux}
 \date{}
 
@@ -18,7 +18,7 @@
 
 \begin{abstract}
 
-In the rapidly evolving landscape of data processing and cybersecurity, hashing algorithms play a pivotal role in ensuring data integrity and security. Traditional hashing methods, while effective, often fail to fully utilize the computational capabilities of modern processors. This paper introduces the TurboGx hashing algorithm, a novel approach that harnesses the power of high instruction-level parallelism (ILP) and Single Instruction, Multiple Data (SIMD) capabilities of contemporary CPUs to achieve high-throughput non-cryptographic hashing. Through a comprehensive analysis, including benchmarks and comparisons with existing methods, we demonstrate that TurboGx significantly outperforms conventional algorithms in terms of speed and computational efficiency without compromising on security. The paper also explores the implications, limitations, and avenues for future research in this burgeoning field.
+In the rapidly evolving landscape of data processing and cybersecurity, hashing algorithms play a pivotal role in ensuring data integrity and security. Traditional hashing methods, while effective, often fail to fully utilize the computational capabilities of modern processors. This paper introduces the GxHash hashing algorithm, a novel approach that harnesses the power of high instruction-level parallelism (ILP) and Single Instruction, Multiple Data (SIMD) capabilities of contemporary CPUs to achieve high-throughput non-cryptographic hashing. Through a comprehensive analysis, including benchmarks and comparisons with existing methods, we demonstrate that GxHash significantly outperforms conventional algorithms in terms of speed and computational efficiency without compromising on security. The paper also explores the implications, limitations, and avenues for future research in this burgeoning field.
 
 \end{abstract}
 
@@ -85,9 +85,120 @@ Most modern general-purpose CPUs employ a superscalar architecture which enables
 Minimizing dependencies in an algorithm allows a superscalar processor to execute more instructions concurrently, thus maximizing its inherent parallelism and overall performance.
 The key limitation for ILP in the Merkle–Damgård construction is the inherent sequential dependency: each block's hash depends on the result of hashing the previous block.
 
+\subsection{ILP Techniques}
+
+While compilers and CPUs employ various techniques to optimize Instruction-Level Parallelism (ILP), their capabilities are often constrained by the inherent data dependencies in the code. It's for this reason that algorithmic design can be pivotal. By structuring algorithms to minimize dependency chains from the outset, we create opportunities for higher ILP that even the most advanced compiler optimizations and CPU features cannot achieve alone. Therefore, algorithmic design that is mindful of ILP can be a game-changer for performance optimization.
+\\\\
+\textbf{Example}\\
+Let's take a FNV-like hashing function. The "naive" way to process an array of elements would look like the \texttt{baseline} method, as shown in Rust snippet (Figure~\ref{fig:ilp_rust_example}). As we can see, every loop iteration requires the value of \texttt{h}, which has been computed the iteration before. Here we have a dependency chain, preventing the compiler from doing any optimization.
+
+To make ILP possible, for the function \texttt{temp} we unroll the loop and hash a few inputs altogether, independently from \texttt{h}, and mix it once thereafter with \texttt{h}. We still have a dependency chain on \texttt{h}, but for less iterations. The temporary hashes are independent and thus eligible for ILP.
+
+Another track taken for the function \texttt{laned} is to unroll the loop and hash on separate lanes, and then mix the lanes together upon exiting the loop. Each lane has its own dependency chain, but on less iterations.
+\\\\
+\textbf{Benchmark}\\
+Here are the timing on both an x86 and an ARM CPU. It also includes timing for the function \texttt{unrolled}, to show that performance increase comes indeed from ILP and not the loop unrolling itself.
+We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for an almost x3 performance increase over the \texttt{baseline}.
+\\
+\begin{figure}[h]
+    \centering  % This command centers the table 
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        CPU & \texttt{baseline} & \texttt{unrolled} & \texttt{temp} & \texttt{laned} \\
+        \hline
+        AMD Ryzen 5 5625U (x86 64-bit) & 92.787 µs & 93.047 µs & 37.516 µs & 37.434 µs \\
+        Apple M1 Pro (ARM 64-bit) & ? & ? & ? & ? \\
+        \hline
+    \end{tabular}
+    \caption{Benchmark timings for ILP example}
+    \label{tab:your_table_label}
+\end{figure}
+
+\begin{figure}[h]
+    \begin{multicols}{2}
+        \begin{lstlisting}[language=Rust, style=boxed]
+const PRIME: u64 = 0x00000100000001b3;
+const OFFSET: u64 = 0xcbf29ce484222325;
+
+#[inline]
+fn hash(hash: u64, value: u64) -> u64 {
+    (hash ^ value) * PRIME
+}
+
+fn baseline(input: &[u64]) -> u64 {
+    let mut h = OFFSET;
+    let mut i: usize = 0;
+    while i < input.len() {
+        h = hash(h, input[i]);
+
+        i = i + 1;
+    }
+    h
+}
+
+fn unrolled(input: &[u64]) -> u64 {
+    let mut h: u64 = OFFSET;
+    let mut i: usize = 0;
+    while i < input.len() {
+        h = hash(h, input[i]);
+        h = hash(h, input[i + 1]);
+        h = hash(h, input[i + 2]);
+        h = hash(h, input[i + 3]);
+        h = hash(h, input[i + 4]);
+
+        i = i + 5;
+    }
+    h
+}
+        \end{lstlisting}
+        \columnbreak
+        \begin{lstlisting}[language=Rust, style=boxed]
+fn temp(input: &[u64]) -> u64 {
+    let mut h: u64 = OFFSET;
+    let mut i: usize = 0;
+    while i < input.len() {
+        let mut tmp: u64 = input[i];
+        tmp = hash(tmp, input[i + 1]);
+        tmp = hash(tmp, input[i + 2]);
+        tmp = hash(tmp, input[i + 3]);
+        tmp = hash(tmp, input[i + 4]);
+
+        h = hash(h, tmp);
+
+        i = i + 5;
+    }
+    h
+}
+
+fn laned(input: &[u64]) -> u64 {
+    let mut h1: u64 = OFFSET;
+    let mut h2: u64 = OFFSET;
+    let mut h3: u64 = OFFSET;
+    let mut h4: u64 = OFFSET;
+    let mut h5: u64 = OFFSET; 
+    let mut i: usize = 0;
+    while i < input.len() {
+        h1 = hash(h1, input[i]);
+        h2 = hash(h2, input[i + 1]);
+        h3 = hash(h3, input[i + 2]);
+        h4 = hash(h4, input[i + 3]);
+        h5 = hash(h5, input[i + 4]);
+
+        i = i + 5;
+    }
+    hash(hash(hash(hash(h1, h2), h3), h4), h5)
+}
+        \end{lstlisting}
+    \end{multicols}
+    \caption{FNV-like hash functions in Rust}
+    \label{fig:ilp_rust_example}
+\end{figure}
+
+\subsection{Laned Construction}
+
 In order to improve ILP, a construction can processes the message by groups of \( k_b \) blocks. This way, each group is hashed independently and intermediate hashes are compressed altogether thereafter.
 
-\subsection{Intermediate Hashes}
+\subsubsection{Intermediate Hashes}
 
 Let's define \( n_g = \lfloor {n_b}/{k_b} \rfloor \) as the number of whole groups of \( k_b \) message blocks. \\
 For each group we compute an intermediate hash, \( H_i \), as follows:
@@ -99,7 +210,7 @@ H_{2} &= f(\ldots f(f(f(0^{s_b}, M_{0k_b + 2}), M_{1k_b + 2}), M_{2k_b + 2})\ldo
 H_{k_b} &= f(\ldots f(f(f(0^{s_b}, M_{0k_b + k_b}), M_{1k_b + k_b}), M_{2k_b + k_b})\ldots, M_{n_g + k_b}) \\
 \end{align*}
 
-\subsection{Final Hash}
+\subsubsection{Final Hash}
 
 The final hash \( H \) is calculated using \( f \) to compress the intermediate hashes and the remaining message blocks (if any), which is then passed through \( g \):
 
@@ -107,9 +218,9 @@ The final hash \( H \) is calculated using \( f \) to compress the intermediate 
 h(M) = g\left( f( \ldots f(f(\ldots f(f(0^{s_b}, H_1), H_2) \ldots, H_{k_b}), M_{{k_b}{n_g}+1}) \ldots, M_{n_b} ) \right).
 \end{equation*}
 
-\section{TurboGx Hashing Algorithm}
+\section{GxHash Algorithm}
 
-The \textbf{TurboGx} hashing algorithm employs an high ILP construction as described in section \ref{highilp}. In practice, this construction not only enables instruction level paralellism but also enables loop unrolling, disminishing the looping overhead, thus maximizing computational efficiency and overall performance. 
+The \textbf{GxHash} hashing algorithm employs an high ILP construction as described in section \ref{highilp}. In practice, this construction not only enables instruction level paralellism but also enables loop unrolling, disminishing the looping overhead, thus maximizing computational efficiency and overall performance. 
 
 \subsection{Pipe Width}
 As for the wide-pipe construction (as seen in section \ref{widepipe}) with \( s_b \) set to the executing CPU SIMD register size.

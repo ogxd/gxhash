@@ -1,86 +1,87 @@
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
+const PRIME: u64 = 0x00000100000001b3;
+const OFFSET: u64 = 0xcbf29ce484222325;
+
 #[inline]
-fn dohash(hash: usize, value: usize) -> usize {
-    hash * value + value
+fn hash(hash: u64, value: u64) -> u64 {
+    (hash ^ value) * PRIME
 }
 
-fn simple_loop(input: &[usize]) -> usize {
-    let mut hash = 0;
+fn baseline(input: &[u64]) -> u64 {
+    let mut h = OFFSET;
     let mut i: usize = 0;
     while i < input.len() {
-        hash = dohash(hash, input[i]);
+        h = hash(h, input[i]);
 
         i = i + 1;
     }
-    hash
+    h
 }
 
-fn unrolled_loop(input: &[usize]) -> usize {
-    let mut hash: usize = 0;
+fn unrolled(input: &[u64]) -> u64 {
+    let mut h: u64 = OFFSET;
     let mut i: usize = 0;
     while i < input.len() {
-        hash = dohash(hash, input[i]);
-        hash = dohash(hash, input[i + 1]);
-        hash = dohash(hash, input[i + 2]);
-        hash = dohash(hash, input[i + 3]);
-        hash = dohash(hash, input[i + 4]);
+        h = hash(h, input[i]);
+        h = hash(h, input[i + 1]);
+        h = hash(h, input[i + 2]);
+        h = hash(h, input[i + 3]);
+        h = hash(h, input[i + 4]);
 
         i = i + 5;
     }
-    hash
+    h
 }
 
-fn unrolled_temp_loop(input: &[usize]) -> usize {
-    let mut hash: usize = 0;
+fn temp(input: &[u64]) -> u64 {
+    let mut h: u64 = OFFSET;
     let mut i: usize = 0;
     while i < input.len() {
-        let mut temp_hash: usize = 0;
-        temp_hash = dohash(temp_hash, input[i]);
-        temp_hash = dohash(temp_hash, input[i + 1]);
-        temp_hash = dohash(temp_hash, input[i + 2]);
-        temp_hash = dohash(temp_hash, input[i + 3]);
-        temp_hash = dohash(temp_hash, input[i + 4]);
+        let mut tmp: u64 = input[i];
+        tmp = hash(tmp, input[i + 1]);
+        tmp = hash(tmp, input[i + 2]);
+        tmp = hash(tmp, input[i + 3]);
+        tmp = hash(tmp, input[i + 4]);
 
-        hash = dohash(hash, temp_hash);
+        h = hash(h, tmp);
 
         i = i + 5;
     }
-    hash
+    h
 }
 
-fn unrolled_laned_loop(input: &[usize]) -> usize {
-    let mut hash1: usize = 0;
-    let mut hash2: usize = 0;
-    let mut hash3: usize = 0;
-    let mut hash4: usize = 0;
-    let mut hash5: usize = 0; 
+fn laned(input: &[u64]) -> u64 {
+    let mut h1: u64 = OFFSET;
+    let mut h2: u64 = OFFSET;
+    let mut h3: u64 = OFFSET;
+    let mut h4: u64 = OFFSET;
+    let mut h5: u64 = OFFSET; 
     let mut i: usize = 0;
     while i < input.len() {
-        hash1 = dohash(hash1, input[i]);
-        hash2 = dohash(hash2, input[i + 1]);
-        hash3 = dohash(hash3, input[i + 2]);
-        hash4 = dohash(hash4, input[i + 3]);
-        hash5 = dohash(hash5, input[i + 4]);
+        h1 = hash(h1, input[i]);
+        h2 = hash(h2, input[i + 1]);
+        h3 = hash(h3, input[i + 2]);
+        h4 = hash(h4, input[i + 3]);
+        h5 = hash(h5, input[i + 4]);
 
         i = i + 5;
     }
-    dohash(dohash(dohash(dohash(hash1, hash2), hash3), hash4), hash5)
+    hash(hash(hash(hash(h1, h2), h3), h4), h5)
 }
 
 use rand::Rng;
 
 fn ilp_benchmark(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
-    let mut input: [usize; 100000] = [0; 100000];
+    let mut input: [u64; 100000] = [0; 100000];
     for i in 0..input.len() {
-        input[i] = rng.gen::<usize>();
+        input[i] = rng.gen::<u64>();
     }
-    c.bench_function("simple_loop", |b| b.iter(|| black_box(simple_loop(&input))));
-    c.bench_function("unrolled_loop", |b| b.iter(|| black_box(unrolled_loop(&input))));
-    c.bench_function("unrolled_temp_loop", |b| b.iter(|| black_box(unrolled_temp_loop(&input))));
-    c.bench_function("unrolled_laned_loop", |b| b.iter(|| black_box(unrolled_laned_loop(&input))));
+    c.bench_function("baseline", |b| b.iter(|| black_box(baseline(&input))));
+    c.bench_function("unrolled", |b| b.iter(|| black_box(unrolled(&input))));
+    c.bench_function("temp", |b| b.iter(|| black_box(temp(&input))));
+    c.bench_function("laned", |b| b.iter(|| black_box(laned(&input))));
 }
 
 criterion_group!(benches, ilp_benchmark);
