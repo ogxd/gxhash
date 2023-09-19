@@ -81,13 +81,13 @@ By taking in a larger internal chaining value, the algorithm strengthens the int
 
 \section{High ILP Construction} \label{highilp}
 
-Most modern general-purpose CPUs employ a superscalar architecture which enables instruction level parallelism (ILP). 
+Most modern general-purpose CPUs employ a superscalar architecture which enables Instruction-Level Parallelism (ILP). 
 Minimizing dependencies in an algorithm allows a superscalar processor to execute more instructions concurrently, thus maximizing its inherent parallelism and overall performance.
 The key limitation for ILP in the Merkle–Damgård construction is the inherent sequential dependency: each block's hash depends on the result of hashing the previous block.
 
-\subsection{ILP Techniques}
+\subsection{ILP Awareness}
 
-While compilers and CPUs employ various techniques to optimize Instruction-Level Parallelism (ILP), their capabilities are often constrained by the inherent data dependencies in the code. It's for this reason that algorithmic design can be pivotal. By structuring algorithms to minimize dependency chains from the outset, we create opportunities for higher ILP that even the most advanced compiler optimizations and CPU features cannot achieve alone. Therefore, algorithmic design that is mindful of ILP can be a game-changer for performance optimization.
+While compilers and CPUs employ various techniques to optimize ILP, their capabilities are often constrained by the inherent data dependencies in the code. It's for this reason that algorithmic design can be pivotal. By structuring algorithms to minimize dependency chains from the outset, we create opportunities for higher ILP that even the most advanced compiler optimizations and CPU features cannot achieve alone. Therefore, algorithmic design that is mindful of ILP can be a game-changer for performance optimization.
 \\\\
 \textbf{Example}\\
 Let's take a FNV-like hashing function. The "naive" way to process an array of elements would look like the \texttt{baseline} method, as shown in Rust snippet (Figure~\ref{fig:ilp_rust_example}). As we can see, every loop iteration requires the value of \texttt{h}, which has been computed the iteration before. Here we have a dependency chain, preventing the compiler from doing any optimization.
@@ -98,7 +98,7 @@ Another track taken for the function \texttt{laned} is to unroll the loop and ha
 \\\\
 \textbf{Benchmark}\\
 Here are the timing on both an x86 and an ARM CPU. It also includes timing for the function \texttt{unrolled}, to show that performance increase comes indeed from ILP and not the loop unrolling itself.
-We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for an almost x3 performance increase over the \texttt{baseline}.
+We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for a significant performance increase over the \texttt{baseline}.
 \\
 \begin{figure}[h]
     \centering  % This command centers the table 
@@ -107,12 +107,14 @@ We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging I
         CPU & \texttt{baseline} & \texttt{unrolled} & \texttt{temp} & \texttt{laned} \\
         \hline
         AMD Ryzen 5 5625U (x86 64-bit) & 92.787 µs & 93.047 µs & 37.516 µs & 37.434 µs \\
-        Apple M1 Pro (ARM 64-bit) & ? & ? & ? & ? \\
+        Apple M1 Pro (ARM 64-bit) & 125.23 µs & 124.42 µs & 28.507 µs & 30.716 µs \\
         \hline
     \end{tabular}
     \caption{Benchmark timings for ILP example}
     \label{tab:your_table_label}
 \end{figure}
+\\
+While the \texttt{temp} and \texttt{laned} functions won't yield exactly the same hashes as the \texttt{baseline}, they serve the same purpose, while being much faster. The following section will delve more in depth onto the definition of such an high ILP construction, for performance critical scenarios.
 
 \begin{figure}[h]
     \begin{multicols}{2}
