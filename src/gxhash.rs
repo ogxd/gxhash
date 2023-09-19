@@ -157,7 +157,7 @@ pub fn gxhash(input: &[u8]) -> u32 {
             }
         
             hash_vector = compress(compress(compress(compress(compress(compress(compress(s0, s1), s2), s3), s4), s5), s6), s7);
-            
+
             let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
             end_address = v.offset(remaining_blocks_count) as usize;
         }

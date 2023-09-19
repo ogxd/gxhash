@@ -8,7 +8,6 @@ use rand::Rng;
 
 fn gxhash_benchmark(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
-    let mut len = 1;
     let mut group = c.benchmark_group("gxhash");
 
     // Allocate 32-bytes-aligned
@@ -19,8 +18,8 @@ fn gxhash_benchmark(c: &mut Criterion) {
     // Fill with random bytes
     rng.fill(slice);
 
-    for _ in 1..9 {
-        len *= 4;
+    for i in 1..9 {
+        let len = usize::pow(4, i);
 
         group.throughput(Throughput::Bytes(len as u64));
 
