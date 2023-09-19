@@ -5,6 +5,7 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{multicol}
+\usepackage{graphicx}
 
 \input{rust-listings.tex}
 
@@ -37,33 +38,47 @@ for future research in this burgeoning field.
 
 \subsection{Motivations}
 
-\colorbox{yellow}{TODO}
-
-\begin{lstlisting}[language=Rust, style=boxed]
-use std::hint::black_box;
-
-fn sum1(x: u32) -> u32 {
-    let mut sum = x;
-    for i in 0..1000 {
-        sum = black_box(sum + i);
-    }
-    sum
-}
-\end{lstlisting}
+As a software engineer at Equativ, a company specializing in high-performance AdServing backends that handle billions of auctions daily,
+I face unique challenges in maximizing throughput while minimizing latency. In this high-stakes environment, every millisecond counts,
+and the performance of underlying data structures becomes critically important. We heavily rely on in-memory caches and other hash-based data structures,
+making the efficiency of hashing algorithms a non-trivial concern in our system's overall performance.\\\\
+While diving into the theory of hashing out of both necessity and intellectual curiosity, I discovered that existing hashing algorithms,
+including those built on well-known constructions like Merkle–Damgård, are not optimized to exploit the full capabilities of modern general-purpose CPUs.
+These CPUs offer advanced features such as Single Instruction, Multiple Data (SIMD) and Instruction-Level Parallelism (ILP), which remain largely untapped
+by current hashing methods.\\\\
+The challenge of creating a faster, more efficient hashing algorithm became not just a professional necessity but also a personal quest.
+It was both challenging and exhilarating to delve into hashing theory and experiment with new approaches. The result is what I believe to be the fastest
+non-cryptographic hashing algorithm developed to date.\\\\
+The primary motivation behind this research is to bridge the existing performance gap by designing a hashing algorithm that fully leverages SIMD and ILP
+capabilities. The aim is to achieve an order-of-magnitude improvement in hashing speed, thereby revolutionizing the efficiency of various applications,
+from databases to real-time analytics and beyond.\\\\
+In summary, this work is driven by both the practical needs of my professional environment and a personal passion for pushing the boundaries of what is
+technically possible in the realm of hashing algorithms.
 
 \section{Related Work}
 
-Let \( h: \{0,1\}^{n_b \times s_b} \to \{0,1\}^{s_h} \) be a cryptographic hash function where: 
+The field of hashing algorithms has been a subject of extensive research and development, tracing its roots back to foundational architectures like
+the \textbf{Merkle–Damgård} Construction\cite{merkle}\cite{damgard}, introduced in 1989. Over the years, this area has seen a plethora of innovations, each attempting to address various
+aspects of hashing—be it collision resistance, distribution uniformity, or computational efficiency. While cryptographic hashing has often been the focal
+point of research, non-cryptographic hashing algorithms have also garnered attention for their utility in data structures like hashmaps and caches.
 
+In this section, we will explore some of the seminal works and recent advancements in the realm of hashing algorithms to contextualize
+our research.
+
+\subsection{The Merkle–Damgård Construction}
+
+The Merkle–Damgård construction serves as the foundational architecture for many existing hash functions.
+It operates by breaking down an input into fixed-size blocks, which are then processed sequentially through a compression
+function. The output of each block feeds into the next, culminating in a final, fixed-size hash.\\\\
+
+Let \( h: \{0,1\}^{n_b \times s_b} \to \{0,1\}^{s_h} \) be a cryptographic hash function where: 
 \begin{itemize}
     \item Input \( M \) is a binary message composed of \( n_b \) blocks of size \( s_b \),
     such as \( M = M_1 \parallel M_2 \parallel \ldots \parallel M_{n_b} \).
     \item Output is a binary hash of size \( s_h \).
 \end{itemize}
 
-\subsection{The Merkle–Damgård Construction}
-
-In the \textbf{Merkle–Damgård} construction, given:
+The Merkle–Damgård construction can be formalized like so. Given:
 \begin{itemize}
     \item The compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \)
     \item The pipe function \( g: \{0,1\}^{s_b} \to \{0,1\}^{s_h} \)
@@ -73,6 +88,13 @@ The hash function \( h \) can be expressed as:
 \begin{align*}
     h(M) &= g\left( f(\ldots f(f(0^{s_b}, M_1), M_2) \ldots, M_{n_b}) \right)
 \end{align*}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1\textwidth]{linear-construction.png}
+\caption{Merkle–Damgård Construction Overview}
+\label{fig:linear-construction}
+\end{figure}
 
 \subsection{The Wide-Pipe Construction} \label{widepipe}
 
@@ -87,8 +109,9 @@ making it more challenging to reverse-engineer or compromise.
 
 \subsection{Alternatives}
 
-\href{https://www.researchgate.net/publication/322094216_Merkle-Damgard_Construction_Method_and_Alternatives_A_Review}{Alternatives}.
+\cite{merkle_damgard_alternatives_review}
 
+\clearpage
 \section{High ILP Construction} \label{highilp}
 
 Most modern general-purpose CPUs employ a superscalar architecture which enables Instruction-Level Parallelism (ILP). 
@@ -251,6 +274,13 @@ which is then passed through \( g \):
 h(M) = g\left( f( \ldots f(f(\ldots f(f(0^{s_b}, H_1), H_2) \ldots, H_{k_b}), M_{{k_b}{n_g}+1}) \ldots, M_{n_b} ) \right).
 \end{equation*}
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=1\textwidth]{laned-construction.png}
+\caption{Laned Construction Overview}
+\label{fig:linear-construction}
+\end{figure}
+
 \section{The GxHash Algorithm}
 
 The \textbf{GxHash} hashing algorithm employs an high ILP construction as described in section \ref{highilp}. In practice,
@@ -309,5 +339,8 @@ In practice, implementing \( p \) in computer code implies memory copies. Instea
 \subsection{Future Work}
 
 \section{Conclusion}
+
+\bibliography{references}
+\bibliographystyle{plain}
 
 \end{document}
