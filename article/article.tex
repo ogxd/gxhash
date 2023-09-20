@@ -55,6 +55,25 @@ from databases to real-time analytics and beyond.\\\\
 In summary, this work is driven by both the practical needs of my professional environment and a personal passion for pushing the boundaries of what is
 technically possible in the realm of hashing algorithms.
 
+\subsection{Scope Limitation}
+
+This paper primarily investigates methods for enhancing the throughput of non-cryptographic hashing algorithms,
+which are commonly used in a variety of time-sensitive applications, including but not limited to hashmap lookups.
+In such contexts, hash computation is often expected to be extremely fast, typically requiring execution times ranging
+from nanoseconds to microseconds. Given these considerations, the paper intentionally excludes Thread-Level Parallelism
+(TLP) as a viable strategy for performance optimization.\\\\
+Firstly, it's worth mentioning that TLP is orthogonal to the methods being explored in this paper.
+TLP focuses on optimizing coarser-grained operations by distributing tasks across multiple threads,
+which doesn't directly align with the fine-grained performance improvements we aim to achieve.\\\\
+Secondly, introducing TLP would necessitate the incorporation of task scheduling, synchronization, and context switching.
+These overheads, while perhaps manageable in applications that can afford greater latencies, become less justifiable when
+aiming for high-throughput, low-latency operations that are typical in non-cryptographic hashing scenarios.\\\\
+In summary, while TLP might be a suitable performance optimization strategy in other computational contexts, we chose to
+leave it aside in this paper.
+
+\subsubsection{Portability}
+
+\clearpage
 \section{Related Work}
 
 The field of hashing algorithms has been a subject of extensive research and development, tracing its roots back to foundational architectures like
@@ -65,28 +84,26 @@ point of research, non-cryptographic hashing algorithms have also garnered atten
 In this section, we will explore some of the seminal works and recent advancements in the realm of hashing algorithms to contextualize
 our research.
 
-\subsection{The Merkle–Damgård Construction}
+\subsection{The Merkle--Damgård Construction}
 
 The Merkle–Damgård construction serves as the foundational architecture for many existing hash functions.
 It operates by breaking down an input into fixed-size blocks, which are then processed sequentially through a compression
 function. The output of each block feeds into the next, culminating in a final, fixed-size hash.\\\\
-
-Let \( h: \{0,1\}^{n_b \times s_b} \to \{0,1\}^{s_h} \) be a cryptographic hash function where: 
+To formalize it, let us denote a hash function \( h: \{0,1\}^{n_b \times s_b} \to \{0,1\}^{s_h} \), where:
 \begin{itemize}
-    \item Input \( M \) is a binary message composed of \( n_b \) blocks of size \( s_b \),
-    such as \( M = M_1 \parallel M_2 \parallel \ldots \parallel M_{n_b} \).
-    \item Output is a binary hash of size \( s_h \).
+    \item \( M \) represents an input message that is divided into \( n_b \) blocks, each of \( s_b \) bits. In formal notation, \( M = M_1 \parallel M_2 \parallel \cdots \parallel M_{n_b} \).
+    \item The output is a hash value with a fixed bit-length \( s_h \).
+\end{itemize}
+Before proceeding to the formal definition, we need to establish the key functional components that constitute the Merkle--Damgård architecture:
+\begin{itemize}
+    \item A compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \),
+    \item A finalization function \( g: \{0,1\}^{s_b} \to \{0,1\}^{s_h} \),
+    \item An initialization vector \( 0^{s_b} \), comprised of \( s_b \) zero bits,
 \end{itemize}
 
-The Merkle–Damgård construction can be formalized like so. Given:
-\begin{itemize}
-    \item The compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \)
-    \item The pipe function \( g: \{0,1\}^{s_b} \to \{0,1\}^{s_h} \)
-    \item A zero-filled vector \( 0^{s_b} \) of length \( s_b \)
-\end{itemize}
-The hash function \( h \) can be expressed as:
+With these components, the hash function \( h \) may be articulated as follows:
 \begin{align*}
-    h(M) &= g\left( f(\ldots f(f(0^{s_b}, M_1), M_2) \ldots, M_{n_b}) \right)
+    h(M) &= g\left( f(\cdots f(f(0^{s_b}, M_1), M_2) \cdots, M_{n_b}) \right)
 \end{align*}
 
 \begin{figure}[h]
@@ -96,20 +113,70 @@ The hash function \( h \) can be expressed as:
 \label{fig:linear-construction}
 \end{figure}
 
-\subsection{The Wide-Pipe Construction} \label{widepipe}
+\subsection{The Wide-Pipe Construction Variant} \label{widepipe}
 
-The \textbf{Merkle–Damgård} construction has certain limitations, such as susceptibility to length extension and multicollision attacks.
-To address these issues, a variant known as the \textbf{wide-pipe} construction was introduced.
-This construction employs a larger internal state, so that:
+The \textbf{Wide-Pipe} construction serves as a variant of the traditional Merkle–Damgård architecture and aims to improve the hash
+function's cryptographic resilience.\\\\
+The standard Merkle–Damgård construction has been found vulnerable to certain types of cryptographic attacks, including length extension
+and multicollision attacks. The Wide-Pipe variant mitigates these vulnerabilities by modifying the hash function's internal state.
+In this construction, the size of the internal state (\(s_b\)) is deliberately made much larger than the size of the hash output
+(\(s_h\)), as expressed by the inequality:
 \begin{align*}
     s_b \gg s_h
 \end{align*}
-By taking in a larger internal chaining value, the algorithm strengthens the integrity of the hash function,
-making it more challenging to reverse-engineer or compromise.
 
-\subsection{Alternatives}
+This design choice serves to complicate potential attack vectors by introducing a greater level of computational complexity.
+As a result, the hash function gains increased resistance against certain types of attacks that exploit the limitations of the
+Merkle–Damgård construction.\\\\
+While performance remains our primary focus, the algorithm we examine in this paper incorporates the Wide-Pipe idea. By doing so,
+it offers a dual advantage: performance efficacy, which is central to this study, along with a good cryptographic resilience,
+which is an indeniable advantage even in the realm of non-cryptographic hash functions.
 
-\cite{merkle_damgard_alternatives_review}
+\subsection{Other Variants}
+
+While the classical Merkle–Damgård construction provides a reliable framework for cryptographic hash functions,
+there are a wide number of variants\cite{merkle_damgard_alternatives_review}. In this section, we discuss around some
+of the most popular variants around opportunities for performance enhancement.
+
+\subsubsection{Sponge Construction}
+
+The Sponge construction,  proceeds in two phases: absorption and squeezing.
+During the absorption phase, blocks of input data are XORed into a portion of the internal state,
+followed by a cryptographic permutation of the entire state. Importantly, each absorption step is inherently sequential,
+as it relies on the state resulting from the cryptographic permutation of the previous step. Consequently,
+the algorithm does cannot benefit from instruction-level parallelism during the absorption phase.
+The squeezing phase, which follows the absorption of all input blocks, generates the output hash from the internal state.
+The opportunity for parallelization with the Sponge construction is thus constrained by its sequential nature during the absorbing phase.
+
+\subsubsection{HAIFA Construction}
+
+The HAsh Iterative FrAmework (HAIFA) not only mitigates vulnerabilities but also incorporates features like support for a configurable number of rounds and real-time incremental hashing.
+However, like the standard Merkle–Damgård and Sponge constructions, the HAsh Iterative FrAmework (HAIFA) is also inherently sequential in its processing of message blocks.
+Each iteration of the compression function in HAIFA depends on the outcome of the previous iteration.
+This dependency chain means that the construction does not naturally lend itself to instruction-level parallelism (ILP),
+although other types of optimizations may still be possible depending on the specific implementation and hardware architecture.
+
+\subsubsection{Tree Hashing}
+
+Tree hashing breaks the input message into smaller fragments and processes them independently in a tree-like structure.
+While tree-based hashing constructions offer a degree of parallelism, it is essential to recognize their inherent limitations. The extent of parallelization diminishes progressively as we move upward through the tree, owing to the dependencies between higher-level nodes. Here's a breakdown:
+
+\begin{itemize}
+\item \textbf{Leaf Level:} At this level, all blocks are independent, allowing the hashing operations to occur in parallel. If \( n \) is the number of leaves, then \( \frac{n}{2} \) parallel operations can occur for an even \( n \), or \( \frac{n-1}{2} + 1 \) for an odd \( n \).
+\item \textbf{Second Level and Above:} The second level requires the hash results from the first level. Each node at the second level depends on two nodes from the level below, effectively halving the potential parallelism. This pattern of diminishing parallelization continues in subsequent levels.
+\item \textbf{Final Level:} At the top of the tree, we are left with a single hash that relies on the two hashes beneath it. This operation is inherently sequential.
+\end{itemize}
+
+Although the tree-based hashing approach has a theoretical advantage in parallelization, practical implementations often face several challenges that can impact efficiency. These issues can make tree hashing hardly as efficient as a sequential structure for certain applications. Here are the primary factors:
+
+\begin{itemize}
+\item \textbf{Synchronization Overhead:} The parallel nature of the algorithm necessitates synchronization between different processing threads or units, especially at higher tree levels where dependencies exist. This overhead counters the gains from parallelization.
+\item \textbf{Memory Consumption:} Tree constructions typically require more memory to store intermediate hash values, particularly when branching factors are high. Memory allocation and fragmentation usually impact performance.
+\item \textbf{Cache Efficiency:} Unlike sequential algorithms that can benefit from cache locality, the tree-based approach often has to handle multiple non-contiguous data blocks, potentially leading to cache misses and reduced efficiency.
+\item \textbf{Implementation Complexity:} The algorithmic and data-structure requirements for implementing tree-based hashing are more complex than those of a straightforward sequential hashing algorithm. The increased complexity can introduce more room for errors and maintenance challenges.
+\end{itemize}
+
+In light of these practical challenges, tree-based constructions might not be the best fit given our high performance goals and the architecture of today's general purpose computers.
 
 \clearpage
 \section{High ILP Construction} \label{highilp}
@@ -223,7 +290,8 @@ fn laned(input: &[u64]) -> u64 {
 \subsubsection{Benchmark}
 Here are the timing on both an x86 and an ARM CPU. It also includes timing for the function \texttt{unrolled},
 to show that performance increase comes indeed from ILP and not the loop unrolling itself.
-We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for a significant performance increase over the \texttt{baseline}.
+We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for a significant performance increase
+over the \texttt{baseline}.
 \\
 \begin{figure}[ht]
 \centering
@@ -251,7 +319,8 @@ The following section will delve more in depth onto the definition of a \textbf{
 
 The \textbf{Laned Construction} introduces \( k_b \) lanes, and processes the message by groups of \( k_b \) blocks,
 so that for a given group each of the \( k_b \) block and be processed on its own lane.
-This way, we have \( k_b \) independent dependency chains. The lane hashes can then be compressed altogether thereafter upon exiting the loop.
+This way, we have \( k_b \) independent dependency chains. The lane hashes can then be compressed altogether thereafter upon
+exiting the loop.
 
 \subsubsection{Intermediate Hashes}
 
@@ -285,7 +354,9 @@ h(M) = g\left( f( \ldots f(f(\ldots f(f(0^{s_b}, H_1), H_2) \ldots, H_{k_b}), M_
 
 The \textbf{GxHash} hashing algorithm employs an high ILP construction as described in section \ref{highilp}. In practice,
 this construction not only enables instruction level paralellism but also enables loop unrolling, disminishing the looping overhead,
-thus maximizing computational efficiency and overall performance. 
+thus maximizing computational efficiency and overall performance.\\\\
+With that ILP unlocked, we still have to define f and g. In our quest for high-thoughput, it is essential for us to find computationally
+efficient definitions TODO
 
 \subsection{Pipe Width}
 As for the wide-pipe construction (as seen in section \ref{widepipe}) with \( s_b \) set to the executing CPU SIMD register size.
@@ -317,16 +388,17 @@ HIGH ILP CONSTRUCTION
 
 \subsubsection{Padding}
 
+\textbf{Merkle–Damgård} and derivatives can actually handle message of an arbitrary size \( s_m \) by padding the message upfront with the padding
+function \( p: \{0,1\}^{s_m} \to \{0,1\}^{n_b \times s_b} \) where \( n_b = \lceil s_m/s_b \rceil \).
+
+In practice, implementing \( p \) in computer code implies memory copies. Instead, TODO
+
 \subsubsection{Low-Overhead Looping}
 
 \subsubsection{Loop Unrolling}
 
 \subsubsection{CPU Alignement}
 
-\textbf{Merkle–Damgård} and derivatives can actually handle message of an arbitrary size \( s_m \) by padding the message upfront with the padding
-function \( p: \{0,1\}^{s_m} \to \{0,1\}^{n_b \times s_b} \) where \( n_b = \lceil s_m/s_b \rceil \).
-
-In practice, implementing \( p \) in computer code implies memory copies. Instead, TODO
 
 \section{Benchmarks}
 \subsection{Setup}
