@@ -18,7 +18,7 @@ fn gxhash_benchmark(c: &mut Criterion) {
     // Fill with random bytes
     rng.fill(slice);
 
-    for i in 1..9 {
+    for i in 1..8 {
         let len = usize::pow(4, i);
 
         group.throughput(Throughput::Bytes(len as u64));
@@ -28,10 +28,10 @@ fn gxhash_benchmark(c: &mut Criterion) {
             bencher.iter(|| black_box(gxhash(input)))
         });
 
-        let unaligned_slice = &slice[1..len];
-        group.bench_with_input(format!("{} bytes (unaligned)", len), unaligned_slice, |bencher, input| {
-            bencher.iter(|| black_box(gxhash(input)))
-        });
+        // let unaligned_slice = &slice[1..len];
+        // group.bench_with_input(format!("{} bytes (unaligned)", len), unaligned_slice, |bencher, input| {
+        //     bencher.iter(|| black_box(gxhash(input)))
+        // });
     }
 
     unsafe { dealloc(ptr, layout) };
