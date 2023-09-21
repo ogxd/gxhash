@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Giniaux
+    given-names: Olivier
+    orcid: https://orcid.org/1234-5678-9101-1121
+title: "GxHash: A High-Throughput, Non-Cryptographic Hashing Algorithm Leveraging Modern CPU Capabilities"
+version: 1.0.0
+doi: 
+date-released: 
