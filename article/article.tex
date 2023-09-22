@@ -39,50 +39,33 @@ for future research in this burgeoning field.
 \subsection{Motivations}
 
 As a software engineer at Equativ, a company specializing in high-performance AdServing backends that handle billions of auctions daily,
-I face unique challenges in maximizing throughput while minimizing latency. In this high-stakes environment, every millisecond counts,
-and the performance of underlying data structures becomes critically important. We heavily rely on in-memory caches and other hash-based data structures,
-making the efficiency of hashing algorithms a non-trivial concern in our system's overall performance.\\\\
-While diving into the theory of hashing out of both necessity and intellectual curiosity, I discovered that existing hashing algorithms,
-including those built on well-known constructions like Merkle–Damgård, are not optimized to exploit the full capabilities of modern general-purpose CPUs.
-These CPUs offer advanced features such as Single Instruction, Multiple Data (SIMD) and Instruction-Level Parallelism (ILP), which remain largely untapped
-by current hashing methods.\\\\
+I face unique challenges in maximizing throughput while minimizing latency. In this high-stakes environment, every millisecond counts, and the performance of underlying data structures becomes critically important. We heavily rely on in-memory caches and other hash-based data structures, making the efficiency of hashing algorithms a non-trivial concern in our system's overall performance.\\\\
+While diving into the theory of hashing out of both necessity and intellectual curiosity, I discovered that existing hashing algorithms, including those built on well-known constructions like Merkle–Damgård, are not optimized to exploit the full capabilities of modern general-purpose CPUs.
+These CPUs offer advanced features such as Single Instruction, Multiple Data (SIMD) and Instruction-Level Parallelism (ILP), which remain largely untapped by current hashing methods.\\\\
 The challenge of creating a faster, more efficient hashing algorithm became not just a professional necessity but also a personal quest.
-It was both challenging and exhilarating to delve into hashing theory and experiment with new approaches. The result is what I believe to be the fastest
-non-cryptographic hashing algorithm developed to date.\\\\
-The primary motivation behind this research is to bridge the existing performance gap by designing a hashing algorithm that fully leverages SIMD and ILP
-capabilities. The aim is to achieve an order-of-magnitude improvement in hashing speed, thereby revolutionizing the efficiency of various applications,
-from databases to real-time analytics and beyond.\\\\
-In summary, this work is driven by both the practical needs of my professional environment and a personal passion for pushing the boundaries of what is
-technically possible in the realm of hashing algorithms.
+It was both challenging and exhilarating to delve into hashing theory and experiment with new approaches. The result is what I believe to be the fastest non-cryptographic hashing algorithm developed to date.\\\\
+The primary motivation behind this research is to bridge the existing performance gap by designing a hashing algorithm that fully leverages SIMD and ILP capabilities. The aim is to achieve an order-of-magnitude improvement in hashing speed, thereby revolutionizing the efficiency of various applications, from databases to real-time analytics and beyond.\\\\
+In summary, this work is driven by both the practical needs of my professional environment and a personal passion for pushing the boundaries of what is technically possible in the realm of hashing algorithms.
 
 \subsection{Scope Limitation}
 
-This paper primarily investigates methods for enhancing the throughput of non-cryptographic hashing algorithms,
-which are commonly used in a variety of time-sensitive applications, including but not limited to hashmap lookups.
-In such contexts, hash computation is often expected to be extremely fast, typically requiring execution times ranging
-from nanoseconds to microseconds. Given these considerations, the paper intentionally excludes Thread-Level Parallelism
+This paper primarily investigates methods for enhancing the throughput of non-cryptographic hashing algorithms, which are commonly used in a variety of time-sensitive applications, including but not limited to hashmap lookups.
+In such contexts, hash computation is often expected to be extremely fast, typically requiring execution times ranging from nanoseconds to microseconds. Given these considerations, the paper intentionally excludes Thread-Level Parallelism
 (TLP) as a viable strategy for performance optimization.\\\\
 Firstly, it's worth mentioning that TLP is orthogonal to the methods being explored in this paper.
-TLP focuses on optimizing coarser-grained operations by distributing tasks across multiple threads,
-which doesn't directly align with the fine-grained performance improvements we aim to achieve.\\\\
+TLP focuses on optimizing coarser-grained operations by distributing tasks across multiple threads, which doesn't directly align with the fine-grained performance improvements we aim to achieve.\\\\
 Secondly, introducing TLP would necessitate the incorporation of task scheduling, synchronization, and context switching.
-These overheads, while perhaps manageable in applications that can afford greater latencies, become less justifiable when
-aiming for high-throughput, low-latency operations that are typical in non-cryptographic hashing scenarios.\\\\
-In summary, while TLP might be a suitable performance optimization strategy in other computational contexts, we chose to
-leave it aside in this paper.
+These overheads, while perhaps manageable in applications that can afford greater latencies, become less justifiable when aiming for high-throughput, low-latency operations that are typical in non-cryptographic hashing scenarios.\\\\
+In summary, while TLP might be a suitable performance optimization strategy in other computational contexts, we chose to leave it aside in this paper.
 
 \subsubsection{Portability}
 
 \clearpage
 \section{Related Work}
 
-The field of hashing algorithms has been a subject of extensive research and development, tracing its roots back to foundational architectures like
-the \textbf{Merkle–Damgård} Construction\cite{merkle}\cite{damgard}, introduced in 1989. Over the years, this area has seen a plethora of innovations, each attempting to address various
-aspects of hashing—be it collision resistance, distribution uniformity, or computational efficiency. While cryptographic hashing has often been the focal
-point of research, non-cryptographic hashing algorithms have also garnered attention for their utility in data structures like hashmaps and caches.
+The field of hashing algorithms has been a subject of extensive research and development, tracing its roots back to foundational architectures like the \textbf{Merkle–Damgård} Construction\cite{merkle}\cite{damgard}, introduced in 1989. Over the years, this area has seen a plethora of innovations, each attempting to address various aspects of hashing—be it collision resistance, distribution uniformity, or computational efficiency. While cryptographic hashing has often been the focal point of research, non-cryptographic hashing algorithms have also garnered attention for their utility in data structures like hashmaps and caches.
 
-In this section, we will explore some of the seminal works and recent advancements in the realm of hashing algorithms to contextualize
-our research.
+In this section, we will explore some of the seminal works and recent advancements in the realm of hashing algorithms to contextualize our research.
 
 \subsection{The Merkle--Damgård Construction}
 
@@ -115,10 +98,8 @@ With these components, the hash function \( h \) may be articulated as follows:
 
 \subsection{The Wide-Pipe Construction Variant} \label{widepipe}
 
-The \textbf{Wide-Pipe} construction serves as a variant of the traditional Merkle–Damgård architecture and aims to improve the hash
-function's cryptographic resilience.\\\\
-The standard Merkle–Damgård construction has been found vulnerable to certain types of cryptographic attacks, including length extension
-and multicollision attacks. The Wide-Pipe variant mitigates these vulnerabilities by modifying the hash function's internal state.
+The \textbf{Wide-Pipe} construction serves as a variant of the traditional Merkle–Damgård architecture and aims to improve the hash function's cryptographic resilience.\\\\
+The standard Merkle–Damgård construction has been found vulnerable to certain types of cryptographic attacks, including length extension and multicollision attacks. The Wide-Pipe variant mitigates these vulnerabilities by modifying the hash function's internal state.
 In this construction, the size of the internal state (\(s_b\)) is deliberately made much larger than the size of the hash output
 (\(s_h\)), as expressed by the inequality:
 \begin{align*}
@@ -126,25 +107,17 @@ In this construction, the size of the internal state (\(s_b\)) is deliberately m
 \end{align*}
 
 This design choice serves to complicate potential attack vectors by introducing a greater level of computational complexity.
-As a result, the hash function gains increased resistance against certain types of attacks that exploit the limitations of the
-Merkle–Damgård construction.\\\\
-While performance remains our primary focus, the algorithm we examine in this paper incorporates the Wide-Pipe idea. By doing so,
-it offers a dual advantage: performance efficacy, which is central to this study, along with a good cryptographic resilience,
-which is an indeniable advantage even in the realm of non-cryptographic hash functions.
+As a result, the hash function gains increased resistance against certain types of attacks that exploit the limitations of the Merkle–Damgård construction.\\\\
+While performance remains our primary focus, the algorithm we examine in this paper incorporates the Wide-Pipe idea. By doing so, it offers a dual advantage: performance efficacy, which is central to this study, along with a good cryptographic resilience, which is an indeniable advantage even in the realm of non-cryptographic hash functions.
 
 \subsection{Other Variants}
 
-While the classical Merkle–Damgård construction provides a reliable framework for cryptographic hash functions,
-there are a wide number of variants\cite{merkle_damgard_alternatives_review}. In this section, we discuss around some
-of the most popular variants around opportunities for performance enhancement.
+While the classical Merkle–Damgård construction provides a reliable framework for cryptographic hash functions, there are a wide number of variants\cite{merkle_damgard_alternatives_review}. In this section, we discuss around some of the most popular variants around opportunities for performance enhancement.
 
 \subsubsection{Sponge Construction}
 
 The Sponge construction,  proceeds in two phases: absorption and squeezing.
-During the absorption phase, blocks of input data are XORed into a portion of the internal state,
-followed by a cryptographic permutation of the entire state. Importantly, each absorption step is inherently sequential,
-as it relies on the state resulting from the cryptographic permutation of the previous step. Consequently,
-the algorithm does cannot benefit from instruction-level parallelism during the absorption phase.
+During the absorption phase, blocks of input data are XORed into a portion of the internal state, followed by a cryptographic permutation of the entire state. Importantly, each absorption step is inherently sequential, as it relies on the state resulting from the cryptographic permutation of the previous step. Consequently, the algorithm does cannot benefit from instruction-level parallelism during the absorption phase.
 The squeezing phase, which follows the absorption of all input blocks, generates the output hash from the internal state.
 The opportunity for parallelization with the Sponge construction is thus constrained by its sequential nature during the absorbing phase.
 
@@ -153,8 +126,7 @@ The opportunity for parallelization with the Sponge construction is thus constra
 The HAsh Iterative FrAmework (HAIFA) not only mitigates vulnerabilities but also incorporates features like support for a configurable number of rounds and real-time incremental hashing.
 However, like the standard Merkle–Damgård and Sponge constructions, the HAsh Iterative FrAmework (HAIFA) is also inherently sequential in its processing of message blocks.
 Each iteration of the compression function in HAIFA depends on the outcome of the previous iteration.
-This dependency chain means that the construction does not naturally lend itself to instruction-level parallelism (ILP),
-although other types of optimizations may still be possible depending on the specific implementation and hardware architecture.
+This dependency chain means that the construction does not naturally lend itself to instruction-level parallelism (ILP), although other types of optimizations may still be possible depending on the specific implementation and hardware architecture.
 
 \subsubsection{Tree Hashing}
 
@@ -182,29 +154,20 @@ In light of these practical challenges, tree-based constructions might not be th
 \section{High ILP Construction} \label{highilp}
 
 Most modern general-purpose CPUs employ a superscalar architecture which enables Instruction-Level Parallelism (ILP). 
-Minimizing dependencies in an algorithm allows a superscalar processor to execute more instructions concurrently,
-thus maximizing its inherent parallelism and overall performance.
-The key limitation for ILP in the Merkle–Damgård construction is the inherent sequential dependency:
-each block's hash depends on the result of hashing the previous block.
+Minimizing dependencies in an algorithm allows a superscalar processor to execute more instructions concurrently, thus maximizing its inherent parallelism and overall performance.
+The key limitation for ILP in the Merkle–Damgård construction is the inherent sequential dependency: each block's hash depends on the result of hashing the previous block.
 
 \subsection{ILP Awareness}
 
-While compilers and CPUs employ various techniques to optimize ILP, their capabilities are often constrained by the inherent data dependencies
-in the code. It's for this reason that algorithmic design can be pivotal. By structuring algorithms to minimize dependency chains from the outset,
-we create opportunities for higher ILP that even the most advanced compiler optimizations and CPU features cannot achieve alone. Therefore,
-algorithmic design that is mindful of ILP can be a game-changer for performance optimization.
+While compilers and CPUs employ various techniques to optimize ILP, their capabilities are often constrained by the inherent data dependencies in the code. It's for this reason that algorithmic design can be pivotal. By structuring algorithms to minimize dependency chains from the outset, we create opportunities for higher ILP that even the most advanced compiler optimizations and CPU features cannot achieve alone. Therefore, algorithmic design that is mindful of ILP can be a game-changer for performance optimization.
 
 \subsubsection{Example}
-Let's take a FNV-like hashing function. The "naive" way to process an array of elements would look like the \texttt{baseline} method,
-as shown in Rust snippet (Figure~\ref{fig:ilp_rust_example}). As we can see, every loop iteration requires the value of \texttt{h},
-which has been computed the iteration before. Here we have a dependency chain, preventing the compiler from doing any optimization.
+Let's take a FNV-like hashing function. The "naive" way to process an array of elements would look like the \texttt{baseline} method, as shown in Rust snippet (Figure~\ref{fig:ilp_rust_example}). As we can see, every loop iteration requires the value of \texttt{h}, which has been computed the iteration before. Here we have a dependency chain, preventing the compiler from doing any optimization.
 
-To make ILP possible, for the function \texttt{temp} we unroll the loop and hash a few inputs altogether, independently from \texttt{h},
-and mix it once thereafter with \texttt{h}. We still have a dependency chain on \texttt{h}, but for less iterations.
+To make ILP possible, for the function \texttt{temp} we unroll the loop and hash a few inputs altogether, independently from \texttt{h}, and mix it once thereafter with \texttt{h}. We still have a dependency chain on \texttt{h}, but for less iterations.
 The temporary hashes are independent and thus eligible for ILP.
 
-Another track taken for the function \texttt{laned} is to unroll the loop and hash on separate lanes,
-and then mix the lanes together upon exiting the loop. Each lane has its own dependency chain, but on less iterations.
+Another track taken for the function \texttt{laned} is to unroll the loop and hash on separate lanes, and then mix the lanes together upon exiting the loop. Each lane has its own dependency chain, but on less iterations.
 
 \begin{figure}[ht]
 \begin{multicols}{2}
@@ -288,10 +251,8 @@ fn laned(input: &[u64]) -> u64 {
 
 \clearpage
 \subsubsection{Benchmark}
-Here are the timing on both an x86 and an ARM CPU. It also includes timing for the function \texttt{unrolled},
-to show that performance increase comes indeed from ILP and not the loop unrolling itself.
-We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for a significant performance increase
-over the \texttt{baseline}.
+Here are the timing on both an x86 and an ARM CPU. It also includes timing for the function \texttt{unrolled}, to show that performance increase comes indeed from ILP and not the loop unrolling itself.
+We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for a significant performance increase over the \texttt{baseline}.
 \\
 \begin{figure}[ht]
 \centering
@@ -307,20 +268,14 @@ Apple M1 Pro (ARM 64-bit) & 125.23 µs & 124.42 µs & 28.507 µs & 30.716 µs \\
 \label{tab:your_table_label}
 \end{figure}
 \\
-While the \texttt{temp} and \texttt{laned} functions won't yield exactly the same hashes as the \texttt{baseline},
-they serve the same purpose, while being much faster.
-Both approaches have they pro and cons. As the \texttt{laned} explicitely declares \( n \) variables for our lanes,
-this approach is simpler in regards to compiler analysis and is thus more likely to benefit from ILP,
-regardless of the compiler or programming language used.
+While the \texttt{temp} and \texttt{laned} functions won't yield exactly the same hashes as the \texttt{baseline}, they serve the same purpose, while being much faster.
+Both approaches have they pro and cons. As the \texttt{laned} explicitely declares \( n \) variables for our lanes, this approach is simpler in regards to compiler analysis and is thus more likely to benefit from ILP, regardless of the compiler or programming language used.
 The following section will delve more in depth onto the definition of a \textbf{Laned Construction}.
 
 \clearpage
 \subsection{The Laned Construction}
 
-The \textbf{Laned Construction} introduces \( k_b \) lanes, and processes the message by groups of \( k_b \) blocks,
-so that for a given group each of the \( k_b \) block and be processed on its own lane.
-This way, we have \( k_b \) independent dependency chains. The lane hashes can then be compressed altogether thereafter upon
-exiting the loop.
+The \textbf{Laned Construction} introduces \( k_b \) lanes, and processes the message by groups of \( k_b \) blocks, so that for a given group each of the \( k_b \) block and be processed on its own lane. This way, we have \( k_b \) independent dependency chains. The lane hashes can then be compressed altogether thereafter upon exiting the loop.
 
 \subsubsection{Intermediate Hashes}
 
@@ -350,41 +305,115 @@ h(M) = g\left( f( \ldots f(f(\ldots f(f(0^{s_b}, H_1), H_2) \ldots, H_{k_b}), M_
 \label{fig:linear-construction}
 \end{figure}
 
+\clearpage
 \section{The GxHash Algorithm}
 
-The \textbf{GxHash} hashing algorithm employs an high ILP construction as described in section \ref{highilp}. In practice,
-this construction not only enables instruction level paralellism but also enables loop unrolling, disminishing the looping overhead,
-thus maximizing computational efficiency and overall performance.\\\\
-With that ILP unlocked, we still have to define f and g. In our quest for high-thoughput, it is essential for us to find computationally
-efficient definitions TODO
+The \textbf{GxHash} hashing algorithm is designed to maximize throughput by optimizing for Instruction-Level Parallelism (ILP) and making extensive use of Single Instruction, Multiple Data (SIMD) instructions. Notably, while these optimization avenues are orthogonal — focusing on parallelized and vectorized instructions respectively — they collectively harness the full potential of modern CPU architectures.\\\\
+This design philosophy introduces specific constraints for the compression and finalization functions:
+
+\begin{itemize}
+\item \textbf{Utilization of Hardware Intrinsics:} To achieve the SIMD-oriented goal, arithmetic operations are tailored to be compatible with both x86 and ARM Neon intrinsics.
+\item \textbf{Efficiency through Simplicity:} Minimizing the number of operations is crucial, as fewer operations typically translate to faster execution.
+\item \textbf{Hash Quality Assurance:} Despite these performance optimizations, the algorithm must ensure a minimum level of hash quality to maintain low collision probabilities.
+\end{itemize}
+
+In the next sections, we'll delve into the specific operations and transformations chosen for the compression and finalization functions of the \textbf{GxHash-0} (version 0) algorithm.
 
 \subsection{Pipe Width}
-As for the wide-pipe construction (as seen in section \ref{widepipe}) with \( s_b \) set to the executing CPU SIMD register size.
-TODO
+
+To optimize throughput, the pipe width \( s_b \) is set to match the native width of the CPU's SIMD registers.
+This alignment ensures that each SIMD instruction operates on the entire pipe width, maximizing data processed per instruction.
+Given that typical SIMD registers are at least 128 bits in width, the pipe width surpasses common 32-bit or 64-bit output hash sizes.
+Consequently, the GxHash design aligns with the characteristics of a wide-pipe construction, as discussed in section \ref{widepipe}.
+This makes GxHash more resistant to multicollision attacks.
 
 \subsection{Compression}
 
-TODO
+The role of the compression function is to transform a larger input (or message) into a smaller, fixed-size output. Due to this inherent reduction in size, the compression function cannot be bijective.
 
-\subsection{Hashing}
+To delve deeper into this, consider the definition of a bijective function. A function is bijective if and only if it is both injective (one-to-one) and surjective (onto). In simpler terms, for every unique input, there is a unique output, and every possible output has a corresponding input.
 
-TODO
+Given the nature of the compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \), where the domain is much larger than the codomain (\( s_b \times s_b > s_b \)), it becomes mathematically impossible for the function to be one-to-one. There will inevitably be multiple different inputs that map to the same output, as known as collisions.\\
 
-\subsection{Folding}
+With the inevitable non-bijectivity, the performance requirements and the limited set of available SIMD intrinsics, the selection for the compression has to empirical, thus implying specifying a version to account for these current choice that may be improved in future versions.\\
 
-TODO
+In practice, the \textbf{GxHash-0} uses a combination of SIMD 8-bit wrapping add and state-wide circular shift of one. The addition is a simple way to mix the state with the next message block bits, while providing and arithmetic carry which helps in regards to distribution (as opposed to a XOR for instance). Adding on a 8-bit basis also helps in regards to distribution, as opposed to adding on larger bit widths. This operation alone however comes with several weaknesses:
+\begin{itemize}
+\item Such a simple operation is inherently weak to different kind of attacks. This can however be partially addressed with a more robust bit mixing for the finalization function. In the context of non-cryptographic hashing, which is the scope of usage of our algorithm, we think it is an acceptable compromise.
+\item A major issue lies in the addition being associative (\(a \cdot b) \cdot c = a \cdot (b \cdot c \)). An associative compression function would make the hashing algorithm would be insensitive to the ordering of the input message blocks, which is something we want to avoid. To address this, we circularily shift the state bits by one.
+\end{itemize}
+
+While mathematically collisions are inevitable due to the inherent non-bijectivity, odds of collisions using the GxHash-0 compression remain statically low given the uniformity of distribution, altough those collisions are predictable due to the inherent simplicity of the function.
+
+\begin{figure}[ht]
+\begin{multicols}{2}
+\begin{lstlisting}[language=Rust, style=boxed]
+// For ARM 64-bit
+
+use core::arch::aarch64::*;
+
+pub fn compress(a: int8x16_t, b: int8x16_t)
+-> int8x16_t {
+    let sum: int8x16_t = vaddq_s8(a, b);
+    return vextq_s8(sum, sum, 1);
+}
+\end{lstlisting}
+\columnbreak
+\begin{lstlisting}[language=Rust, style=boxed]
+// For x86 64-bit
+
+use core::arch::x86_64::*;
+
+pub fn compress(a: __m256i, b: __m256i)
+-> __m256i {
+    let sum: state = _mm256_add_epi8(a, b);
+    return _mm256_alignr_epi8(sum, sum, 1);
+}
+\end{lstlisting}
+\end{multicols}
+\caption{GxHash-0 Compression in Rust}
+\label{fig:compression_rust_example}
+\end{figure}
+
+\subsection{Finalization}
+
+The finalization process in the GxHash-0 algorithm is crucial to ensure the transformation of its internal state into a fixed-size, uniformly distributed hash output. This process is delineated into two primary steps: mixing the bits and folding (reducing) to the desired hash size.
+
+\subsubsection{Mixing}
+
+This step is responsible for ensuring the even distribution of bits in the state, thereby reducing patterns or biases that might arise from the input data or the compression process. Given the inherent simplicity of the GxHash-0 compression, it is worth for the finalization to incorporate slightly more intricate bit mixing operations, especially given it runs only once per message hashed, as opposed to the compression that occurs once for each block.\\
+Leveraging SIMD capabilities can help in regards to performance and efficiency, which remains to us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of an AES block cipher intrinsics ensures a robust diffusion of bits across the state at a cheap computational cost.\\
+On top of that, salt is added while forming the AES block cipher keys. This not only improves the distribution but also provide a way to use random salt values per-process, protecting from eventual precomputed or replay attacks attempts.
+
+\begin{figure}[ht]
+\begin{lstlisting}[language=Rust, style=boxed]
+// For x86 64-bit
+
+use core::arch::x86_64::*;
+
+pub fn mix(hash: state) -> state {
+    // Salt (Knuth primes recommended)
+    let salt = _mm256_set_epi64x(
+        -4860325414534694371,
+        8120763769363581797,
+        -4860325414534694371,
+        8120763769363581797);
+
+    let keys = _mm256_mul_epu32(salt, hash);
+    return _mm256_aesenc_epi128(hash, keys);
+}
+\end{lstlisting}
+\caption{GxHash-0 Mixing in Rust}
+\label{fig:mixing_rust_example}
+\end{figure}
+
+\subsubsection{Folding}
+
+Once the state's bits have been thoroughly mixed, the next step is to condense or "fold" this state into a smaller, fixed-size hash output, typically 32 or 64 bits. A straightforward and effective approach taken for GxHash-0 to achieve this reduction is by summing the constituent \( X \)-bit integer parts of the mixed state. This summation serves as a reduction function, ensuring that the output hash remains within the desired size bounds while still retaining the essence of the mixed state.
+
+While it would have been interesting to leverage SIMD once again, it turned out that, in practice, for both 128-bit and 256-bit state and for both x86 and ARM, summing the integer parts one by one is as performance if not more performant than using the various SIMD workarounds I tested.
 
 \subsection{Implementation Details}
-
-SIMD
-ILP
-Vectorized
-Parallelized
-Optimized
-Throughput
-Hashing
-
-HIGH ILP CONSTRUCTION
 
 \subsubsection{Padding}
 
@@ -395,17 +424,30 @@ In practice, implementing \( p \) in computer code implies memory copies. Instea
 
 \subsubsection{Low-Overhead Looping}
 
+Language dependent. As close to the metal as possible, avoid loop overhead.
+
 \subsubsection{Loop Unrolling}
+
+Implicit with laned construction, but worth mentionning.
 
 \subsubsection{CPU Alignement}
 
+Load unaligned/aligned subtle difference in performance. Usually memory allocation are somehow aligned, but when using wide pipe (wide SIMD registers supported) it might not be the case that data is aligned.
+Overhead for aligning data.
 
 \section{Benchmarks}
-\subsection{Setup}
-\subsection{Evaluation Metrics}
-\subsection{Comparison with Existing Methods}
 
-t1ha\cite{rust-t1ha}
+\subsection{Quality}
+\subsection{Performance}
+
+t1ha\cite{rust-t1ha} xxhash\cite{twox-hash} HighwayHash\cite{highway-rs}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1\textwidth]{throughput.png}
+\caption{Throughput Benchmark Results}
+\label{fig:benchmark-throughput}
+\end{figure}
 
 \section{Discussion}
 \subsection{Implications}
