@@ -86,7 +86,15 @@ mod platform_defs {
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
         let sum: state = _mm256_add_epi8(a, b);
-        _mm256_alignr_epi8(sum, sum, 1) 
+        //let sum: state = _mm256_xor_epi32(a, b);
+        _mm256_alignr_epi8(sum, sum, 1)
+
+        // Cantor Pairing Function
+        //return (0.5 * (x + y) * (x + y + 1)) + y;
+        // let a_plus_b = _mm256_add_epi32(a, b);
+        // let a_plus_b_plus_1 = _mm256_add_epi32(a_plus_b, _mm256_set1_epi32(1));
+        // let m1 = _mm256_mul_epi32(a_plus_b, a_plus_b_plus_1);
+        // _mm256_add_epi32(m1, b)
     }
 
     #[inline]
@@ -94,7 +102,6 @@ mod platform_defs {
         let salt = _mm256_set_epi64x(-4860325414534694371, 8120763769363581797, -4860325414534694371, 8120763769363581797);
         let keys = _mm256_mul_epu32(salt, hash);
         _mm256_aesenc_epi128(hash, keys)
-
     }
 
     #[inline]

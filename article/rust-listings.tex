@@ -18,12 +18,12 @@
 % [4] type and value constructors
 % [5] identifier
 %
-, morekeywords={break, continue, else, for, if, in, loop, match, return, while}  % control flow keywords
-, morekeywords={as, const, let, move, mut, ref, static}  % in the context of variables
-, morekeywords={dyn, enum, fn, impl, Self, self, struct, trait, type, union, use, where}  % in the context of declarations
-, morekeywords={crate, extern, mod, pub, super}  % in the context of modularisation
-, morekeywords={unsafe}  % markers
-, morekeywords={abstract, alignof, become, box, do, final, macro, offsetof, override, priv, proc, pure, sizeof, typeof, unsized, virtual, yield}  % reserved identifiers
+, morekeywords=[1]{break, continue, else, for, if, in, loop, match, return, while}  % control flow keywords
+, morekeywords=[1]{as, const, let, move, mut, ref, static}  % in the context of variables
+, morekeywords=[1]{dyn, enum, fn, impl, Self, self, struct, trait, type, union, use, where}  % in the context of declarations
+, morekeywords=[1]{crate, extern, mod, pub, super}  % in the context of modularisation
+, morekeywords=[1]{unsafe}  % markers
+, morekeywords=[1]{abstract, alignof, become, box, do, final, macro, offsetof, override, priv, proc, pure, sizeof, typeof, unsized, virtual, yield}  % reserved identifiers
 %
 % grep 'pub trait [A-Za-z][A-Za-z0-9]*' -r . | sed 's/^.*pub trait \([A-Za-z][A-Za-z0-9]*\).*/\1/g' | sort -u | tr '\n' ',' | sed 's/^\(.*\),$/{\1}\n/g' | sed 's/,/, /g'
 , morekeywords=[2]{Add, AddAssign, Any, AsciiExt, AsInner, AsInnerMut, AsMut, AsRawFd, AsRawHandle, AsRawSocket, AsRef, Binary, BitAnd, BitAndAssign, Bitor, BitOr, BitOrAssign, BitXor, BitXorAssign, Borrow, BorrowMut, Boxed, BoxPlace, BufRead, BuildHasher, CastInto, CharExt, Clone, CoerceUnsized, CommandExt, Copy, Debug, DecodableFloat, Default, Deref, DerefMut, DirBuilderExt, DirEntryExt, Display, Div, DivAssign, DoubleEndedIterator, DoubleEndedSearcher, Drop, EnvKey, Eq, Error, ExactSizeIterator, ExitStatusExt, Extend, FileExt, FileTypeExt, Float, Fn, FnBox, FnMut, FnOnce, Freeze, From, FromInner, FromIterator, FromRawFd, FromRawHandle, FromRawSocket, FromStr, FullOps, FusedIterator, Generator, Hash, Hasher, Index, IndexMut, InPlace, Int, Into, IntoCow, IntoInner, IntoIterator, IntoRawFd, IntoRawHandle, IntoRawSocket, IsMinusOne, IsZero, Iterator, JoinHandleExt, LargeInt, LowerExp, LowerHex, MetadataExt, Mul, MulAssign, Neg, Not, Octal, OpenOptionsExt, Ord, OsStrExt, OsStringExt, Packet, PartialEq, PartialOrd, Pattern, PermissionsExt, Place, Placer, Pointer, Product, Put, RangeArgument, RawFloat, Read, Rem, RemAssign, Seek, Shl, ShlAssign, Shr, ShrAssign, Sized, SliceConcatExt, SliceExt, SliceIndex, Stats, Step, StrExt, Sub, SubAssign, Sum, Sync, TDynBenchFn, Terminal, Termination, ToOwned, ToSocketAddrs, ToString, Try, TryFrom, TryInto, UnicodeStr, Unsize, UpperExp, UpperHex, WideInt, Write}
@@ -41,9 +41,10 @@
 \lstdefinestyle{colouredRust}%
 { basicstyle=\fontsize{9}{9}\ttfamily\selectfont,%
 , identifierstyle=%
-, commentstyle=\color[gray]{0.4}%
+, commentstyle=\color[rgb]{0, 0.7, 0}%
 , stringstyle=\color[rgb]{0, 0, 0.5}%
 , keywordstyle=\bfseries% reserved keywords
+, keywordstyle=[1]\color[rgb]{0, 0.2, 0.9}% traits
 , keywordstyle=[2]\color[rgb]{0.75, 0, 0}% traits
 , keywordstyle=[3]\color[rgb]{0, 0.5, 0}% primitive types
 , keywordstyle=[4]\color[rgb]{0, 0.5, 0}% type and value constructors
