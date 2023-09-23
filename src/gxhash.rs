@@ -79,22 +79,37 @@ mod platform_defs {
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
 
-        let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
-        _mm256_and_si256(_mm256_loadu_si256(p), mask)
+        // Safety check
+        if (check_same_page(p)) {
+            let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
+            return _mm256_and_si256(_mm256_loadu_si256(p), mask);
+        }
+        return get_partial_safe(p as *const u8, len as usize);
+    }
+
+    #[inline]
+    unsafe fn check_same_page(ptr: *const state) -> bool {
+        let address = ptr as usize;
+        // Mask to keep only the last 12 bits (3 bytes)
+        let offset_within_page = address & 0xFFF;
+        // Check if the 32nd byte from the current offset exceeds the page boundary
+        offset_within_page <= (4096 - 31)
+    }
+
+    #[inline]
+    unsafe fn get_partial_safe(data: *const u8, len: usize) -> state {
+        // Temporary buffer filled with zeros
+        let mut buffer: [u8; 32] = [0; 32];
+        // Copy data into the buffer
+        std::ptr::copy(data, buffer.as_mut_ptr(), len);
+        // Load the buffer into a __m256i vector
+        _mm256_loadu_si256(buffer.as_ptr() as *const state)
     }
 
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
         let sum: state = _mm256_add_epi8(a, b);
-        //let sum: state = _mm256_xor_epi32(a, b);
         _mm256_alignr_epi8(sum, sum, 1)
-
-        // Cantor Pairing Function
-        //return (0.5 * (x + y) * (x + y + 1)) + y;
-        // let a_plus_b = _mm256_add_epi32(a, b);
-        // let a_plus_b_plus_1 = _mm256_add_epi32(a_plus_b, _mm256_set1_epi32(1));
-        // let m1 = _mm256_mul_epi32(a_plus_b, a_plus_b_plus_1);
-        // _mm256_add_epi32(m1, b)
     }
 
     #[inline]
