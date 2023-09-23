@@ -1,5 +1,5 @@
 \documentclass[10pt]{article} 
-\usepackage[margin=0.8in]{geometry}
+\usepackage[margin=0.73in]{geometry}
 \usepackage{amsmath}
 \usepackage{hyperref} 
 \usepackage{listings}
@@ -21,11 +21,7 @@
 
 In the rapidly evolving landscape of data processing and cybersecurity, hashing algorithms play a pivotal role in ensuring data integrity and security.
 Traditional hashing methods, while effective, often fail to fully utilize the computational capabilities of modern processors.
-This paper introduces the GxHash hashing algorithm, a novel approach that harnesses the power of high instruction-level parallelism (ILP) and Single
-Instruction, Multiple Data (SIMD) capabilities of contemporary CPUs to achieve high-throughput non-cryptographic hashing. Through a comprehensive
-analysis, including benchmarks and comparisons with existing methods, we demonstrate that GxHash significantly outperforms conventional algorithms
-in terms of speed and computational efficiency without compromising on security. The paper also explores the implications, limitations, and avenues
-for future research in this burgeoning field.
+This paper introduces the GxHash hashing algorithm, a novel approach that harnesses the power of high instruction-level parallelism (ILP) and Single Instruction, Multiple Data (SIMD) capabilities of contemporary CPUs to achieve high-throughput non-cryptographic hashing. Through a comprehensive analysis, including benchmarks and comparisons with existing methods, we demonstrate that GxHash significantly outperforms conventional algorithms in terms of speed and computational efficiency without compromising on security. The paper also explores the implications, limitations, and avenues for future research in this burgeoning field.
 
 \end{abstract}
 
@@ -108,16 +104,16 @@ In this construction, the size of the internal state (\(s_b\)) is deliberately m
 
 This design choice serves to complicate potential attack vectors by introducing a greater level of computational complexity.
 As a result, the hash function gains increased resistance against certain types of attacks that exploit the limitations of the Merkle–Damgård construction.\\\\
-While performance remains our primary focus, the algorithm we examine in this paper incorporates the Wide-Pipe idea. By doing so, it offers a dual advantage: performance efficacy, which is central to this study, along with a good cryptographic resilience, which is an indeniable advantage even in the realm of non-cryptographic hash functions.
+While performance remains our primary focus, the algorithm we examine in this paper incorporates the Wide-Pipe idea. By doing so, it offers a dual advantage: performance efficacy, which is central to this study, along with good cryptographic resilience, which is an undeniable advantage even in the realm of non-cryptographic hash functions.
 
 \subsection{Other Variants}
 
-While the classical Merkle–Damgård construction provides a reliable framework for cryptographic hash functions, there are a wide number of variants\cite{merkle_damgard_alternatives_review}. In this section, we discuss around some of the most popular variants around opportunities for performance enhancement.
+While the classical Merkle–Damgård construction provides a reliable framework for cryptographic hash functions, there are a wide number of variants\cite{merkle_damgard_alternatives_review}. In this section, we discuss some of the most popular variants around opportunities for performance enhancement.
 
 \subsubsection{Sponge Construction}
 
 The Sponge construction,  proceeds in two phases: absorption and squeezing.
-During the absorption phase, blocks of input data are XORed into a portion of the internal state, followed by a cryptographic permutation of the entire state. Importantly, each absorption step is inherently sequential, as it relies on the state resulting from the cryptographic permutation of the previous step. Consequently, the algorithm does cannot benefit from instruction-level parallelism during the absorption phase.
+During the absorption phase, blocks of input data are XORed into a portion of the internal state, followed by a cryptographic permutation of the entire state. Importantly, each absorption step is inherently sequential, as it relies on the state resulting from the cryptographic permutation of the previous step. Consequently, the algorithm cannot benefit from instruction-level parallelism during the absorption phase.
 The squeezing phase, which follows the absorption of all input blocks, generates the output hash from the internal state.
 The opportunity for parallelization with the Sponge construction is thus constrained by its sequential nature during the absorbing phase.
 
@@ -148,7 +144,7 @@ Although the tree-based hashing approach has a theoretical advantage in parallel
 \item \textbf{Implementation Complexity:} The algorithmic and data-structure requirements for implementing tree-based hashing are more complex than those of a straightforward sequential hashing algorithm. The increased complexity can introduce more room for errors and maintenance challenges.
 \end{itemize}
 
-In light of these practical challenges, tree-based constructions might not be the best fit given our high performance goals and the architecture of today's general purpose computers.
+In light of these practical challenges, tree-based constructions might not be the best fit given our high performance goals and the architecture of today's general-purpose computers.
 
 \clearpage
 \section{High ILP Construction} \label{highilp}
@@ -164,10 +160,10 @@ While compilers and CPUs employ various techniques to optimize ILP, their capabi
 \subsubsection{Example}
 Let's take a FNV-like hashing function. The "naive" way to process an array of elements would look like the \texttt{baseline} method, as shown in Rust snippet (Figure~\ref{fig:ilp_rust_example}). As we can see, every loop iteration requires the value of \texttt{h}, which has been computed the iteration before. Here we have a dependency chain, preventing the compiler from doing any optimization.
 
-To make ILP possible, for the function \texttt{temp} we unroll the loop and hash a few inputs altogether, independently from \texttt{h}, and mix it once thereafter with \texttt{h}. We still have a dependency chain on \texttt{h}, but for less iterations.
+To make ILP possible, for the function \texttt{temp} we unroll the loop and hash a few inputs altogether, independently from \texttt{h}, and mix it once thereafter with \texttt{h}. We still have a dependency chain on \texttt{h}, but for fewer iterations.
 The temporary hashes are independent and thus eligible for ILP.
 
-Another track taken for the function \texttt{laned} is to unroll the loop and hash on separate lanes, and then mix the lanes together upon exiting the loop. Each lane has its own dependency chain, but on less iterations.
+Another track taken for the function \texttt{laned} is to unroll the loop and hash on separate lanes, and then mix the lanes together upon exiting the loop. Each lane has its own dependency chain but also on fewer iterations.
 
 \begin{figure}[ht]
 \begin{multicols}{2}
@@ -269,8 +265,8 @@ Apple M1 Pro (ARM 64-bit) & 125.23 µs & 124.42 µs & 28.507 µs & 30.716 µs \\
 \end{figure}
 \\
 While the \texttt{temp} and \texttt{laned} functions won't yield exactly the same hashes as the \texttt{baseline}, they serve the same purpose, while being much faster.
-Both approaches have they pro and cons. As the \texttt{laned} explicitely declares \( n \) variables for our lanes, this approach is simpler in regards to compiler analysis and is thus more likely to benefit from ILP, regardless of the compiler or programming language used.
-The following section will delve more in depth onto the definition of a \textbf{Laned Construction}.
+Both approaches have their pros and cons. As the \texttt{laned} explicitly declares \( n \) variables for our lanes, this approach is simpler in regards to compiler analysis and is thus more likely to benefit from ILP, regardless of the compiler or programming language used.
+The following section will delve more in depth into the definition of a \textbf{Laned Construction}.
 
 \clearpage
 \subsection{The Laned Construction}
@@ -333,17 +329,17 @@ The role of the compression function is to transform a larger input (or message)
 
 To delve deeper into this, consider the definition of a bijective function. A function is bijective if and only if it is both injective (one-to-one) and surjective (onto). In simpler terms, for every unique input, there is a unique output, and every possible output has a corresponding input.
 
-Given the nature of the compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \), where the domain is much larger than the codomain (\( s_b \times s_b > s_b \)), it becomes mathematically impossible for the function to be one-to-one. There will inevitably be multiple different inputs that map to the same output, as known as collisions.\\
+Given the nature of the compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \), where the domain is much larger than the codomain (\( s_b \times s_b > s_b \)), it becomes mathematically impossible for the function to be one-to-one. There will inevitably be multiple different inputs that map to the same output, known as collisions.\\
 
-With the inevitable non-bijectivity, the performance requirements and the limited set of available SIMD intrinsics, the selection for the compression has to empirical, thus implying specifying a version to account for these current choice that may be improved in future versions.\\
+With the inevitable non-bijectivity, the performance requirements and the limited set of available SIMD intrinsics, the selection for the compression has to be empirical, thus implying specifying a version to account for these current choices that may be improved in future versions.\\
 
-In practice, the \textbf{GxHash-0} uses a combination of SIMD 8-bit wrapping add and state-wide circular shift of one. The addition is a simple way to mix the state with the next message block bits, while providing and arithmetic carry which helps in regards to distribution (as opposed to a XOR for instance). Adding on a 8-bit basis also helps in regards to distribution, as opposed to adding on larger bit widths. This operation alone however comes with several weaknesses:
+In practice, the \textbf{GxHash-0} uses a combination of SIMD 8-bit wrapping add and state-wide circular shift of one. The addition is a simple way to mix the state with the next message block bits, while providing an arithmetic carry which helps in regard to distribution (as opposed to a XOR for instance). Adding on a 8-bit basis also helps in regards to distribution, as opposed to adding on larger bit widths. This operation alone however comes with several weaknesses:
 \begin{itemize}
 \item Such a simple operation is inherently weak to different kind of attacks. This can however be partially addressed with a more robust bit mixing for the finalization function. In the context of non-cryptographic hashing, which is the scope of usage of our algorithm, we think it is an acceptable compromise.
-\item A major issue lies in the addition being associative (\(a \cdot b) \cdot c = a \cdot (b \cdot c \)). An associative compression function would make the hashing algorithm would be insensitive to the ordering of the input message blocks, which is something we want to avoid. To address this, we circularily shift the state bits by one.
+\item A major issue lies in the addition being associative (\(a \cdot b) \cdot c = a \cdot (b \cdot c \)). An associative compression function would make the hashing algorithm insensitive to the ordering of the input message blocks, which is something we want to avoid. To address this, we circularly shift the state bits by one.
 \end{itemize}
 
-While mathematically collisions are inevitable due to the inherent non-bijectivity, odds of collisions using the GxHash-0 compression remain statically low given the uniformity of distribution, altough those collisions are predictable due to the inherent simplicity of the function.
+While mathematically collisions are inevitable due to the inherent non-bijectivity, odds of collisions using the GxHash-0 compression remain statically low given the uniformity of distribution, although those collisions are predictable due to the inherent simplicity of the function.
 
 \begin{figure}[ht]
 \begin{multicols}{2}
@@ -382,13 +378,11 @@ The finalization process in the GxHash-0 algorithm is crucial to ensure the tran
 \subsubsection{Mixing}
 
 This step is responsible for ensuring the even distribution of bits in the state, thereby reducing patterns or biases that might arise from the input data or the compression process. Given the inherent simplicity of the GxHash-0 compression, it is worth for the finalization to incorporate slightly more intricate bit mixing operations, especially given it runs only once per message hashed, as opposed to the compression that occurs once for each block.\\
-Leveraging SIMD capabilities can help in regards to performance and efficiency, which remains to us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of an AES block cipher intrinsics ensures a robust diffusion of bits across the state at a cheap computational cost.\\
-On top of that, salt is added while forming the AES block cipher keys. This not only improves the distribution but also provide a way to use random salt values per-process, protecting from eventual precomputed or replay attacks attempts.
+Leveraging SIMD capabilities can help in regard to performance and efficiency, which remains for us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of an AES block cipher intrinsics ensures a robust diffusion of bits across the state at a cheap computational cost.\\
+On top of that, salt is added while forming the AES block cipher keys. This not only improves the distribution but also provides a way to use random salt values per-process, protecting from eventual precomputed or replay attack attempts.
 
 \begin{figure}[ht]
 \begin{lstlisting}[language=Rust, style=boxed]
-// For x86 64-bit
-
 use core::arch::x86_64::*;
 
 pub fn mix(hash: state) -> state {
@@ -411,29 +405,78 @@ pub fn mix(hash: state) -> state {
 
 Once the state's bits have been thoroughly mixed, the next step is to condense or "fold" this state into a smaller, fixed-size hash output, typically 32 or 64 bits. A straightforward and effective approach taken for GxHash-0 to achieve this reduction is by summing the constituent \( X \)-bit integer parts of the mixed state. This summation serves as a reduction function, ensuring that the output hash remains within the desired size bounds while still retaining the essence of the mixed state.
 
-While it would have been interesting to leverage SIMD once again, it turned out that, in practice, for both 128-bit and 256-bit state and for both x86 and ARM, summing the integer parts one by one is as performance if not more performant than using the various SIMD workarounds I tested.
+While it would have been interesting to leverage SIMD once again, it turned out that, in practice, for both 128-bit and 256-bit state and for both x86 and ARM, summing the integer parts one by one is as performant if not more performant than using the various SIMD workarounds I tested.
 
 \subsection{Implementation Details}
 
-\subsubsection{Padding}
+\subsubsection{CPU Alignement}
 
-\textbf{Merkle–Damgård} and derivatives can actually handle message of an arbitrary size \( s_m \) by padding the message upfront with the padding
-function \( p: \{0,1\}^{s_m} \to \{0,1\}^{n_b \times s_b} \) where \( n_b = \lceil s_m/s_b \rceil \).
+Data alignment in memory, commonly referred to as CPU alignment, directly impacts the efficiency of data access and processing. The CPU is optimized to access data from addresses that align with its natural word size. When data is properly aligned, the CPU can retrieve and process it in fewer cycles, resulting in increased computational efficiency.
 
-In practice, implementing \( p \) in computer code implies memory copies. Instead, TODO
+In practice, a program usually allocates memory with some degree of alignment, and so data is generally aligned. However, a given input message to our hash function is still not guaranteed to be aligned. To handle this case, we can either read our data with an offset to account for the misalignment (at the cost of a much-increased complexity) or use specific SIMD intrinsics designed to handle potentially unaligned data. 
+
+Benchmarks conducted show a less than 20\% performance degradation on both our x86 and ARM hardware when using the second solution. This is the chosen solution for GxHash-0.
 
 \subsubsection{Low-Overhead Looping}
 
-Language dependent. As close to the metal as possible, avoid loop overhead.
+While the looping semantics will vary from one language to another, any overhead from looping over the input message blocks is likely to directly affect the overall throughput of the algorithm, given how optimized the rest of the algorithm is meant to be. In some cases, compilers might do a great job at generating loop instructions with minimal overhead, but it isn't the case in the language where GxHash-0 was ported, where looping using pointer arithmetics was needed.
 
-\subsubsection{Loop Unrolling}
+Unrolling the loop is a complementary optimization that diminishes greatly any loop overhead. In the case of GxHash, the laned construction implies some kind of unrolling, which is sufficient for achieving the high throughput numbers we see in our benchmarks.
 
-Implicit with laned construction, but worth mentionning.
+\subsubsection{Padding}
 
-\subsubsection{CPU Alignement}
+\textbf{Merkle–Damgård} and derivatives can handle message of an arbitrary size \( s_m \) by padding the message upfront with the padding function \( p: \{0,1\}^{s_m} \to \{0,1\}^{n_b \times s_b} \) where \( n_b = \lceil s_m/s_b \rceil \). In the case where the last block is not whole, the padding fills it with zero-bytes until the size \( s_b \) is reached. The last block can then be processed like any other block by the compression function.
 
-Load unaligned/aligned subtle difference in performance. Usually memory allocation are somehow aligned, but when using wide pipe (wide SIMD registers supported) it might not be the case that data is aligned.
-Overhead for aligning data.
+In practice, a naive implementation for \( p \) for GxHash in computer code implies copying the remaining bytes into a zero-initialized buffer of size \( s_b \), which can then be loaded onto an SIMD registry and then handed to the compression. In our performance-critical context, these allocations and copies have a substantial overhead.
+
+\paragraph{Read beyond and mask.}
+To avoid this overhead, one possible trick consists of reading \( s_b \) bytes starting from the last block address, even if it implies reading beyond the memory storing the input message. The read bytes can then be masked with the help of a sliding mask, transforming the trailing bytes that don't belong to our message into zeros, in a single SIMD operation. Compared to the naive method, this solution is up to ten times faster on our test machine (Ryzen 5, x86 64-bit, AVX2).
+
+\begin{figure}[ht]
+\begin{lstlisting}[language=Rust, style=boxed]
+use core::arch::x86_64::*;
+
+unsafe fn read_padded(p: *const __m256i, len: isize) -> __m256i {
+    // The mask array is twice as long as the SIMD registry size (32*2 here), so that
+    // each 32-byte slice accounts for a different number of trailing bytes to mask out
+    const MASK: [u8; 64] = [
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
+    // Loading the mask slice
+    let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
+    // Read beyond and mask
+    return _mm256_and_si256(_mm256_loadu_si256(p), mask);
+}
+\end{lstlisting}
+\caption{GxHash-0 Padding in Rust}
+\label{fig:read_beyond_example}
+\end{figure}
+
+\paragraph{Safety considerations.}
+Reading beyond a given pointer can lead to accessing memory that is either not mapped to the program's address space or is protected. When the program tries to read such memory, the operating system detects the violation and typically terminates the program, resulting in a crash. This mechanism protects processes from interfering with each other and from accessing system-critical memory regions. While this is very unlikely to occur in most scenarios, the fact that it can theoretically occur is a problem.
+
+In modern computers, memory is divided into fixed-size chunks called pages. Once a page is given to a program, it can freely access any part of that page without causing system-level errors like segmentation faults. We can take this to our advantage by checking if our unsafe operation is entirely contained in a single block. If so, it means we can use the optimized method safely. Otherwise, we can fallback to the naive method.
+
+In practice, this is quite trivial to implement since memory is divided into pages in such a way that addresses within a single page will share the same higher bits and only vary in the lower bits that represent offsets within that page. The snippet in figure~\ref{fig:check_page_example} does this considering a minimal page size of 4096. Statistically speaking, the odds of having 32 bytes on the same page are above 99\%. This safety check being very cheap to compute, we keep most of the performance advantages of our method while addressing the safety issue.
+
+\begin{figure}[ht]
+\begin{lstlisting}[language=Rust, style=boxed]
+unsafe fn is_same_page(ptr: *const __m256i) -> bool {
+    // Usual minimal page size on modern computers
+    const PAGE_SIZE = 4096;
+    // Get the actual pointer address integer value
+    let address = ptr as usize;
+    // Mask to keep only the last 12 bits (2^12 = 4096)
+    let offset_within_page = address & 0xFFF;
+    // Check if the 32nd byte from the current offset exceeds the page boundary
+    offset_within_page <= (PAGE_SIZE - 31)
+}
+\end{lstlisting}
+\caption{Read-Beyond Safety Check in Rust}
+\label{fig:check_page_example}
+\end{figure}
 
 \section{Benchmarks}
 
