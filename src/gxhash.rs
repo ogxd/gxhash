@@ -151,7 +151,7 @@ macro_rules! load_unaligned {
 pub fn gxhash(input: &[u8]) -> u32 {
     unsafe {
         const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
-        const UNROLL_FACTOR: isize = 8;
+        const UNROLL_FACTOR: isize = 4;
     
         let len: isize = input.len() as isize;
     
@@ -170,25 +170,21 @@ pub fn gxhash(input: &[u8]) -> u32 {
             let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR; 
             end_address = v.offset(unrollable_blocks_count) as usize;
     
-            load_unaligned!(v, s0, s1, s2, s3, s4, s5, s6, s7);
+            load_unaligned!(v, s0, s1, s2, s3);
  
             while (v as usize) < end_address {
 
-                load_unaligned!(v, v0, v1, v2, v3, v4, v5, v6, v7);
+                load_unaligned!(v, v0, v1, v2, v3);
 
                 s0 = compress(s0, v0);
                 s1 = compress(s1, v1);
                 s2 = compress(s2, v2);
                 s3 = compress(s3, v3);
-                s4 = compress(s4, v4);
-                s5 = compress(s5, v5);
-                s6 = compress(s6, v6);
-                s7 = compress(s7, v7);
             }
 
             prefetch(v);
         
-            hash_vector = compress(compress(compress(compress(compress(compress(compress(s0, s1), s2), s3), s4), s5), s6), s7);
+            hash_vector = compress(compress(compress(s0, s1), s2), s3);
 
             let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
             end_address = v.offset(remaining_blocks_count) as usize;
