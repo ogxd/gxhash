@@ -80,11 +80,11 @@ mod platform_defs {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
 
         // Safety check
-        if (check_same_page(p)) {
+        //if (check_same_page(p)) {
             let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
             return _mm256_and_si256(_mm256_loadu_si256(p), mask);
-        }
-        return get_partial_safe(p as *const u8, len as usize);
+        // }
+        // return get_partial_safe(p as *const u8, len as usize);
     }
 
     #[inline]
