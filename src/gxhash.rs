@@ -56,11 +56,11 @@ mod platform_defs {
 mod platform_defs {
     use core::arch::x86_64::*;
 
-    pub type state = __m512i;
+    pub type state = __m256i;
 
     #[inline]
     pub unsafe fn create_empty() -> state {
-        _mm512_setzero_si512()
+        _mm256_setzero_si256()
     }
 
     #[inline]
@@ -70,21 +70,19 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn load_unaligned(p: *const state) -> state {
-        _mm512_loadu_si512(p as *const i32)
+        _mm256_loadu_si256(p)
     }
 
     #[inline]
     pub unsafe fn get_partial(p: *const state, len: isize) -> state {
-        const MASK: [u8; 128] = [
+        const MASK: [u8; 64] = [
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
 
         // Safety check
         //if (check_same_page(p)) {
-            let mask = _mm512_loadu_epi8((MASK.as_ptr() as *const i8).offset(64 - len));
-            return _mm512_and_si512(_mm512_loadu_si512(p as *const i32), mask);
+            let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
+            return _mm256_and_si256(_mm256_loadu_si256(p), mask);
         // }
         // return get_partial_safe(p as *const u8, len as usize);
     }
@@ -105,26 +103,20 @@ mod platform_defs {
         // Copy data into the buffer
         std::ptr::copy(data, buffer.as_mut_ptr(), len);
         // Load the buffer into a __m256i vector
-        _mm512_loadu_si512(buffer.as_ptr() as *const i32)
+        _mm256_loadu_si256(buffer.as_ptr() as *const state)
     }
 
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
-        let sum: state = _mm512_add_epi8(a, b);
-        _mm512_alignr_epi8(sum, sum, 1)
-    }
-
-    #[inline]
-    pub unsafe fn compress2(a: state, b: state) -> state {
-        let sum: state = _mm512_add_epi8(a, b);
-        _mm512_alignr_epi8(sum, sum, 1)
+        let sum: state = _mm256_add_epi8(a, b);
+        _mm256_alignr_epi8(sum, sum, 1)
     }
 
     #[inline]
     pub unsafe fn mix(hash: state) -> state {
-        let salt = _mm512_set_epi64(-4860325414534694371, 8120763769363581797, -4860325414534694371, 8120763769363581797, -4860325411534694373, 8120713769363581799, -4760325414534694377, 8110763767363581797);
-        let keys = _mm512_mul_epu32(salt, hash);
-        _mm512_aesenc_epi128(hash, keys)
+        let salt = _mm256_set_epi64x(-4860325414534694371, 8120763769363581797, -4860325414534694371, 8120763769363581797);
+        let keys = _mm256_mul_epu32(salt, hash);
+        _mm256_aesenc_epi128(hash, keys)
     }
 
     #[inline]
