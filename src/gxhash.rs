@@ -6,6 +6,15 @@ mod platform_defs {
 
     pub type state = int8x16_t;
 
+    #[repr(C)]
+    union ReinterpretUnion {
+        int64: int64x2_t,
+        int32: int32x4_t,
+        uint32: uint32x4_t,
+        int8: int8x16_t,
+        uint8: uint8x16_t,
+    }
+
     #[inline]
     pub unsafe fn create_empty() -> state {
         vdupq_n_s8(0)
@@ -27,7 +36,7 @@ mod platform_defs {
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
 
-        let mask = vld1q_s8((MASK.as_ptr() as *const i8).offset(size_of::<state>() - len));
+        let mask = vld1q_s8((MASK.as_ptr() as *const i8).offset(size_of::<state>() as isize - len));
         vandq_s8(load_unaligned(p), mask)
     }
 
@@ -39,13 +48,20 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn mix(hash: state) -> state {
-        hash
+        let salt = vcombine_s64(vcreate_s64(4860325414534694371), vcreate_s64(8120763769363581797));
+        let keys = vmulq_s32(
+            ReinterpretUnion { int64: salt }.int32,
+            ReinterpretUnion { int8: hash }.int32);
+        let a = vaeseq_u8(ReinterpretUnion { int8: hash }.uint8, vdupq_n_u8(0));
+        let b = vaesmcq_u8(a);
+        let c = veorq_u8(b, ReinterpretUnion{ int32: keys }.uint8);
+        ReinterpretUnion{ uint8: c }.int8
     }
 
     #[inline]
     pub unsafe fn fold(hash: state) -> u32 {
         // Bit-cast the int8x16_t to uint32x4_t
-        let vec_u32: uint32x4_t = mem::transmute(hash);
+        let vec_u32: uint32x4_t = ReinterpretUnion { int8: hash }.uint32;
         // Get the first u32 value from the vector
         vgetq_lane_u32(vec_u32, 3)
     }
@@ -248,7 +264,7 @@ mod tests {
             assert_ne!(0, hash);
 
             // cargo test -- --nocapture
-            //println!("{:?}", &COUNTERS);
+            println!("{:?}", &COUNTERS);
             assert!(COUNTERS.as_slice() == expected.as_slice());
             
         }
