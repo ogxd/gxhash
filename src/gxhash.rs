@@ -157,7 +157,8 @@ pub use platform_defs::*;
 #[cfg(test)]
 pub static mut COUNTERS : Vec<usize> = vec![];
 
-#[inline]
+//#[inline]
+#[inline(never)]
 pub fn gxhash(input: &[u8]) -> u32 {
     unsafe {
         const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
@@ -265,8 +266,7 @@ mod tests {
 
             // cargo test -- --nocapture
             println!("{:?}", &COUNTERS);
-            assert!(COUNTERS.as_slice() == expected.as_slice());
-            
+            assert_eq!(COUNTERS.as_slice(), expected.as_slice());
         }
     }
 

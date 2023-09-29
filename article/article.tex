@@ -481,6 +481,27 @@ unsafe fn is_same_page(ptr: *const __m256i) -> bool {
 \section{Benchmarks}
 
 \subsection{Quality}
+
+\subsubsection{Benchmark Quality Criteria}
+The primary quality criteria for non-cryptographic hash functions include:
+
+\begin{itemize}
+    \item \textbf{Uniform Distribution:} A high-quality hash function distributes its output values as uniformly as possible across the output space. This ensures that, when used in applications like hash tables, the data is spread evenly, reducing clustering and the frequency of collisions.
+    \item \textbf{Minimal Collisions:} While no hash function can be entirely collision-free due to the pigeonhole principle, a good non-cryptographic hash should minimize collisions for typical input sets, ensuring that different inputs usually produce distinct outputs.
+    \item \textbf{Avalanche Effect:} A subtle change in the input should result in a considerably different output, ensuring sensitivity to input variations. This also contributes to lessen the risk of clustered hashes in applications like hash tables.
+    \item \textbf{Performance:} The performance of a non cryptographic hash function is usually reflected by the performance of the application using it. For instance, a fast non-cryptographic hash function generally implies a fast hash table. This specific criteria will be tackled in the next section which is dedicated to it. 
+\end{itemize}
+
+While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Pragmatically, we choose a few patterns for our input data:
+\begin{itemize}
+    \item Randomly generated inputs to observe how the hash function behaves with truly unpredictable data
+    \item Sequential inputs to observe how the function handles closely related values. Typically, close values would highlight weaknesses in distribution.
+    \item English words inputs to observe how the function behaves in a "real world scenario"
+\end{itemize}
+
+\subsubsection{Quality Criteria Results}
+For reference, we include a few well-known algorithms on top of GxHash-0.
+
 \subsection{Performance}
 
 t1ha\cite{rust-t1ha} xxhash\cite{twox-hash} HighwayHash\cite{highway-rs}
