@@ -38,4 +38,4 @@ I suspect memory bandwidth to be very high on this GCP server, which is one less
 
 ## Debugging
 
-Algorithm is mostly inlined, making most profilers fail that providing useful intrinsics. The best I could achieved is profiling at assembly level. [cargo-asm](https://github.com/gnzlbg/cargo-asm) is an easy way to spot the actual generated assembly code with `cargo asm gxhash::gxhash::gxhash`. [AMD μProf](https://www.amd.com/en/developer/uprof.html) gave some useful insights on time spent per instruction.
+Algorithm is mostly inlined, making most profilers fail at providing useful intrinsics. The best I could achieve is profiling at assembly level. [cargo-asm](https://github.com/gnzlbg/cargo-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash`). [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on time spent per instruction.
