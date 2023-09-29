@@ -13,7 +13,10 @@ The fastest non-cryptographic hashing algorithm
 >
 > _— Olivier Giniaux_
 
-Cite this article / algorithm:  
+Publication:  
+[PDF](https://github.com/ogxd/gxhash-rust/blob/main/article/article.pdf)
+
+Cite this publication / algorithm:  
 [![DOI](https://zenodo.org/badge/690754256.svg)](https://zenodo.org/badge/latestdoi/690754256)
 
 ## Prerequisites
