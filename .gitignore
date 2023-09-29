@@ -15,10 +15,11 @@ Cargo.lock
 article/*.log
 article/*.out
 article/*.fls
-article/*.pdf
 article/*.toc
 article/*.fdb_latexmk
 article/*.synctex.gz
 article/*.aux
 article/*.blg
 article/*.bbl
+
+.idea/**/*
