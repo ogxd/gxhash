@@ -1,7 +1,20 @@
 # gxhash-rust
-[![DOI](https://zenodo.org/badge/690754256.svg)](https://zenodo.org/badge/latestdoi/690754256)
+![CI](https://github.com/ogxd/gxhash-rust/actions/workflows/rust.yml/badge.svg)
 
 The fastest non-cryptographic hashing algorithm
+
+## Publication
+
+> I'm committed to the open dissemination of scientific knowledge. In an era where access to information is more democratized than ever, I believe that science should be freely available to all – both for consumption and contribution. Traditional scientific journals often involve significant financial costs, which can introduce biases and can shift the focus from purely scientific endeavors to what is currently trendy. 
+>
+> To counter this trend and to uphold the true spirit of research, I have chosen to share my work on "gxhash" directly on GitHub, ensuring that it's openly accessible to anyone interested. Additionally, the use of a free Zenodo DOI ensures that this research is citable and can be referenced in other works, just as traditional publications are. 
+>
+> I strongly believe in a world where science is not behind paywalls, and I encourage other researchers to join this movement for a more inclusive, unbiased, and open scientific community.
+>
+> _— Olivier Giniaux_
+
+Cite this article / algorithm:  
+[![DOI](https://zenodo.org/badge/690754256.svg)](https://zenodo.org/badge/latestdoi/690754256)
 
 ## Prerequisites
 
