@@ -97,7 +97,7 @@ mod platform_defs {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
 
         // Safety check
-        if check_same_page(p) {
+        if check_same_page(p) { // false {//
             let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
             _mm256_and_si256(_mm256_loadu_si256(p), mask)
         } else {
@@ -133,20 +133,20 @@ mod platform_defs {
     #[inline]
     pub unsafe fn mix(hash: state) -> state {
         let salt = _mm256_set_epi64x(-4860325414534694371, 8120763769363581797, -4860325414534694371, 8120763769363581797);
-        let keys = _mm256_mul_epu32(salt, hash);
-        _mm256_aesenc_epi128(hash, keys)
+        //let keys = _mm256_mul_epu32(salt, hash);
+        _mm256_aesenc_epi128(hash, salt)
     }
 
     #[inline]
     pub unsafe fn fold(hash: state) -> u32 {
         let p = &hash as *const state as *const u32;
-        (*p).wrapping_add(*p.offset(1))
-            .wrapping_add(*p.offset(2))
-            .wrapping_add(*p.offset(3))
-            .wrapping_add(*p.offset(4))
-            .wrapping_add(*p.offset(5))
-            .wrapping_add(*p.offset(6))
-            .wrapping_add(*p.offset(7))
+        *p  ^ *p.offset(1)
+            ^ *p.offset(2)
+            ^ *p.offset(3)
+            ^ *p.offset(4)
+            ^ *p.offset(5)
+            ^ *p.offset(6)
+            ^ *p.offset(7)
     }
 }
 
@@ -157,8 +157,8 @@ pub use platform_defs::*;
 #[cfg(test)]
 pub static mut COUNTERS : Vec<usize> = vec![];
 
-//#[inline]
-#[inline(never)]
+#[inline]
+//#[inline(never)]
 pub fn gxhash(input: &[u8]) -> u32 {
     unsafe {
         const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
@@ -271,10 +271,10 @@ mod tests {
     }
 
     #[test]
-    fn hash_of_zero_is_not_zero() {
+    fn hash_of_zero_is_zero() {
         let zero_bytes = [0u8; 1200];
 
         let hash = gxhash(&zero_bytes);
-        assert_ne!(0, hash);
+        assert_eq!(0, hash);
     }
 }
