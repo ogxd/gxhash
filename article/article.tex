@@ -373,39 +373,13 @@ pub fn compress(a: __m256i, b: __m256i)
 
 \subsection{Finalization}
 
-The finalization process in the GxHash-0 algorithm is crucial to ensure the transformation of its internal state into a fixed-size, uniformly distributed hash output. This process is delineated into two primary steps: mixing the bits and folding (reducing) to the desired hash size.
+The finalization process in the GxHash-0 algorithm is crucial to ensure the transformation of its internal state into a fixed-size, uniformly distributed hash output. This process is delineated into two primary steps: mixing the bits and reducing to the desired hash size.
 
-\subsubsection{Mixing}
+This mixing step is responsible for ensuring the even distribution of bits in the state, thereby reducing patterns or biases that might arise from the input data or the compression process. Given the inherent simplicity of the GxHash-0 compression, it is worth for the finalization to incorporate slightly more intricate bit mixing operations, especially given it runs only once per message hashed, as opposed to the compression that occurs once for each block.\\
+Leveraging SIMD capabilities can help in regard to performance and efficiency, which remains for us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of three AES block cipher rounds ensures a robust diffusion of bits across the state at a cheap computational cost.\\
+The AES keys can be set changed, providing a way to have unique hashes per-application and even per-process, protecting from eventual precomputed or replay attack attempts.
 
-This step is responsible for ensuring the even distribution of bits in the state, thereby reducing patterns or biases that might arise from the input data or the compression process. Given the inherent simplicity of the GxHash-0 compression, it is worth for the finalization to incorporate slightly more intricate bit mixing operations, especially given it runs only once per message hashed, as opposed to the compression that occurs once for each block.\\
-Leveraging SIMD capabilities can help in regard to performance and efficiency, which remains for us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of an AES block cipher intrinsics ensures a robust diffusion of bits across the state at a cheap computational cost.\\
-On top of that, salt is added while forming the AES block cipher keys. This not only improves the distribution but also provides a way to use random salt values per-process, protecting from eventual precomputed or replay attack attempts.
-
-\begin{figure}[ht]
-\begin{lstlisting}[language=Rust, style=boxed]
-use core::arch::x86_64::*;
-
-pub fn mix(hash: state) -> state {
-    // Salt (Knuth primes recommended)
-    let salt = _mm256_set_epi64x(
-        -4860325414534694371,
-        8120763769363581797,
-        -4860325414534694371,
-        8120763769363581797);
-
-    let keys = _mm256_mul_epu32(salt, hash);
-    return _mm256_aesenc_epi128(hash, keys);
-}
-\end{lstlisting}
-\caption{GxHash-0 Mixing in Rust}
-\label{fig:mixing_rust_example}
-\end{figure}
-
-\subsubsection{Folding}
-
-Once the state's bits have been thoroughly mixed, the next step is to condense or "fold" this state into a smaller, fixed-size hash output, typically 32 or 64 bits. A straightforward and effective approach taken for GxHash-0 to achieve this reduction is by summing the constituent \( X \)-bit integer parts of the mixed state. This summation serves as a reduction function, ensuring that the output hash remains within the desired size bounds while still retaining the essence of the mixed state.
-
-While it would have been interesting to leverage SIMD once again, it turned out that, in practice, for both 128-bit and 256-bit state and for both x86 and ARM, summing the integer parts one by one is as performant if not more performant than using the various SIMD workarounds I tested.
+Once the state's bits have been thoroughly mixed, the next step is to reduce this state into a smaller, fixed-size hash output, typically 32 or 64 bits. There are several approaches to this, one being combiniting the \( X \)-bit integer parts of the mixed state together (by xoring them together for instance). GxHash0 takes a simpler path by reinterpreting our state into a smaller \( X \)-bit value, assuming an uniform distribution at the mixing stage thanks to the 3 rounds of AES. This allow the GxHash0 algorithm to generate hashes of any size up to \( s_b \) bits with virtually no additional computational cost.
 
 \subsection{Implementation Details}
 
@@ -492,15 +466,27 @@ The primary quality criteria for non-cryptographic hash functions include:
     \item \textbf{Performance:} The performance of a non cryptographic hash function is usually reflected by the performance of the application using it. For instance, a fast non-cryptographic hash function generally implies a fast hash table. This specific criteria will be tackled in the next section which is dedicated to it. 
 \end{itemize}
 
-While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Pragmatically, we choose a few patterns for our input data:
-\begin{itemize}
-    \item Randomly generated inputs to observe how the hash function behaves with truly unpredictable data
-    \item Sequential inputs to observe how the function handles closely related values. Typically, close values would highlight weaknesses in distribution.
-    \item English words inputs to observe how the function behaves in a "real world scenario"
-\end{itemize}
-
 \subsubsection{Quality Criteria Results}
-For reference, we include a few well-known algorithms on top of GxHash-0.
+
+While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash0 algorithm qualifies against a few well known non-cryptographic algorithm in a few scenarios.
+
+\paragraph{Random Blobs}
+
+Randomly generated inputs to observe how the hash function behaves with truly unpredictable data
+
+\paragraph{Sequential Number}
+
+Sequential inputs to observe how the function handles closely related values. Typically, close values would highlight weaknesses in distribution.
+
+\paragraph{English Words}
+English words inputs to observe how the function behaves in a "real world scenario"
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1\textwidth]{quality-sequential.png}
+\caption{Merkle–Damgård Construction Overview}
+\label{fig:linear-construction}
+\end{figure}
 
 \subsection{Performance}
 
