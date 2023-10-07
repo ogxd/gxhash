@@ -169,7 +169,7 @@ pub fn gxhash(input: &[u8]) -> u32 {
         let p = input.as_ptr() as *const i8;
         let mut v = p as *const state;
         let mut end_address: usize;
-
+        let mut remaining_blocks_count: isize = len / VECTOR_SIZE;
         let mut hash_vector: state = create_empty();
 
         macro_rules! count_for_tests {
@@ -219,13 +219,29 @@ pub fn gxhash(input: &[u8]) -> u32 {
         
             hash_vector = compress(compress(compress(compress(compress(compress(compress(s0, s1), s2), s3), s4), s5), s6), s7);
 
-            let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
-            end_address = v.offset(remaining_blocks_count) as usize;
+            remaining_blocks_count -= unrollable_blocks_count;
         }
-        else
-        {
-            end_address = v.offset(len / VECTOR_SIZE) as usize;
-        }
+
+        end_address = v.offset(remaining_blocks_count) as usize;
+
+        // Temp
+        // let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR;
+        // let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
+        // end_address = v.offset(unrollable_blocks_count) as usize;
+        // //let mut block = create_empty();
+        // while (v as usize) < end_address {
+                
+        //     count_for_tests!();
+        //     load_unaligned!(v0, v1, v2, v3, v4, v5, v6, v7);
+
+        //     prefetch(v);
+
+        //     //v0 = compress(compress(compress(compress(compress(compress(compress(v0, v1), v2), v3), v4), v5), v6), v7);
+        //     v0 = compress(v0, v1);
+
+        //     hash_vector = compress(hash_vector, v0);
+        // }
+        // end_address = v.offset(remaining_blocks_count) as usize;
 
         while (v as usize) < end_address {
             count_for_tests!();

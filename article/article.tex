@@ -6,6 +6,7 @@
 \usepackage{xcolor}
 \usepackage{multicol}
 \usepackage{graphicx}
+\usepackage{float}
 
 \input{rust-listings.tex}
 
@@ -85,7 +86,7 @@ With these components, the hash function \( h \) may be articulated as follows:
     h(M) &= g\left( f(\cdots f(f(0^{s_b}, M_1), M_2) \cdots, M_{n_b}) \right)
 \end{align*}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{linear-construction.png}
 \caption{Merkle–Damgård Construction Overview}
@@ -165,7 +166,7 @@ The temporary hashes are independent and thus eligible for ILP.
 
 Another track taken for the function \texttt{laned} is to unroll the loop and hash on separate lanes, and then mix the lanes together upon exiting the loop. Each lane has its own dependency chain but also on fewer iterations.
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \begin{multicols}{2}
 \begin{lstlisting}[language=Rust, style=boxed]
 const PRIME: u64 = 0x00000100000001b3;
@@ -249,8 +250,8 @@ fn laned(input: &[u64]) -> u64 {
 \subsubsection{Benchmark}
 Here are the timing on both an x86 and an ARM CPU. It also includes timing for the function \texttt{unrolled}, to show that performance increase comes indeed from ILP and not the loop unrolling itself.
 We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for a significant performance increase over the \texttt{baseline}.
-\\
-\begin{figure}[ht]
+
+\begin{figure}[H]
 \centering
 \begin{tabular}{|c|c|c|c|c|}
 \hline
@@ -263,7 +264,7 @@ Apple M1 Pro (ARM 64-bit) & 125.23 µs & 124.42 µs & 28.507 µs & 30.716 µs \\
 \caption{Benchmark timings for ILP example}
 \label{tab:your_table_label}
 \end{figure}
-\\
+
 While the \texttt{temp} and \texttt{laned} functions won't yield exactly the same hashes as the \texttt{baseline}, they serve the same purpose, while being much faster.
 Both approaches have their pros and cons. As the \texttt{laned} explicitly declares \( n \) variables for our lanes, this approach is simpler in regards to compiler analysis and is thus more likely to benefit from ILP, regardless of the compiler or programming language used.
 The following section will delve more in depth into the definition of a \textbf{Laned Construction}.
@@ -294,7 +295,7 @@ which is then passed through \( g \):
 h(M) = g\left( f( \ldots f(f(\ldots f(f(0^{s_b}, H_1), H_2) \ldots, H_{k_b}), M_{{k_b}{n_g}+1}) \ldots, M_{n_b} ) \right).
 \end{equation*}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{laned-construction.png}
 \caption{Laned Construction Overview}
@@ -308,9 +309,9 @@ The \textbf{GxHash} hashing algorithm is designed to maximize throughput by opti
 This design philosophy introduces specific constraints for the compression and finalization functions:
 
 \begin{itemize}
-\item \textbf{Utilization of Hardware Intrinsics:} To achieve the SIMD-oriented goal, arithmetic operations are tailored to be compatible with both x86 and ARM Neon intrinsics.
-\item \textbf{Efficiency through Simplicity:} Minimizing the number of operations is crucial, as fewer operations typically translate to faster execution.
-\item \textbf{Hash Quality Assurance:} Despite these performance optimizations, the algorithm must ensure a minimum level of hash quality to maintain low collision probabilities.
+    \item \textbf{Utilization of Hardware Intrinsics:} To achieve the SIMD-oriented goal, arithmetic operations are tailored to be compatible with both x86 and ARM Neon intrinsics.
+    \item \textbf{Efficiency through Simplicity:} Minimizing the number of operations is crucial, as fewer operations typically translate to faster execution.
+    \item \textbf{Hash Quality Assurance:} Despite these performance optimizations, the algorithm must ensure a minimum level of hash quality to maintain low collision probabilities.
 \end{itemize}
 
 In the next sections, we'll delve into the specific operations and transformations chosen for the compression and finalization functions of the \textbf{GxHash-0} (version 0) algorithm.
@@ -341,7 +342,7 @@ In practice, the \textbf{GxHash-0} uses a combination of SIMD 8-bit wrapping add
 
 While mathematically collisions are inevitable due to the inherent non-bijectivity, odds of collisions using the GxHash-0 compression remain statically low given the uniformity of distribution, although those collisions are predictable due to the inherent simplicity of the function.
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \begin{multicols}{2}
 \begin{lstlisting}[language=Rust, style=boxed]
 // For ARM 64-bit
@@ -403,10 +404,10 @@ Unrolling the loop is a complementary optimization that diminishes greatly any l
 
 In practice, a naive implementation for \( p \) for GxHash in computer code implies copying the remaining bytes into a zero-initialized buffer of size \( s_b \), which can then be loaded onto an SIMD registry and then handed to the compression. In our performance-critical context, these allocations and copies have a substantial overhead.
 
-\paragraph{Read beyond and mask.}
+\paragraph{Read Beyond and Mask}\leavevmode\\
 To avoid this overhead, one possible trick consists of reading \( s_b \) bytes starting from the last block address, even if it implies reading beyond the memory storing the input message. The read bytes can then be masked with the help of a sliding mask, transforming the trailing bytes that don't belong to our message into zeros, in a single SIMD operation. Compared to the naive method, this solution is up to ten times faster on our test machine (Ryzen 5, x86 64-bit, AVX2).
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \begin{lstlisting}[language=Rust, style=boxed]
 use core::arch::x86_64::*;
 
@@ -428,14 +429,14 @@ unsafe fn read_padded(p: *const __m256i, len: isize) -> __m256i {
 \label{fig:read_beyond_example}
 \end{figure}
 
-\paragraph{Safety considerations.}
-Reading beyond a given pointer can lead to accessing memory that is either not mapped to the program's address space or is protected. When the program tries to read such memory, the operating system detects the violation and typically terminates the program, resulting in a crash. This mechanism protects processes from interfering with each other and from accessing system-critical memory regions. While this is very unlikely to occur in most scenarios, the fact that it can theoretically occur is a problem.
+\paragraph{Safety Considerations}\leavevmode\\
+Reading beyond a specified pointer might access memory not mapped to the program's address space or that's protected. If the program tries to read this memory, the OS detects the violation, typically causing a crash. This mechanism ensures processes don't interfere with each other or access critical memory areas. Although rare, the potential for this issue exists.
 
-In modern computers, memory is divided into fixed-size chunks called pages. Once a page is given to a program, it can freely access any part of that page without causing system-level errors like segmentation faults. We can take this to our advantage by checking if our unsafe operation is entirely contained in a single block. If so, it means we can use the optimized method safely. Otherwise, we can fallback to the naive method.
+In modern computers, memory is divided into chunks called pages. A program can access any part of its assigned page without system-level errors like segmentation faults. We can check if an unsafe operation is within a single page. If it is, we can use the optimized method; if not, we fallback to the naive method.
 
-In practice, this is quite trivial to implement since memory is divided into pages in such a way that addresses within a single page will share the same higher bits and only vary in the lower bits that represent offsets within that page. The snippet in figure~\ref{fig:check_page_example} does this considering a minimal page size of 4096. Statistically speaking, the odds of having 32 bytes on the same page are above 99\%. This safety check being very cheap to compute, we keep most of the performance advantages of our method while addressing the safety issue.
+Memory pages are designed so addresses within them share higher bits and vary only in lower bits, representing offsets. The code in figure~\ref{fig:check_page_example} uses this principle, considering a page size of 4096. The likelihood of having 32 bytes on the same page exceeds 99\%. This safety check is cost-effective, retaining most performance benefits while ensuring safety.
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \begin{lstlisting}[language=Rust, style=boxed]
 unsafe fn is_same_page(ptr: *const __m256i) -> bool {
     // Usual minimal page size on modern computers
@@ -452,6 +453,7 @@ unsafe fn is_same_page(ptr: *const __m256i) -> bool {
 \label{fig:check_page_example}
 \end{figure}
 
+\clearpage
 \section{Benchmarks}
 
 \subsection{Quality}
@@ -466,33 +468,136 @@ The primary quality criteria for non-cryptographic hash functions include:
     \item \textbf{Performance:} The performance of a non cryptographic hash function is usually reflected by the performance of the application using it. For instance, a fast non-cryptographic hash function generally implies a fast hash table. This specific criteria will be tackled in the next section which is dedicated to it. 
 \end{itemize}
 
-\subsubsection{Quality Criteria Results}
+\subsubsection{Quality Results}
 
 While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash0 algorithm qualifies against a few well known non-cryptographic algorithm in a few scenarios.
 
-\paragraph{Random Blobs}
+Todo: Actual funcs used ? Like what is bits distribution vs distribution ?
 
+\clearpage
+\paragraph{Random Blobs}\leavevmode\\
 Randomly generated inputs to observe how the hash function behaves with truly unpredictable data
 
-\paragraph{Sequential Number}
-
-Sequential inputs to observe how the function handles closely related values. Typically, close values would highlight weaknesses in distribution.
-
-\paragraph{English Words}
-English words inputs to observe how the function behaves in a "real world scenario"
-
-\begin{figure}[h]
+\begin{table}[H]
 \centering
-\includegraphics[width=1\textwidth]{quality-sequential.png}
-\caption{Merkle–Damgård Construction Overview}
-\label{fig:linear-construction}
+\begin{tabular}{|l|r|r|r|r|}
+\hline
+\textbf{Function for Random dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
+\hline
+Int32 GxHash0(4)            & 0,0241\% & 0,001094  & 0,000002 & 0,00412 \\
+Int32 GxHash0(64)           & 0,0103\% & 0,001081  & 0,000002 & 0,00296 \\
+Int32 GxHash0(1000)         & 0,012\%  & 0,001148  & 0,000002 & 0,00336 \\
+Int32 HighwayHash(4)        & 0,0237\% & 0,001135  & 0,000002 & 0,00001 \\
+Int32 HighwayHash(64)       & 0,0117\% & 0,001028  & 0,000002 & 0,00078 \\
+Int32 HighwayHash(1000)     & 0,0103\% & 0,00092   & 0,000002 & 0,00032 \\
+Int32 T1ha(4)               & 0,021\%  & 0,001034  & 0,000002 & 0,00002 \\
+Int32 T1ha(64)              & 0,0123\% & 0,000933  & 0,000002 & 0,00047 \\
+Int32 T1ha(1000)            & 0,0114\% & 0,001087  & 0,000002 & 0,00027 \\
+UInt32 XxHash(4)            & 0,0119\% & 0,00102   & 0,000002 & 0,00027 \\
+UInt32 XxHash(64)           & 0,013\%  & 0,000871  & 0,000002 & 0,00083 \\
+UInt32 XxHash(1000)         & 0,0131\% & 0,001214  & 0,000002 & 0,00038 \\
+UInt32 Fnv1a(4)             & 0,031\%  & 0,001008  & 0,000002 & 0,20155 \\
+UInt32 Fnv1a(64)            & 0,0094\% & 0,000748  & 0,000002 & 0,08599 \\
+UInt32 Fnv1a(1000)          & 0,0138\% & 0,000821  & 0,000002 & 0,07861 \\
+UInt32 Crc(4)               & 0,0119\% & 0,000811  & 0,000002 & 0,11689 \\
+UInt32 Crc(64)              & 0,0117\% & 0,001041  & 0,000002 & 0,02473 \\
+UInt32 Crc(1000)            & 0,0123\% & 0,001097  & 0,000002 & 0,00514 \\
+\hline
+\end{tabular}
+\caption{Your Table Caption Here}
+\label{tab:my_label}
+\end{table}
+    
+Du blabla
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{quality-random.png}
+\caption{Distribution map for random dataset}
+\label{fig:quality-random}
 \end{figure}
 
+Encore du blabla
+
+\clearpage
+\paragraph{Sequential Number}\leavevmode\\
+Sequential inputs to observe how the function handles closely related values. Typically, close values would highlight weaknesses in distribution.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|r|r|r|r|}
+\hline
+\textbf{Function for Sequential dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
+\hline
+Int32 GxHash0(4)                & 0,0104\% & 0,000009  & 0,000002 & 0,00308 \\
+Int32 GxHash0(64)               & 0,0106\% & 0,000009  & 0,0000019 & 0,00225 \\
+Int32 GxHash0(1000)             & 0,0104\% & 0,000009  & 0,000002 & 0,00283 \\
+Int32 HighwayHash(4)            & 0,0117\% & 0,00112   & 0,000002 & 0,00011 \\
+Int32 HighwayHash(64)           & 0,0104\% & 0,001204  & 0,000002 & 0,00044 \\
+Int32 HighwayHash(1000)         & 0,0112\% & 0,001188  & 0,000002 & 0,00131 \\
+Int32 T1ha(4)                   & 0,012\%  & 0,000746  & 0,000002 & 0,00076 \\
+Int32 T1ha(64)                  & 0,0125\% & 0,000987  & 0,000002 & 0,00071 \\
+Int32 T1ha(1000)                & 0,0113\% & 0,000944  & 0,000002 & 0,00003 \\
+UInt32 XxHash(4)                & 0\%      & 0,000933  & 0,000002 & 0,00018 \\
+UInt32 XxHash(64)               & 0\%      & 0,000907  & 0,000002 & 0,00046 \\
+UInt32 XxHash(1000)             & 0\%      & 0,001081  & 0,000002 & 0,0007 \\
+UInt32 Fnv1a(4)                 & 0\%      & 0,00009   & 0,0000017 & 0,18255 \\
+UInt32 Fnv1a(64)                & 0\%      & 0,000064  & 0,0000022 & 0,08281 \\
+UInt32 Fnv1a(1000)              & 0\%      & 0,000042  & 0,0000018 & 0,08416 \\
+UInt32 Crc(4)                   & 0\%      & 0,000003  & 0,000002 & 0,11729 \\
+UInt32 Crc(64)                  & 0\%      & 0,000003  & 0,0000004 & 0,02542 \\
+UInt32 Crc(1000)                & 0\%      & 0,00001   & 0,0000004 & 0,0046 \\
+\hline
+\end{tabular}
+\caption{Your Table Caption Here}
+\label{tab:my_label}
+\end{table}
+
+Some blabla
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{quality-sequential.png}
+\caption{Distribution map for sequential dataset}
+\label{fig:quality-sequential}
+\end{figure}
+
+Some more blabla
+
+\clearpage
+\paragraph{English Words}\leavevmode\\
+English words inputs to observe how the function behaves in a "real world scenario"
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|r|r|r|r|}
+\hline
+\textbf{Function for MarkovWords dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
+\hline
+Int32 GxHash0(64)                & 0,0136\% & 0,001082  & 0,000002 & 0,00319 \\
+Int32 GxHash0(1000)              & 0,0119\% & 0,000894  & 0,000002 & 0,0034 \\
+Int32 HighwayHash(64)            & 0,0123\% & 0,000809  & 0,000002 & 0,00048 \\
+Int32 HighwayHash(1000)          & 0,0117\% & 0,00092   & 0,000002 & 0,00078 \\
+Int32 T1ha(64)                   & 0,0111\% & 0,000803  & 0,000002 & 0,00064 \\
+Int32 T1ha(1000)                 & 0,0123\% & 0,001175  & 0,000002 & 0,00135 \\
+UInt32 XxHash(64)                & 0,0106\% & 0,000766  & 0,000002 & 0,00046 \\
+UInt32 XxHash(1000)              & 0,01\%   & 0,000892  & 0,000002 & 0,00021 \\
+UInt32 Fnv1a(64)                 & 0,0122\% & 0,000998  & 0,000002 & 0,08585 \\
+UInt32 Fnv1a(1000)               & 0,0127\% & 0,000993  & 0,000002 & 0,08143 \\
+UInt32 Crc(64)                   & 0,0124\% & 0,000965  & 0,000002 & 0,02467 \\
+UInt32 Crc(1000)                 & 0,0123\% & 0,000708  & 0,000002 & 0,00499 \\
+\hline
+\end{tabular}
+\caption{Your Table Caption Here}
+\label{tab:my_label}
+\end{table}
+
+\clearpage
 \subsection{Performance}
 
 t1ha\cite{rust-t1ha} xxhash\cite{twox-hash} HighwayHash\cite{highway-rs}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{throughput.png}
 \caption{Throughput Benchmark Results}
