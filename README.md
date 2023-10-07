@@ -37,8 +37,9 @@ To run the benchmarks: `cargo bench --bench throughput` (don't forget the env fl
 | Method           |      4 |     16 |     64 |    256 |   1024 |   4096 |  16384 |
 | ---------------- | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
 | t1ha-0 AVX2      |  0.921 | 3.5989 | 11.858 | 32.581 | 52.552 | 60.746 | 65.863 |
-| gxhash-0 AVX2    | 11.638 | 46.292 | 31.353 | 81.483 | 103.91 | 101.29 | 99.666 |
-| gxhash-0 AVX-512 | 10.927 | 43.136 | 27.944 | 68.942 | 136.63 | 112.16 | 105.32 |
+| gxhash-0 AVX2    | 11.638 | 46.132 | 40.365 | 134.11 | 143.55 | 155.34 | 168.65 |
+
+| gxhash-0 AVX-512 | 10.927 | 43.136 | 40.365 | 68.942 | 136.63 | 112.16 | 105.32 |
 
 I suspect memory bandwidth to be very high on this GCP server, which is one less bottleneck for gxhash to achieve even greater throughput for small input sizes.
 
