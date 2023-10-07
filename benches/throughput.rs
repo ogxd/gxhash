@@ -41,7 +41,7 @@ criterion_group! {
     name = benches;
     config = Criterion::default()
         .sample_size(1000)
-        .measurement_time(Duration::from_secs(3));
+        .measurement_time(Duration::from_secs(5));
     targets = gxhash_benchmark,
 }
 criterion_main!(benches);
