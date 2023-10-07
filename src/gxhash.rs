@@ -121,8 +121,9 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
-        let sum: state = _mm256_add_epi8(a, b);
-        _mm256_alignr_epi8(sum, sum, 1)
+        //let sum: state = _mm256_add_epi8(a, b);
+        //_mm256_alignr_epi8(sum, sum, 1)
+        _mm256_aesdeclast_epi128(a, b)
     }
 
     #[inline]
@@ -217,7 +218,10 @@ pub fn gxhash(input: &[u8]) -> u32 {
                 s7 = compress(s7, v7);
             }
         
-            hash_vector = compress(compress(compress(compress(compress(compress(compress(s0, s1), s2), s3), s4), s5), s6), s7);
+            //hash_vector = _mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(s0, s1), s2), s3), s4), s5), s6), s7);
+            let a = compress(compress(s0, s1), compress(s2, s3));
+            let b = compress(compress(s4, s5), compress(s6, s7));
+            hash_vector = compress(a, b);
 
             remaining_blocks_count -= unrollable_blocks_count;
         }
@@ -243,7 +247,7 @@ pub fn gxhash(input: &[u8]) -> u32 {
         // }
         // end_address = v.offset(remaining_blocks_count) as usize;
 
-        while (v as usize) < end_address {
+        while likely((v as usize) < end_address) {
             count_for_tests!();
             load_unaligned!(v0);
             hash_vector = compress(hash_vector, v0);
