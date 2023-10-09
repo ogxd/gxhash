@@ -574,12 +574,12 @@ English words inputs to observe how the function behaves in a "real world scenar
 \hline
 \textbf{Function for MarkovWords dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
 \hline
-Int32 GxHash0(64)                & 0,0136\% & 0,001082  & 0,000002 & 0,00319 \\
-Int32 GxHash0(1000)              & 0,0119\% & 0,000894  & 0,000002 & 0,0034 \\
-Int32 HighwayHash(64)            & 0,0123\% & 0,000809  & 0,000002 & 0,00048 \\
-Int32 HighwayHash(1000)          & 0,0117\% & 0,00092   & 0,000002 & 0,00078 \\
-Int32 T1ha(64)                   & 0,0111\% & 0,000803  & 0,000002 & 0,00064 \\
-Int32 T1ha(1000)                 & 0,0123\% & 0,001175  & 0,000002 & 0,00135 \\
+UInt32 GxHash0(64)                & 0,0136\% & 0,001082  & 0,000002 & 0,00319 \\
+UInt32 GxHash0(1000)              & 0,0119\% & 0,000894  & 0,000002 & 0,0034 \\
+UInt32 HighwayHash(64)            & 0,0123\% & 0,000809  & 0,000002 & 0,00048 \\
+UInt32 HighwayHash(1000)          & 0,0117\% & 0,00092   & 0,000002 & 0,00078 \\
+UInt32 T1ha(64)                   & 0,0111\% & 0,000803  & 0,000002 & 0,00064 \\
+UInt32 T1ha(1000)                 & 0,0123\% & 0,001175  & 0,000002 & 0,00135 \\
 UInt32 XxHash(64)                & 0,0106\% & 0,000766  & 0,000002 & 0,00046 \\
 UInt32 XxHash(1000)              & 0,01\%   & 0,000892  & 0,000002 & 0,00021 \\
 UInt32 Fnv1a(64)                 & 0,0122\% & 0,000998  & 0,000002 & 0,08585 \\
@@ -592,6 +592,13 @@ UInt32 Crc(1000)                 & 0,0123\% & 0,000708  & 0,000002 & 0,00499 \\
 \label{tab:my_label}
 \end{table}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{quality-markov.png}
+\caption{Distribution map for markov dataset}
+\label{fig:quality-sequential}
+\end{figure}
+
 \clearpage
 \subsection{Performance}
 
@@ -600,8 +607,13 @@ t1ha\cite{rust-t1ha} xxhash\cite{twox-hash} HighwayHash\cite{highway-rs}
 \begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{throughput.png}
-\caption{Throughput Benchmark Results}
 \label{fig:benchmark-throughput}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{throughput-gcp.png}
+\label{fig:benchmark-throughput-gcp}
 \end{figure}
 
 \section{Discussion}
