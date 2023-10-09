@@ -154,18 +154,12 @@ use std::intrinsics::likely;
 
 pub use platform_defs::*;
 
-#[cfg(test)]
-pub static mut COUNTERS : Vec<usize> = vec![];
-
 #[inline] // To be disabled when profiling
 pub fn gxhash(input: &[u8]) -> u32 {
     unsafe {
         const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
-        const UNROLL_FACTOR: isize = 8;
-    
+        
         let len: isize = input.len() as isize;
-    
-        let remaining_bytes = len & (VECTOR_SIZE - 1);
     
         let p = input.as_ptr() as *const i8;
         let mut v = p as *const state;
@@ -173,16 +167,6 @@ pub fn gxhash(input: &[u8]) -> u32 {
         let mut remaining_blocks_count: isize = len / VECTOR_SIZE;
         let mut hash_vector: state = create_empty();
 
-        macro_rules! count_for_tests {
-            () => {
-                #[cfg(test)]
-                {
-                    let index = ((v as usize) - (p as usize)) / VECTOR_SIZE as usize;
-                    COUNTERS.push(index);
-                }
-            };
-        }
-        
         macro_rules! load_unaligned {
             ($($var:ident),+) => {
                 $(
@@ -193,17 +177,16 @@ pub fn gxhash(input: &[u8]) -> u32 {
             };
         }
 
+        const UNROLL_FACTOR: isize = 8;
         if len >= VECTOR_SIZE * UNROLL_FACTOR {
 
             let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR; 
             end_address = v.offset(unrollable_blocks_count) as usize;
     
-            count_for_tests!();
             load_unaligned!(s0, s1, s2, s3, s4, s5, s6, s7);
  
             while (v as usize) < end_address {
                 
-                count_for_tests!();
                 load_unaligned!(v0, v1, v2, v3, v4, v5, v6, v7);
 
                 prefetch(v);
@@ -218,7 +201,6 @@ pub fn gxhash(input: &[u8]) -> u32 {
                 s7 = compress(s7, v7);
             }
         
-            //hash_vector = _mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(_mm256_aesdeclast_epi128(s0, s1), s2), s3), s4), s5), s6), s7);
             let a = compress(compress(s0, s1), compress(s2, s3));
             let b = compress(compress(s4, s5), compress(s6, s7));
             hash_vector = compress(a, b);
@@ -228,33 +210,13 @@ pub fn gxhash(input: &[u8]) -> u32 {
 
         end_address = v.offset(remaining_blocks_count) as usize;
 
-        // Temp
-        // let unrollable_blocks_count: isize = (len / (VECTOR_SIZE * UNROLL_FACTOR)) * UNROLL_FACTOR;
-        // let remaining_blocks_count: isize = (len / VECTOR_SIZE) - unrollable_blocks_count;
-        // end_address = v.offset(unrollable_blocks_count) as usize;
-        // //let mut block = create_empty();
-        // while (v as usize) < end_address {
-                
-        //     count_for_tests!();
-        //     load_unaligned!(v0, v1, v2, v3, v4, v5, v6, v7);
-
-        //     prefetch(v);
-
-        //     //v0 = compress(compress(compress(compress(compress(compress(compress(v0, v1), v2), v3), v4), v5), v6), v7);
-        //     v0 = compress(v0, v1);
-
-        //     hash_vector = compress(hash_vector, v0);
-        // }
-        // end_address = v.offset(remaining_blocks_count) as usize;
-
         while likely((v as usize) < end_address) {
-            count_for_tests!();
             load_unaligned!(v0);
             hash_vector = compress(hash_vector, v0);
         }
 
+        let remaining_bytes = len & (VECTOR_SIZE - 1);
         if likely(remaining_bytes > 0) {
-            count_for_tests!();
             let partial_vector = get_partial(v, remaining_bytes);
             hash_vector = compress(hash_vector, partial_vector);
         }
@@ -265,34 +227,29 @@ pub fn gxhash(input: &[u8]) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use rand::Rng;
 
     use super::*;
 
     #[test]
     fn all_blocks_are_consumed() {
-        let expected: [usize; 10] = [0, 8, 16, 24, 32, 33, 34, 35, 36, 37];
-        let mut rng = rand::thread_rng();
-        let mut random_bytes = [0u8; 1200];
-        rng.fill(&mut random_bytes[..]);
-    
-        unsafe
-        {
-            COUNTERS.clear();
-            let hash = gxhash(&random_bytes);
-            assert_ne!(0, hash);
+        let mut bytes = [42u8; 1200];
 
-            // cargo test -- --nocapture
-            println!("{:?}", &COUNTERS);
-            assert_eq!(COUNTERS.as_slice(), expected.as_slice());
+        let ref_hash = gxhash(&bytes);
+
+        for i in 0..bytes.len() {
+            let swap = bytes[i];
+            bytes[i] = 82;
+            let new_hash = gxhash(&bytes);
+            bytes[i] = swap;
+
+            assert_ne!(ref_hash, new_hash, "byte {i} not processed");
         }
     }
 
     #[test]
     fn hash_of_zero_is_not_zero() {
-        let zero_bytes = [0u8; 1200];
-
-        let hash = gxhash(&zero_bytes);
-        assert_ne!(0, hash);
+        assert_ne!(0, gxhash(&[0u8; 0]));
+        assert_ne!(0, gxhash(&[0u8; 1]));
+        assert_ne!(0, gxhash(&[0u8; 1200]));
     }
 }
