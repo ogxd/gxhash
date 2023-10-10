@@ -42,20 +42,47 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
-        let sum: state = vaddq_s8(a, b);
-        vextq_s8(sum, sum, 1) 
+        ReinterpretUnion{ uint8: aes_encrypt_last(
+            ReinterpretUnion{ int8: a }.uint8, 
+            ReinterpretUnion{ int8: b }.uint8) }.int8
+    }
+
+    #[inline]
+    // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
+    unsafe fn aes_encrypt(data: uint8x16_t, keys: uint8x16_t) -> uint8x16_t {
+        // Encrypt
+        let encrypted = vaeseq_u8(data, vdupq_n_u8(0));
+        // Mix columns
+        let mixed = vaesmcq_u8(encrypted);
+        // Xor keys
+        veorq_u8(mixed, keys)
+    }
+
+    #[inline]
+    // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
+    unsafe fn aes_encrypt_last(data: uint8x16_t, keys: uint8x16_t) -> uint8x16_t {
+        // Encrypt
+        let encrypted = vaeseq_u8(data, vdupq_n_u8(0));
+        // Xor keys
+        veorq_u8(encrypted, keys)
     }
 
     #[inline]
     pub unsafe fn finalize(hash: state) -> u32 {
-        let salt = vcombine_s64(vcreate_s64(4860325414534694371), vcreate_s64(8120763769363581797));
-        let keys = vmulq_s32(
-            ReinterpretUnion { int64: salt }.int32,
-            ReinterpretUnion { int8: hash }.int32);
-        let a = vaeseq_u8(ReinterpretUnion { int8: hash }.uint8, vdupq_n_u8(0));
-        let b = vaesmcq_u8(a);
-        let c = veorq_u8(b, ReinterpretUnion{ int32: keys }.uint8);
-        let p = &ReinterpretUnion{ uint8: c }.int8 as *const state as *const u32;
+        // Hardcoded AES keys
+        let salt1 = vld1q_u32([0x713B01D0, 0x8F2F35DB, 0xAF163956, 0x85459F85].as_ptr());
+        let salt2 = vld1q_u32([0x1DE09647, 0x92CFA39C, 0x3DD99ACA, 0xB89C054F].as_ptr());
+        let salt3 = vld1q_u32([0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32].as_ptr());
+
+        // 3 rounds of AES
+        let mut hash = ReinterpretUnion{ int8: hash }.uint8;
+        hash = aes_encrypt(hash, ReinterpretUnion{ uint32: salt1 }.uint8);
+        hash = aes_encrypt(hash, ReinterpretUnion{ uint32: salt2 }.uint8);
+        hash = aes_encrypt_last(hash, ReinterpretUnion{ uint32: salt3 }.uint8);
+        let hash = ReinterpretUnion{ uint8: hash }.int8;
+
+        // Truncate to output hash size
+        let p = &hash as *const state as *const u32;
         *p
     }
 }
