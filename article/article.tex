@@ -463,20 +463,33 @@ The primary quality criteria for non-cryptographic hash functions include:
 
 \begin{itemize}
     \item \textbf{Uniform Distribution:} A high-quality hash function distributes its output values as uniformly as possible across the output space. This ensures that, when used in applications like hash tables, the data is spread evenly, reducing clustering and the frequency of collisions.
+
+    We can estimate the uniformity of the distribution by counting the number of times each bit is set and computing a standard deviation. This "bit distribution" criteria however does not qualifies the distributiono of the hashes a whole, so a complementary estimator is the "bucketed distribution", which be computed by placing generated hashes into a fixed size grid and counting occurences. This can also be easily displayed as a bitmap as a convenient way to visualize distribution.
     \item \textbf{Minimal Collisions:} While no hash function can be entirely collision-free due to the pigeonhole principle, a good non-cryptographic hash should minimize collisions for typical input sets, ensuring that different inputs usually produce distinct outputs.
+    
+    The collison rate can be computed by counting unique values with the help of an hash table.
     \item \textbf{Avalanche Effect:} A subtle change in the input should result in a considerably different output, ensuring sensitivity to input variations. This also contributes to lessen the risk of clustered hashes in applications like hash tables.
+    
+    The avalanche effect can be computed by fliping a single random bit for given input and checking the differences between the hashes generated before and after the bit was flipped. Ideally, half of the bit should change on average.
     \item \textbf{Performance:} The performance of a non cryptographic hash function is usually reflected by the performance of the application using it. For instance, a fast non-cryptographic hash function generally implies a fast hash table. This specific criteria will be tackled in the next section which is dedicated to it. 
+
 \end{itemize}
 
 \subsubsection{Quality Results}
 
 While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash0 algorithm qualifies against a few well known non-cryptographic algorithm in a few scenarios.
 
-Todo: Actual funcs used ? Like what is bits distribution vs distribution ?
+For comparison, we'll also include qualification results for a few other popular non-cryptographic hash algorithms such as:
+
+\begin{itemize}
+\item \textbf{HighwayHash}\cite{highwayhash} The latest non-cryptographic hash algorithm from Google Research
+\item \textbf{xxHash}\cite{twox-hash} Recently a very popular algorithm for fast non-cryptographic hashing
+\item \textbf{t1ha0}\cite{rust-t1ha} Supposedly the fastest algorithm
+\end{itemize}
 
 \clearpage
 \paragraph{Random Blobs}\leavevmode\\
-Randomly generated inputs to observe how the hash function behaves with truly unpredictable data
+For the first scenario we randomly generate 1,000,000 inputs of size 4 bytes, 64 and 1000 to observe how the hash function behaves with truly unpredictable data, and for different input sizes.
 
 \begin{table}[H]
 \centering
@@ -484,31 +497,44 @@ Randomly generated inputs to observe how the hash function behaves with truly un
 \hline
 \textbf{Function for Random dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
 \hline
-Int32 GxHash0(4)            & 0,0241\% & 0,001094  & 0,000002 & 0,00412 \\
-Int32 GxHash0(64)           & 0,0103\% & 0,001081  & 0,000002 & 0,00296 \\
-Int32 GxHash0(1000)         & 0,012\%  & 0,001148  & 0,000002 & 0,00336 \\
-Int32 HighwayHash(4)        & 0,0237\% & 0,001135  & 0,000002 & 0,00001 \\
-Int32 HighwayHash(64)       & 0,0117\% & 0,001028  & 0,000002 & 0,00078 \\
-Int32 HighwayHash(1000)     & 0,0103\% & 0,00092   & 0,000002 & 0,00032 \\
-Int32 T1ha(4)               & 0,021\%  & 0,001034  & 0,000002 & 0,00002 \\
-Int32 T1ha(64)              & 0,0123\% & 0,000933  & 0,000002 & 0,00047 \\
-Int32 T1ha(1000)            & 0,0114\% & 0,001087  & 0,000002 & 0,00027 \\
+UInt32 GxHash0(4)            & 0,0241\% & 0,001094  & 0,000002 & 0,00412 \\
+UInt32 GxHash0(64)           & 0,0103\% & 0,001081  & 0,000002 & 0,00296 \\
+UInt32 GxHash0(1000)         & 0,012\%  & 0,001148  & 0,000002 & 0,00336 \\
+UInt32 HighwayHash(4)        & 0,0237\% & 0,001135  & 0,000002 & 0,00001 \\
+UInt32 HighwayHash(64)       & 0,0117\% & 0,001028  & 0,000002 & 0,00078 \\
+UInt32 HighwayHash(1000)     & 0,0103\% & 0,00092   & 0,000002 & 0,00032 \\
+UInt32 T1ha(4)               & 0,021\%  & 0,001034  & 0,000002 & 0,00002 \\
+UInt32 T1ha(64)              & 0,0123\% & 0,000933  & 0,000002 & 0,00047 \\
+UInt32 T1ha(1000)            & 0,0114\% & 0,001087  & 0,000002 & 0,00027 \\
 UInt32 XxHash(4)            & 0,0119\% & 0,00102   & 0,000002 & 0,00027 \\
 UInt32 XxHash(64)           & 0,013\%  & 0,000871  & 0,000002 & 0,00083 \\
 UInt32 XxHash(1000)         & 0,0131\% & 0,001214  & 0,000002 & 0,00038 \\
-UInt32 Fnv1a(4)             & 0,031\%  & 0,001008  & 0,000002 & 0,20155 \\
-UInt32 Fnv1a(64)            & 0,0094\% & 0,000748  & 0,000002 & 0,08599 \\
-UInt32 Fnv1a(1000)          & 0,0138\% & 0,000821  & 0,000002 & 0,07861 \\
-UInt32 Crc(4)               & 0,0119\% & 0,000811  & 0,000002 & 0,11689 \\
-UInt32 Crc(64)              & 0,0117\% & 0,001041  & 0,000002 & 0,02473 \\
+UInt32 Fnv1a(4)             & 0,031\%  & 0,001008  & 0,000002 & \textcolor{red}{0,20155} \\
+UInt32 Fnv1a(64)            & 0,0094\% & 0,000748  & 0,000002 & \textcolor{orange}{0,08599} \\
+UInt32 Fnv1a(1000)          & 0,0138\% & 0,000821  & 0,000002 & \textcolor{orange}{0,07861} \\
+UInt32 Crc(4)               & 0,0119\% & 0,000811  & 0,000002 & \textcolor{red}{0,11689} \\
+UInt32 Crc(64)              & 0,0117\% & 0,001041  & 0,000002 & \textcolor{orange}{0,02473} \\
 UInt32 Crc(1000)            & 0,0123\% & 0,001097  & 0,000002 & 0,00514 \\
 \hline
 \end{tabular}
 \caption{Your Table Caption Here}
-\label{tab:my_label}
+\label{tab:quality-data-random}
 \end{table}
     
-Du blabla
+All numbers are very low, and GxHash0 quality results is of the same order of magnitude as for other algoririthms.
+We can notice however a collision rate of about 0.011\% and even 0.022\% for a few of them for the 4 bytes input.
+There is however an explanation: we can derive from the birthday paradox problem the following formula to
+estimate the \% of collisions:
+
+\begin{align*}
+    100 \times \frac{n^2}{2 \times m \times n}
+\end{align*}
+
+Where \(n\) is the number of samples and \(m\) the number of possible of values. When \(n=1000000\) and \(m=2^32\) we obtain 0.0116\%.
+You can see that this value closely matches most of the collision rates benchmarked. This is because the generated hashes are of 32 bit size,
+thus naturally colliding at this rate. For inputs of size 4, the inputs themselves are also likely to collide with the same odds (because inputs are randomly generated). For this reason, the collision rate is expected to be about 2 \(\times\) 0.0116\%.
+We can however see however that Crc and XxHash have lower odds of collisions for 4 bytes input, which can be explained by a size-specific logic to handle small inputs bijectively.
+
 
 \begin{figure}[H]
 \centering
@@ -529,23 +555,23 @@ Sequential inputs to observe how the function handles closely related values. Ty
 \hline
 \textbf{Function for Sequential dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
 \hline
-Int32 GxHash0(4)                & 0,0104\% & 0,000009  & 0,000002 & 0,00308 \\
-Int32 GxHash0(64)               & 0,0106\% & 0,000009  & 0,0000019 & 0,00225 \\
-Int32 GxHash0(1000)             & 0,0104\% & 0,000009  & 0,000002 & 0,00283 \\
-Int32 HighwayHash(4)            & 0,0117\% & 0,00112   & 0,000002 & 0,00011 \\
-Int32 HighwayHash(64)           & 0,0104\% & 0,001204  & 0,000002 & 0,00044 \\
-Int32 HighwayHash(1000)         & 0,0112\% & 0,001188  & 0,000002 & 0,00131 \\
-Int32 T1ha(4)                   & 0,012\%  & 0,000746  & 0,000002 & 0,00076 \\
-Int32 T1ha(64)                  & 0,0125\% & 0,000987  & 0,000002 & 0,00071 \\
-Int32 T1ha(1000)                & 0,0113\% & 0,000944  & 0,000002 & 0,00003 \\
+UInt32 GxHash0(4)                & 0,0104\% & 0,000009  & 0,000002 & 0,00308 \\
+UInt32 GxHash0(64)               & 0,0106\% & 0,000009  & 0,0000019 & 0,00225 \\
+UInt32 GxHash0(1000)             & 0,0104\% & 0,000009  & 0,000002 & 0,00283 \\
+UInt32 HighwayHash(4)            & 0,0117\% & 0,00112   & 0,000002 & 0,00011 \\
+UInt32 HighwayHash(64)           & 0,0104\% & 0,001204  & 0,000002 & 0,00044 \\
+UInt32 HighwayHash(1000)         & 0,0112\% & 0,001188  & 0,000002 & 0,00131 \\
+UInt32 T1ha(4)                   & 0,012\%  & 0,000746  & 0,000002 & 0,00076 \\
+UInt32 T1ha(64)                  & 0,0125\% & 0,000987  & 0,000002 & 0,00071 \\
+UInt32 T1ha(1000)                & 0,0113\% & 0,000944  & 0,000002 & 0,00003 \\
 UInt32 XxHash(4)                & 0\%      & 0,000933  & 0,000002 & 0,00018 \\
 UInt32 XxHash(64)               & 0\%      & 0,000907  & 0,000002 & 0,00046 \\
 UInt32 XxHash(1000)             & 0\%      & 0,001081  & 0,000002 & 0,0007 \\
-UInt32 Fnv1a(4)                 & 0\%      & 0,00009   & 0,0000017 & 0,18255 \\
-UInt32 Fnv1a(64)                & 0\%      & 0,000064  & 0,0000022 & 0,08281 \\
-UInt32 Fnv1a(1000)              & 0\%      & 0,000042  & 0,0000018 & 0,08416 \\
-UInt32 Crc(4)                   & 0\%      & 0,000003  & 0,000002 & 0,11729 \\
-UInt32 Crc(64)                  & 0\%      & 0,000003  & 0,0000004 & 0,02542 \\
+UInt32 Fnv1a(4)                 & 0\%      & 0,00009   & 0,0000017 & \textcolor{red}{0,18255} \\
+UInt32 Fnv1a(64)                & 0\%      & 0,000064  & 0,0000022 & \textcolor{orange}{0,08281} \\
+UInt32 Fnv1a(1000)              & 0\%      & 0,000042  & 0,0000018 & \textcolor{orange}{0,08416} \\
+UInt32 Crc(4)                   & 0\%      & 0,000003  & 0,000002 & \textcolor{red}{0,11729} \\
+UInt32 Crc(64)                  & 0\%      & 0,000003  & 0,0000004 & \textcolor{orange}{0,02542} \\
 UInt32 Crc(1000)                & 0\%      & 0,00001   & 0,0000004 & 0,0046 \\
 \hline
 \end{tabular}
@@ -582,9 +608,9 @@ UInt32 T1ha(64)                   & 0,0111\% & 0,000803  & 0,000002 & 0,00064 \\
 UInt32 T1ha(1000)                 & 0,0123\% & 0,001175  & 0,000002 & 0,00135 \\
 UInt32 XxHash(64)                & 0,0106\% & 0,000766  & 0,000002 & 0,00046 \\
 UInt32 XxHash(1000)              & 0,01\%   & 0,000892  & 0,000002 & 0,00021 \\
-UInt32 Fnv1a(64)                 & 0,0122\% & 0,000998  & 0,000002 & 0,08585 \\
-UInt32 Fnv1a(1000)               & 0,0127\% & 0,000993  & 0,000002 & 0,08143 \\
-UInt32 Crc(64)                   & 0,0124\% & 0,000965  & 0,000002 & 0,02467 \\
+UInt32 Fnv1a(64)                 & 0,0122\% & 0,000998  & 0,000002 & \textcolor{orange}{0,08585} \\
+UInt32 Fnv1a(1000)               & 0,0127\% & 0,000993  & 0,000002 & \textcolor{orange}{0,08143} \\
+UInt32 Crc(64)                   & 0,0124\% & 0,000965  & 0,000002 & \textcolor{orange}{0,02467} \\
 UInt32 Crc(1000)                 & 0,0123\% & 0,000708  & 0,000002 & 0,00499 \\
 \hline
 \end{tabular}
@@ -607,14 +633,10 @@ t1ha\cite{rust-t1ha} xxhash\cite{twox-hash} HighwayHash\cite{highway-rs}
 \begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{throughput.png}
+\caption{Gibibytes of data hashed per second (throughput) per input size}
 \label{fig:benchmark-throughput}
 \end{figure}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=1\textwidth]{throughput-gcp.png}
-\label{fig:benchmark-throughput-gcp}
-\end{figure}
 
 \section{Discussion}
 \subsection{Implications}
