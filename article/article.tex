@@ -484,7 +484,7 @@ For comparison, we'll also include qualification results for a few other popular
 \begin{itemize}
 \item \textbf{HighwayHash}\cite{highwayhash} The latest non-cryptographic hash algorithm from Google Research
 \item \textbf{xxHash}\cite{twox-hash} Recently a very popular algorithm for fast non-cryptographic hashing
-\item \textbf{t1ha0}\cite{rust-t1ha} Supposedly the fastest algorithm
+\item \textbf{t1ha0}\cite{rust-t1ha} Supposedly the fastest algorithm at the time of writing
 \end{itemize}
 
 \clearpage
@@ -517,24 +517,23 @@ UInt32 Crc(64)              & 0,0117\% & 0,001041  & 0,000002 & \textcolor{orang
 UInt32 Crc(1000)            & 0,0123\% & 0,001097  & 0,000002 & 0,00514 \\
 \hline
 \end{tabular}
-\caption{Your Table Caption Here}
+\caption{Quality benchmark results for random datasets at 1,000,000 iterations}
 \label{tab:quality-data-random}
 \end{table}
     
-All numbers are very low, and GxHash0 quality results is of the same order of magnitude as for other algoririthms.
-We can notice however a collision rate of about 0.011\% and even 0.022\% for a few of them for the 4 bytes input.
-There is however an explanation: we can derive from the birthday paradox problem the following formula to
+All numbers are very low, and GxHash0 quality results are of the same order of magnitude as for other algorithms. Distribution is very good for all algorithms. Avalanche is good for most algorithms, excepted for FNV-1a and CRC.
+
+We can notice a collision rate of about 0.011\% and even 0.022\% for the 4 bytes inputs. There is an explanation: we can derive from the birthday paradox problem the following formula to
 estimate the \% of collisions:
 
 \begin{align*}
     100 \times \frac{n^2}{2 \times m \times n}
 \end{align*}
 
-Where \(n\) is the number of samples and \(m\) the number of possible of values. When \(n=1000000\) and \(m=2^32\) we obtain 0.0116\%.
+Where \(n\) is the number of samples and \(m\) the number of possible of values. When \(n=1000000\) and \(m=2^{32}\) we obtain 0.0116\%.
 You can see that this value closely matches most of the collision rates benchmarked. This is because the generated hashes are of 32 bit size,
 thus naturally colliding at this rate. For inputs of size 4, the inputs themselves are also likely to collide with the same odds (because inputs are randomly generated). For this reason, the collision rate is expected to be about 2 \(\times\) 0.0116\%.
-We can however see however that Crc and XxHash have lower odds of collisions for 4 bytes input, which can be explained by a size-specific logic to handle small inputs bijectively.
-
+We can see however that CRC and XxHash have lower odds of collisions for 4 bytes input, which can be explained by a size-specific logic to handle small inputs bijectively.
 
 \begin{figure}[H]
 \centering
@@ -543,11 +542,13 @@ We can however see however that Crc and XxHash have lower odds of collisions for
 \label{fig:quality-random}
 \end{figure}
 
-Encore du blabla
+Here is a visualization of the distribution represented by bitmap, whith each pixel being a bucket for generated hashes to fill. A black pixel is an empty pixel, and the whiter a pixel is the fuller of hashes the bucket is. 
+
+We can see that all algorithms benchmarked have similar output in the case of random inputs, which is similar to noise noise. The lack of visible frequencies or "patterns" is a sign of good distriubtion. At a glance, we can see that all algorithms benchmarks have a good distribution for this dataset.
 
 \clearpage
-\paragraph{Sequential Number}\leavevmode\\
-Sequential inputs to observe how the function handles closely related values. Typically, close values would highlight weaknesses in distribution.
+\paragraph{Sequential Numbers}\leavevmode\\
+For the second scenario we generate consecutive integers as inputs to observe how the function handles closely related values. Typically, close values could highlight potential weaknesses in distribution. We still run a number of 1,000,000 iterations, meaning that inputs will be integers from 1 to 1,000,000. Consequently, input bytes after the 4th will always remain 0, even for larger inputs. This can also be a challenge for a hash algorithms to keep entropy from the first few bytes of the input despite having to process many 0-bytes afterwards.
 
 \begin{table}[H]
 \centering
@@ -575,11 +576,13 @@ UInt32 Crc(64)                  & 0\%      & 0,000003  & 0,0000004 & \textcolor{
 UInt32 Crc(1000)                & 0\%      & 0,00001   & 0,0000004 & 0,0046 \\
 \hline
 \end{tabular}
-\caption{Your Table Caption Here}
+\caption{Quality benchmark results for sequential datasets at 1,000,000 iterations}
 \label{tab:my_label}
 \end{table}
 
-Some blabla
+We still observe about 0.0116\% of collisions, which is still expected given the size of the hashes generated and the number of iterations. We can notice however that a few algorithms have managed to have 0 collisions. This is an interesting feature but nevertheless anecdotical: as inputs of this dataset may only have at most the four first bytes different than zero, some algorithms are able to keep the possible bijectivity.
+
+Regarding distribution, we can notice that GxHash0 outperforms HighwayHash, XxHash and T1ha0. Avalanche is slightly worse however, possibily due to the tradeoff of doing less operations for greater performances. Overall, the numbers are all still very low and remain in the same ballpark, except for FNV-1a and CRC that still suffers from a relatively "high" avalanche.
 
 \begin{figure}[H]
 \centering
