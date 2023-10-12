@@ -145,7 +145,7 @@ Although the tree-based hashing approach has a theoretical advantage in parallel
 \item \textbf{Implementation Complexity:} The algorithmic and data-structure requirements for implementing tree-based hashing are more complex than those of a straightforward sequential hashing algorithm. The increased complexity can introduce more room for errors and maintenance challenges.
 \end{itemize}
 
-In light of these practical challenges, tree-based constructions might not be the best fit given our high performance goals and the architecture of today's general-purpose computers.
+In light of these practical challenges, tree-based constructions might not be the best fit given our high-performance goals and the architecture of today's general-purpose computers.
 
 \clearpage
 \section{High ILP Construction} \label{highilp}
@@ -388,7 +388,7 @@ Once the state's bits have been thoroughly mixed, the next step is to reduce thi
 
 Data alignment in memory, commonly referred to as CPU alignment, directly impacts the efficiency of data access and processing. The CPU is optimized to access data from addresses that align with its natural word size. When data is properly aligned, the CPU can retrieve and process it in fewer cycles, resulting in increased computational efficiency.
 
-In practice, a program usually allocates memory with some degree of alignment, and so data is generally aligned. However, a given input message to our hash function is still not guaranteed to be aligned. To handle this case, we can either read our data with an offset to account for the misalignment (at the cost of a much-increased complexity) or use specific SIMD intrinsics designed to handle potentially unaligned data. 
+In practice, programs typically allocate memory with alignment, ensuring data is generally aligned. However, a given input message to our hash function is still not guaranteed to be aligned. To handle this case, we can either read our data with an offset to account for the misalignment (at the cost of a much-increased complexity) or use specific SIMD intrinsics designed to handle potentially unaligned data. 
 
 Benchmarks conducted show a less than 20\% performance degradation on both our x86 and ARM hardware when using the second solution. This is the chosen solution for GxHash-0.
 
@@ -402,7 +402,7 @@ Unrolling the loop is a complementary optimization that diminishes greatly any l
 
 \textbf{Merkle–Damgård} and derivatives can handle message of an arbitrary size \( s_m \) by padding the message upfront with the padding function \( p: \{0,1\}^{s_m} \to \{0,1\}^{n_b \times s_b} \) where \( n_b = \lceil s_m/s_b \rceil \). In the case where the last block is not whole, the padding fills it with zero-bytes until the size \( s_b \) is reached. The last block can then be processed like any other block by the compression function.
 
-In practice, a naive implementation for \( p \) for GxHash in computer code implies copying the remaining bytes into a zero-initialized buffer of size \( s_b \), which can then be loaded onto an SIMD registry and then handed to the compression. In our performance-critical context, these allocations and copies have a substantial overhead.
+In practice, a naive implementation for \( p \) for GxHash in computer code implies copying the remaining bytes into a zero-initialized buffer of size \( s_b \), which can then be loaded onto an SIMD registry and then handed to the compression. In our performance-critical context, these allocations and copies introduce significant overhead.
 
 \paragraph{Read Beyond and Mask}\leavevmode\\
 To avoid this overhead, one possible trick consists of reading \( s_b \) bytes starting from the last block address, even if it implies reading beyond the memory storing the input message. The read bytes can then be masked with the help of a sliding mask, transforming the trailing bytes that don't belong to our message into zeros, in a single SIMD operation. Compared to the naive method, this solution is up to ten times faster on our test machine (Ryzen 5, x86 64-bit, AVX2).
@@ -464,32 +464,32 @@ The primary quality criteria for non-cryptographic hash functions include:
 \begin{itemize}
     \item \textbf{Uniform Distribution:} A high-quality hash function distributes its output values as uniformly as possible across the output space. This ensures that, when used in applications like hash tables, the data is spread evenly, reducing clustering and the frequency of collisions.
 
-    We can estimate the uniformity of the distribution by counting the number of times each bit is set and computing a standard deviation. This "bit distribution" criteria however does not qualifies the distributiono of the hashes a whole, so a complementary estimator is the "bucketed distribution", which be computed by placing generated hashes into a fixed size grid and counting occurences. This can also be easily displayed as a bitmap as a convenient way to visualize distribution.
+    We can estimate the uniformity of the distribution by counting the number of times each bit is set and computing a standard deviation. This "bit distribution" criteria however does not qualify the distribution of the hashes as a whole, so a complementary estimator is the "bucketed distribution", which be computed by placing generated hashes into a fixed-size grid and counting occurrences. This can also be easily displayed as a bitmap as a convenient way to visualize distribution.
     \item \textbf{Minimal Collisions:} While no hash function can be entirely collision-free due to the pigeonhole principle, a good non-cryptographic hash should minimize collisions for typical input sets, ensuring that different inputs usually produce distinct outputs.
     
-    The collison rate can be computed by counting unique values with the help of an hash table.
-    \item \textbf{Avalanche Effect:} A subtle change in the input should result in a considerably different output, ensuring sensitivity to input variations. This also contributes to lessen the risk of clustered hashes in applications like hash tables.
+    The collision rate can be computed by counting unique values with the help of an hash table.
+    \item \textbf{Avalanche Effect:} A subtle change in the input should result in a considerably different output, ensuring sensitivity to input variations. This also contributes to lessening the risk of clustered hashes in applications like hash tables.
     
-    The avalanche effect can be computed by fliping a single random bit for given input and checking the differences between the hashes generated before and after the bit was flipped. Ideally, half of the bit should change on average.
-    \item \textbf{Performance:} The performance of a non cryptographic hash function is usually reflected by the performance of the application using it. For instance, a fast non-cryptographic hash function generally implies a fast hash table. This specific criteria will be tackled in the next section which is dedicated to it. 
+    The avalanche effect can be computed by flipping a single random bit for a given input and checking the differences between the hashes generated before and after the bit was flipped. Ideally, half of the bit should change on average.
+    \item \textbf{Performance:} The performance of a noncryptographic hash function is usually reflected by the performance of the application using it. For instance, a fast non-cryptographic hash function generally implies a fast hash table. This specific criteria will be tackled in the next section which is dedicated to it. 
 
 \end{itemize}
 
 \subsubsection{Quality Results}
 
-While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash0 algorithm qualifies against a few well known non-cryptographic algorithm in a few scenarios.
+While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash0 algorithm qualifies against a few well-known non-cryptographic algorithms in a few scenarios.
 
 For comparison, we'll also include qualification results for a few other popular non-cryptographic hash algorithms such as:
 
 \begin{itemize}
 \item \textbf{HighwayHash}\cite{highwayhash} The latest non-cryptographic hash algorithm from Google Research
-\item \textbf{xxHash}\cite{twox-hash} Recently a very popular algorithm for fast non-cryptographic hashing
+\item \textbf{xxHash}\cite{xxhash} Recently a very popular algorithm for fast non-cryptographic hashing
 \item \textbf{t1ha0}\cite{rust-t1ha} Supposedly the fastest algorithm at the time of writing
 \end{itemize}
 
 \clearpage
 \paragraph{Random Blobs}\leavevmode\\
-For the first scenario we randomly generate 1,000,000 inputs of size 4 bytes, 64 and 1000 to observe how the hash function behaves with truly unpredictable data, and for different input sizes.
+For the first scenario, we randomly generate 1,000,000 inputs of size 4 bytes, 64 and 1000 to observe how the hash function behaves with truly unpredictable data, and for different input sizes.
 
 \begin{table}[H]
 \centering
@@ -517,11 +517,11 @@ UInt32 Crc(64)              & 0,0117\% & 0,001041  & 0,000002 & \textcolor{orang
 UInt32 Crc(1000)            & 0,0123\% & 0,001097  & 0,000002 & 0,00514 \\
 \hline
 \end{tabular}
-\caption{Quality benchmark results for random datasets at 1,000,000 iterations}
+\caption{Quality benchmark results for the random dataset at 1,000,000 iterations}
 \label{tab:quality-data-random}
 \end{table}
     
-All numbers are very low, and GxHash0 quality results are of the same order of magnitude as for other algorithms. Distribution is very good for all algorithms. Avalanche is good for most algorithms, excepted for FNV-1a and CRC.
+All numbers are very low, and GxHash0 quality results are of the same order of magnitude as for other algorithms. Distribution is very good for all algorithms. Avalanche is good for most algorithms, except for FNV-1a and CRC.
 
 We can notice a collision rate of about 0.011\% and even 0.022\% for the 4 bytes inputs. There is an explanation: we can derive from the birthday paradox problem the following formula to
 estimate the \% of collisions:
@@ -530,8 +530,8 @@ estimate the \% of collisions:
     100 \times \frac{n^2}{2 \times m \times n}
 \end{align*}
 
-Where \(n\) is the number of samples and \(m\) the number of possible of values. When \(n=1000000\) and \(m=2^{32}\) we obtain 0.0116\%.
-You can see that this value closely matches most of the collision rates benchmarked. This is because the generated hashes are of 32 bit size,
+Where \(n\) is the number of samples and \(m\) is the number of possible values. When \(n=1000000\) and \(m=2^{32}\) we obtain 0.0116\%.
+You can see that this value closely matches most of the collision rates benchmarked. This is because the generated hashes are of 32-bit size,
 thus naturally colliding at this rate. For inputs of size 4, the inputs themselves are also likely to collide with the same odds (because inputs are randomly generated). For this reason, the collision rate is expected to be about 2 \(\times\) 0.0116\%.
 We can see however that CRC and XxHash have lower odds of collisions for 4 bytes input, which can be explained by a size-specific logic to handle small inputs bijectively.
 
@@ -542,13 +542,13 @@ We can see however that CRC and XxHash have lower odds of collisions for 4 bytes
 \label{fig:quality-random}
 \end{figure}
 
-Here is a visualization of the distribution represented by bitmap, whith each pixel being a bucket for generated hashes to fill. A black pixel is an empty pixel, and the whiter a pixel is the fuller of hashes the bucket is. 
+Here is a visualization of the distribution represented by bitmap, which each pixel being a bucket for generated hashes to fill. A black pixel is an empty pixel, and the whiter a pixel is the fuller of hashes the bucket is. 
 
-We can see that all algorithms benchmarked have similar output in the case of random inputs, which is similar to noise noise. The lack of visible frequencies or "patterns" is a sign of good distriubtion. At a glance, we can see that all algorithms benchmarks have a good distribution for this dataset.
+We can see that all algorithms benchmarked have similar output in the case of random inputs, which is similar to noise noise. The lack of visible frequencies or "patterns" is a sign of good distribution. At a glance, we can see that all algorithm benchmarks have a good distribution for this dataset.
 
 \clearpage
 \paragraph{Sequential Numbers}\leavevmode\\
-For the second scenario we generate consecutive integers as inputs to observe how the function handles closely related values. Typically, close values could highlight potential weaknesses in distribution. We still run a number of 1,000,000 iterations, meaning that inputs will be integers from 1 to 1,000,000. Consequently, input bytes after the 4th will always remain 0, even for larger inputs. This can also be a challenge for a hash algorithms to keep entropy from the first few bytes of the input despite having to process many 0-bytes afterwards.
+For the second scenario, we generate consecutive integers as inputs to observe how the function handles closely related values. Typically, close values could highlight potential weaknesses in distribution. We still run a number of 1,000,000 iterations, meaning that inputs will be integers from 1 to 1,000,000. Consequently, input bytes after the 4th will always remain 0, even for larger inputs. This can also be a challenge for a hash algorithm to keep entropy from the first few bytes of the input despite having to process many 0-bytes afterward.
 
 \begin{table}[H]
 \centering
@@ -576,13 +576,13 @@ UInt32 Crc(64)                  & 0\%      & 0,000003  & 0,0000004 & \textcolor{
 UInt32 Crc(1000)                & 0\%      & 0,00001   & 0,0000004 & 0,0046 \\
 \hline
 \end{tabular}
-\caption{Quality benchmark results for sequential datasets at 1,000,000 iterations}
+\caption{Quality benchmark results for the sequential dataset at 1,000,000 iterations}
 \label{tab:my_label}
 \end{table}
 
 We still observe about 0.0116\% of collisions, which is still expected given the size of the hashes generated and the number of iterations. We can notice however that a few algorithms have managed to have 0 collisions. This is an interesting feature but nevertheless anecdotical: as inputs of this dataset may only have at most the four first bytes different than zero, some algorithms are able to keep the possible bijectivity.
 
-Regarding distribution, we can notice that GxHash0 outperforms HighwayHash, XxHash and T1ha0. Avalanche is slightly worse however, possibily due to the tradeoff of doing less operations for greater performances. Overall, the numbers are all still very low and remain in the same ballpark, except for FNV-1a and CRC that still suffers from a relatively "high" avalanche.
+Regarding distribution, we can notice that GxHash0 outperforms HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha0\cite{rust-t1ha}. Avalanche is slightly worse, however, possibly due to the tradeoff of doing fewer operations for greater performances. Overall, the numbers are all still very low and remain in the same ballpark, except for FNV-1a and CRC which still suffer from a relatively "high" avalanche.
 
 \begin{figure}[H]
 \centering
@@ -591,11 +591,11 @@ Regarding distribution, we can notice that GxHash0 outperforms HighwayHash, XxHa
 \label{fig:quality-sequential}
 \end{figure}
 
-Some more blabla
+The distribution map is more interesting for sequential inputs. As a matter of fact, we clearly identify distribution patterns for FNV-1a and CRC. It isn't necessarily a bad thing, because a hash function can distribute the hash in a way that the distribution map looks evenly distributed (such as what we observe with CRC with 1000-bytes long inputs), however it implies that values hashes are correlated in a way, which a property we prefer to avoid for a non-cryptographic hash function. GxHash0 performs well in that matter, with a distribution that looks as uniform and uncorrelated than its counterparts HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha0\cite{rust-t1ha}.
 
 \clearpage
 \paragraph{English Words}\leavevmode\\
-English words inputs to observe how the function behaves in a "real world scenario"
+For the third scenario, we generate English-looking words as inputs by deriving a set of "real" English words with Markov chains to be able to generate many unique strings for any size. This allows us to observe how the function behaves in a close to "real-world scenario". We ignore on-purpose inputs of size 4 since we are not able to generate enough unique strings for that size.
 
 \begin{table}[H]
 \centering
@@ -617,36 +617,80 @@ UInt32 Crc(64)                   & 0,0124\% & 0,000965  & 0,000002 & \textcolor{
 UInt32 Crc(1000)                 & 0,0123\% & 0,000708  & 0,000002 & 0,00499 \\
 \hline
 \end{tabular}
-\caption{Your Table Caption Here}
+\caption{Quality benchmark results for words dataset at 1,000,000 iterations}
 \label{tab:my_label}
 \end{table}
+
+We still observe about 0.0116\% of collisions for all algorithms, explainable by the birthday paradox as seen previously. This time however, XxHash\cite{xxhash}, Fnv1a and Crc are not able to beep bijectivity as inputs use more bytes compared to the sequential case, making the bijectivity property impossible and thus leading to inevitable collision.
+The bits distribution is very close for all algorithms benchmarked, at about 0.001. The avalanche is a little worse for GxHash0 compared to HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha\cite{rust-t1ha}, but remains quite good, and is still higher than Fnv1a and Crc avalanche scores.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{quality-markov.png}
-\caption{Distribution map for markov dataset}
+\caption{Distribution map for words dataset}
 \label{fig:quality-sequential}
 \end{figure}
+
+Bucketed distribution is looking good in all cases for the English words case.
+
+\subsubsection{Conclusion}
+
+This was just an overview of the quality of the hashes produced by GxHash0 and a few comparisons to some established non-cryptographic algorithms. 
+
+Our results demonstrate promising quality characteristics of GxHash0 with low collisions, good distribution, and a high avalanche effect, and its quality is comparable to other well-established non-cryptographic algorithms. However, it is essential to acknowledge the limitations of the presented evaluation scenarios. The benchmarks presented herein, namely random inputs, sequential inputs, and English word inputs, offer a glimpse into the algorithm's quality but are by no means exhaustive. In real-world applications, the behavior of a hash algorithm can be influenced by a myriad of factors and specific data patterns. As such, while our findings provide a foundational understanding of GxHash0's quality, potential users should be cognizant that results may vary based on the actual use case and the nature of the input data.
 
 \clearpage
 \subsection{Performance}
 
-t1ha\cite{rust-t1ha} xxhash\cite{twox-hash} HighwayHash\cite{highway-rs}
+Performance is measured as a throughput, in gibibytes of data hashed per second (higher is better). This is a common measurement unit for performance in this field. Performance is measured against inputs of size 4, 16, 64, 246, 1024, 4096 and 16384 to cover a broad range of use cases.
+
+For reference, we'll also benchmark other non-cryptographic algorithms under the same conditions, thanks to their Rust implementations, namely: t1ha\cite{rust-t1ha}, xxhash\cite{twox-hash} and HighwayHash\cite{highway-rs}.
+
+The benchmark is run on three different setups:
+\begin{itemize}
+    \item A Ryzen 5 equipped low-budget desktop PC
+    \item An n2-standard-2 compute GCP virtual machine (likely equipped with an Intel Xeon 8376H). Cloud computing is very popular nowadays and the hardware is quite different from the desktop PC.
+    \item A Macbook Pro with an M1 Pro chip, to test the algorithm on an ARM architecture which implies different SIMD intrinsics and likely different performance results. Note that the T1ha-0 implementation benchmarked does not leverage ARM intrinsics, and this is why it is not benchmarked for this platform (the portable version would perform too poorly).
+\end{itemize}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{throughput.png}
-\caption{Gibibytes of data hashed per second (throughput) per input size}
+\caption{Gibibytes of data hashed per second (throughput) per input size. Log10 scale.}
 \label{fig:benchmark-throughput}
 \end{figure}
 
+The results are compelling: GxHash0 consistently outperforms its counterparts, achieving throughput rates that are an order of magnitude higher in many instances. Depending on the input size, we observed performance gains ranging from x5 to an impressive x210. On the GCP and Apple M1 Pro benchmarks, the algorithm reaches an impressive 10 Gb/s for 4 bytes inputs, likely showing that the algorithm is memory-bound (and thus can hardly be faster). A second observation is a substantial gap in performances between 64 and 256 bytes inputs, which can be explained by the 8-lane processing starting to kick in when inputs are large enough, leveraging ILP for even more throughput.
+
+While these results are promising, it's essential to approach them with a balanced perspective. The benchmarks serve as an indicator of GxHash0's potential in specific scenarios, and while the performance advantage is clear, it's always prudent to consider the broader context and the specific requirements of any given application before drawing definitive conclusions.
 
 \section{Discussion}
-\subsection{Implications}
 \subsection{Limitations}
+
+\subsubsection{Portability}
+As mentioned at the beginning of this paper, portability wasn't a design goal for GxHash-0. Consequently, while GxHash-0 can work on different platforms (x86, ARM, and possibly more), it is not recommended to have the hashes outlive the process lifetime, as there is a risk for persistent hashes to imply a hardware dependency afterward, which is something we generally want to avoid. We think it is an acceptable limitation when GxHash0 is used at the process scope, such as for hashtables for instance.
+It would be possible however to derive from the GxHash0 implementation presented in this paper to come up with a portable version, but likely at the cost of performance.
+
+\subsubsection{Compiler Dependencies} 
+The Laned Construction presented in this paper is implemented for GxHash0 by declaring each lane with its own variable. While it worked at the time of writing (rustc 1.68.0), it is in the end the compiler's responsibility to decide how many registers to use. We cannot exclude that in another context (different version, different language/compiler, ...) the compiler will undo the ILP we tried to implicitly introduce. This could be countered by writing the algorithm directly in assembly code, at the cost of complexity.
+
 \subsection{Future Work}
+Despite the outstanding benchmark results, we think there are still many possible paths for research and improvement. Here is a non-exhaustive list:
+\begin{itemize}
+    \item Leveraging larger SIMD intrinsics, such as Intel AVX-512 or ARM SVE2.
+    \item Using leading zero count intrinsics followed by a C-style fallthrough to process small inputs faster.
+    \item Rewrite the algorithm in assembly code or a language that is more explicit about registers.
+    \item Introduce more than one stage of laning. For instance 16 lanes, then 8 lanes, then 4 lanes, and finally 2 lanes, to leverage ILP as much as possible.
+    \item Fine-tune the finalization stage to find the perfect balance between performance and avalanche effect.
+\end{itemize}
 
 \section{Conclusion}
+
+By leveraging the capabilities of modern CPUs, such as Single Instruction, Multiple Data (SIMD), GxHash0 achieves unparalleled throughput, setting a new standard for efficiency and performance amongst non-cryptographic hashing algorithms. A pivotal innovation in this endeavor is the "Laned Construction," which is specifically designed to harness Instruction-Level Parallelism (ILP), further optimizing the hashing process.
+
+However, it's essential to note that while GxHash0 offers significant improvements, the behavior of any hash algorithm can be influenced by various factors. As such, potential users should approach with an understanding that results might vary based on specific use cases and input data.\\
+
+The capabilities of GxHash0 represent a significant step forward in non-cryptographic hashing. In a world where real-time processing is becoming a standard, this algorithm not only enables systems to respond more swiftly but also promotes greater energy efficiency.
 
 \bibliography{references}
 \bibliographystyle{plain}
