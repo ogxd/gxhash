@@ -32,18 +32,16 @@ Cite this publication / algorithm:
 Displayed numbers is throughput in Gibibytes of data hashed per second. Higher is better.  
 To run the benchmarks: `cargo bench --bench throughput` (don't forget the env flag)
 
-### GCP n2-standard-2 (Intel Ice Lake)
+### GCP n2-standard-2 / Intel Ice Lake (x86 64-bit)
 
 | Method           |      4 |     16 |     64 |    256 |   1024 |   4096 |  16384 |
 | ---------------- | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
 | fnv1a            | 1.1027 | 2.6723 | 1.4874 |  0.933 |  0.835 |  0.814 |  0.808 |
 | xxhash           | 1.2613 | 2.9158 | 5.6045 | 6.2078 | 6.2819 | 6.2689 | 6.2985 |
 | t1ha-0 AVX2      | 1.1442 | 4.3088 | 11.858 | 32.581 | 52.552 | 60.746 | 65.863 |
-| gxhash-0 AVX2    | 11.638 | 46.132 | 40.365 | 134.11 | 143.55 | 155.34 | 168.65 |
+| gxhash-0 AVX2    | 11.638 | 46.132 | 40.365 | 134.11 | 143.55 | 155.34 | 168.65 | 🚀
 
-I suspect memory bandwidth to be very high on this GCP server, which is one less bottleneck for gxhash to achieve even greater throughput for small input sizes.
-
-### AMD Ryzen 5 5625U
+### AMD Ryzen 5 5625U (x86 64-bit)
 
 | Method           | 4      | 16     | 64     | 256    | 1024   | 4096   | 16384  |
 |------------------|--------|--------|--------|--------|--------|--------|--------|
@@ -51,7 +49,16 @@ I suspect memory bandwidth to be very high on this GCP server, which is one less
 | xxhash           |  0.439 |  1.003 | 3.0224 | 6.1791 | 8.3379 | 9.1554 | 9.3548 |
 | highwayhash      |  0.131 |   0.52 | 2.9722 | 7.4698 | 11.422 | 12.954 |  15.69 |
 | t1ha-0 AVX2      |  0.857 | 3.1684 | 11.146 | 34.312 | 71.562 | 87.984 | 85.248 |
-| gxhash-0 AVX2    | 1.7197 | 6.9709 |  44.02 | 98.562 | 149.36 | 187.21 | 211.54 |
+| gxhash-0 AVX2    | 2.2454 | 8.7302 | 56.855 | 144.62 | 161.72 | 177.61 | 211.54 | 🚀
+
+### Macbook M1 Pro (ARM 64-bit)
+
+| Method   | 4      | 16     | 64     | 256    | 1024   | 4096   | 16384  |
+|----------|--------|--------|--------|--------|--------|--------|--------|
+| fnv1a    | 1.1027 | 2.6723 | 1.4874 | 0.933  | 0.835  | 0.814  | 0.808  |
+| xxhash   | 1.2613 | 2.9158 | 5.6045 | 6.2078 | 6.2819 | 6.2689 | 6.2985 |
+| t1ha-0   | 1.1442 | 4.3088 | 11.858 | 32.581 | 52.552 | 60.746 | 65.863 |
+| gxhash-0 | 11.638 | 46.132 | 40.365 | 134.11 | 143.55 | 155.34 | 168.65 | 🚀
 
 ## Debugging
 
