@@ -46,8 +46,10 @@ In summary, this work is driven by both the practical needs of my professional e
 
 \subsection{Scope Limitation}
 
+\subsubsection{Multithreading}
+
 This paper primarily investigates methods for enhancing the throughput of non-cryptographic hashing algorithms, which are commonly used in a variety of time-sensitive applications, including but not limited to hashmap lookups.
-In such contexts, hash computation is often expected to be extremely fast, typically requiring execution times ranging from nanoseconds to microseconds. Given these considerations, the paper intentionally excludes Thread-Level Parallelism
+In such contexts, hash computation is often expected to be extremely fast, typically requiring execution times ranging from nanoseconds to microseconds. Given these consideration, the paper intentionally excludes Thread-Level Parallelism
 (TLP) as a viable strategy for performance optimization.\\\\
 Firstly, it's worth mentioning that TLP is orthogonal to the methods being explored in this paper.
 TLP focuses on optimizing coarser-grained operations by distributing tasks across multiple threads, which doesn't directly align with the fine-grained performance improvements we aim to achieve.\\\\
@@ -56,6 +58,8 @@ These overheads, while perhaps manageable in applications that can afford greate
 In summary, while TLP might be a suitable performance optimization strategy in other computational contexts, we chose to leave it aside in this paper.
 
 \subsubsection{Portability}
+
+Ensuring portability (algorithm generating the same hashes consistently accross different platforms for a given input) is a constrain that may hinder some potential optimization. Our goal being performance first, and our scope of application mainly focused on in-process usages such as hashtables, portability can be left out for these researches. Yet, it remains crutial for the algorithm to work under both x86 and ARM 64-bit platforms that represent most of today's general purpose computing systems.
 
 \clearpage
 \section{Related Work}
@@ -93,6 +97,7 @@ With these components, the hash function \( h \) may be articulated as follows:
 \label{fig:linear-construction}
 \end{figure}
 
+\clearpage
 \subsection{The Wide-Pipe Construction Variant} \label{widepipe}
 
 The \textbf{Wide-Pipe} construction serves as a variant of the traditional Merkle–Damgård architecture and aims to improve the hash function's cryptographic resilience.\\\\
@@ -301,6 +306,8 @@ h(M) = g\left( f( \ldots f(f(\ldots f(f(0^{s_b}, H_1), H_2) \ldots, H_{k_b}), M_
 \caption{Laned Construction Overview}
 \label{fig:linear-construction}
 \end{figure}
+
+An alternative to chaining usages of \( f \) is to compress lane hashes by pair, and subsequently compressing the resulting hashes also by pair until we are left with a single hash (for instance \(f(f(f(H_1, H_2), f(H_3, H_4)), f(...))\)). In practice, this would allow some form of ILP on the final hash composition as well, decreasing as we get closer to the final hash.
 
 \clearpage
 \section{The GxHash Algorithm}
