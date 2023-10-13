@@ -37,7 +37,12 @@ mod platform_defs {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
 
         let mask = vld1q_s8((MASK.as_ptr() as *const i8).offset(size_of::<state>() as isize - len));
-        vandq_s8(load_unaligned(p), mask)
+        let mut vec = vandq_s8(load_unaligned(p), mask);
+
+        // To avoid collisions for zero right padded inputs, we mutate this vector using its used length
+        vec = vaddq_s8(vec, vdupq_n_s8(len as i8));
+
+        return vec;
     }
 
     #[inline]
@@ -256,6 +261,7 @@ pub fn gxhash(input: &[u8]) -> u32 {
 mod tests {
 
     use super::*;
+    use rand::Rng;
 
     #[test]
     fn all_blocks_are_consumed() {
@@ -270,6 +276,22 @@ mod tests {
             bytes[i] = swap;
 
             assert_ne!(ref_hash, new_hash, "byte {i} not processed");
+        }
+    }
+
+    #[test]
+    fn add_zeroes_mutates_hash() {
+        let mut bytes = [0u8; 1200];
+
+        let mut rng = rand::thread_rng();
+        rng.fill(&mut bytes[..32]);
+
+        let mut ref_hash = 0;
+
+        for i in 32..100 {
+            let new_hash = gxhash(&mut bytes[..i]);
+            assert_ne!(ref_hash, new_hash, "Same hash at size {i} ({new_hash})");
+            ref_hash = new_hash;
         }
     }
 
