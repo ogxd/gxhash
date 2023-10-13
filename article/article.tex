@@ -22,7 +22,7 @@
 
 In the rapidly evolving landscape of data processing and cybersecurity, hashing algorithms play a pivotal role in ensuring data integrity and security.
 Traditional hashing methods, while effective, often fail to fully utilize the computational capabilities of modern processors.
-This paper introduces the GxHash hashing algorithm, a novel approach that harnesses the power of high instruction-level parallelism (ILP) and Single Instruction, Multiple Data (SIMD) capabilities of contemporary CPUs to achieve high-throughput non-cryptographic hashing. Through a comprehensive analysis, including benchmarks and comparisons with existing methods, we demonstrate that GxHash significantly outperforms conventional algorithms in terms of speed and computational efficiency without compromising on security. The paper also explores the implications, limitations, and avenues for future research in this burgeoning field.
+This paper introduces the GxHash hashing algorithm, a novel approach that harnesses the power of high Instruction-Level Parallelism (ILP) and Single Instruction, Multiple Data (SIMD) capabilities of contemporary CPUs to achieve high-throughput non-cryptographic hashing. Through a comprehensive analysis, including benchmarks and comparisons with existing methods, we demonstrate that GxHash significantly outperforms conventional algorithms in terms of speed and computational efficiency without compromising on security. The paper also explores the implications, limitations, and avenues for future research in this burgeoning field.
 
 \end{abstract}
 
@@ -36,7 +36,7 @@ This paper introduces the GxHash hashing algorithm, a novel approach that harnes
 \subsection{Motivations}
 
 As a software engineer at Equativ, a company specializing in high-performance AdServing backends that handle billions of auctions daily,
-I face unique challenges in maximizing throughput while minimizing latency. In this high-stakes environment, every millisecond counts, and the performance of underlying data structures becomes critically important. We heavily rely on in-memory caches and other hash-based data structures, making the efficiency of hashing algorithms a non-trivial concern in our system's overall performance.\\\\
+I face unique challenges in maximizing throughput while minimizing latency. In this high-stakes environment, every millisecond counts, and the performance of underlying data structures becomes critically important. As we heavily rely on in-memory caches and other hash-based data structures, making the efficiency of hashing algorithms a non-trivial concern in our system's overall performance.\\\\
 While diving into the theory of hashing out of both necessity and intellectual curiosity, I discovered that existing hashing algorithms, including those built on well-known constructions like Merkle–Damgård, are not optimized to exploit the full capabilities of modern general-purpose CPUs.
 These CPUs offer advanced features such as Single Instruction, Multiple Data (SIMD) and Instruction-Level Parallelism (ILP), which remain largely untapped by current hashing methods.\\\\
 The challenge of creating a faster, more efficient hashing algorithm became not just a professional necessity but also a personal quest.
@@ -484,9 +484,7 @@ The primary quality criteria for non-cryptographic hash functions include:
 
 \subsubsection{Quality Results}
 
-While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash0 algorithm qualifies against a few well-known non-cryptographic algorithms in a few scenarios.
-
-For comparison, we'll also include qualification results for a few other popular non-cryptographic hash algorithms such as:
+While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash0 algorithm qualifies in specific scenarios against some well-known non-cryptographic algorithms, such as:
 
 \begin{itemize}
 \item \textbf{HighwayHash}\cite{highwayhash} The latest non-cryptographic hash algorithm from Google Research
@@ -540,7 +538,7 @@ estimate the \% of collisions:
 Where \(n\) is the number of samples and \(m\) is the number of possible values. When \(n=1000000\) and \(m=2^{32}\) we obtain 0.0116\%.
 You can see that this value closely matches most of the collision rates benchmarked. This is because the generated hashes are of 32-bit size,
 thus naturally colliding at this rate. For inputs of size 4, the inputs themselves are also likely to collide with the same odds (because inputs are randomly generated). For this reason, the collision rate is expected to be about 2 \(\times\) 0.0116\%.
-We can see however that CRC and XxHash have lower odds of collisions for 4 bytes input, which can be explained by a size-specific logic to handle small inputs bijectively.
+We can see however that CRC and XxHash\cite{xxhash} have lower odds of collisions for 4 bytes input, which can be explained by a size-specific logic to handle small inputs bijectively.
 
 \begin{figure}[H]
 \centering
@@ -684,11 +682,12 @@ The Laned Construction presented in this paper is implemented for GxHash0 by dec
 \subsection{Future Work}
 Despite the outstanding benchmark results, we think there are still many possible paths for research and improvement. Here is a non-exhaustive list:
 \begin{itemize}
-    \item Leveraging larger SIMD intrinsics, such as Intel AVX-512 or ARM SVE2.
-    \item Using leading zero count intrinsics followed by a C-style fallthrough to process small inputs faster.
+    \item Leverage larger SIMD intrinsics, such as Intel AVX-512 or ARM SVE2.
+    \item Use leading zero count intrinsics followed by a C-style fallthrough to process small inputs faster.
     \item Rewrite the algorithm in assembly code or a language that is more explicit about registers.
     \item Introduce more than one stage of laning. For instance 16 lanes, then 8 lanes, then 4 lanes, and finally 2 lanes, to leverage ILP as much as possible.
     \item Fine-tune the finalization stage to find the perfect balance between performance and avalanche effect.
+    \item Run GxHash0 against more quality benchmarks, such as SMHasher\cite{smhasher}.
 \end{itemize}
 
 \section{Conclusion}
