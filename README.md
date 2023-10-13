@@ -1,7 +1,7 @@
 # gxhash-rust
 ![CI](https://github.com/ogxd/gxhash-rust/actions/workflows/rust.yml/badge.svg)
 
-The fastest non-cryptographic hashing algorithm
+Up to this date, the fastest non-cryptographic hashing algorithm
 
 ## Publication
 
