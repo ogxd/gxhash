@@ -182,7 +182,8 @@ mod platform_defs {
         hash = _mm256_aesdeclast_epi128(hash, keys_3);
 
         // Merge the two 128 bit lanes entropy, so we can after safely truncate up to 128-bits
-        _mm256_permute2x128_si256(hash, hash, 1)
+        let permuted = _mm256_permute2x128_si256(hash, hash, 0x21);
+        _mm256_xor_si256(hash, permuted)
     }
 }
 
