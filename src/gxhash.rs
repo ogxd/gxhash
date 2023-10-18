@@ -152,33 +152,33 @@ mod platform_defs {
     }
 
     #[inline]
+    #[allow(overflowing_literals)]
     pub unsafe fn compress(a: state, b: state) -> state {
-        //let sum: state = _mm256_add_epi8(a, b);
-        //_mm256_alignr_epi8(sum, sum, 1)
-        _mm256_aesdeclast_epi128(a, b)
+        let keys_1 = _mm256_set_epi32(0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542, 0x4155EE07, 0xC897CCE2, 0x780AF2C3, 0x8A72B781);
+        let keys_2 = _mm256_set_epi32(0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9, 0x7A83D76B, 0xB1E8F9F0, 0x028925A8, 0x3B9A4E71);
+
+        // 2+1 rounds of AES for compression
+        let mut b = _mm256_aesdec_epi128(b, keys_1);
+        b = _mm256_aesdec_epi128(b, keys_2);
+        return _mm256_aesdeclast_epi128(a, b);
     }
 
     #[inline]
     #[allow(overflowing_literals)]
-    pub unsafe fn finalize(hash: state) -> u32 {
-        // Xor 256 state into 128 bit state for AES
-        let lower = _mm256_castsi256_si128(hash);
-        let upper = _mm256_extracti128_si256(hash, 1);
-        let mut hash = _mm_xor_si128(lower, upper);
-
+    pub unsafe fn finalize(hash: state, seed: i32) -> state {
         // Hardcoded AES keys
-        let salt1 = _mm_set_epi32(0x713B01D0, 0x8F2F35DB, 0xAF163956, 0x85459F85);
-        let salt2 = _mm_set_epi32(0x1DE09647, 0x92CFA39C, 0x3DD99ACA, 0xB89C054F);
-        let salt3 = _mm_set_epi32(0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32);
+        let keys_1 = _mm256_set_epi32(0x713B01D0, 0x8F2F35DB, 0xAF163956, 0x85459F85, 0xB49D3E21, 0xF2784542, 0x2155EE07, 0xC197CCE2);
+        let keys_2 = _mm256_set_epi32(0x1DE09647, 0x92CFA39C, 0x3DD99ACA, 0xB89C054F, 0xCB6B2E9B, 0xC361DC58, 0x39136BD9, 0x7A83D76F);
+        let keys_3 = _mm256_set_epi32(0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32, 0xE2784542, 0x4155EE07, 0xC897CCE2, 0x780BF2C2);
 
-        // 3 rounds of AES
-        hash = _mm_aesenc_si128(hash, salt1);
-        hash = _mm_aesenc_si128(hash, salt2);
-        hash = _mm_aesenclast_si128(hash, salt3);
+        // 4 rounds of AES
+        let mut hash = _mm256_aesdec_epi128(hash, _mm256_set1_epi32(seed));
+        hash = _mm256_aesdec_epi128(hash, keys_1);
+        hash = _mm256_aesdec_epi128(hash, keys_2);
+        hash = _mm256_aesdeclast_epi128(hash, keys_3);
 
-        // Truncate to output hash size
-        let p = &hash as *const __m128i as *const u32;
-        *p
+        // Merge the two 128 bit lanes entropy, so we can after safely truncate up to 128-bits
+        _mm256_permute2x128_si256(hash, hash, 1)
     }
 }
 
@@ -187,14 +187,37 @@ use std::intrinsics::likely;
 pub use platform_defs::*;
 
 #[inline] // To be disabled when profiling
-pub fn gxhash(input: &[u8]) -> u32 {
+pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
+    unsafe {
+        let p = &gxhash(input, seed) as *const state as *const u32;
+        *p
+    }
+}
+
+#[inline] // To be disabled when profiling
+pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
+    unsafe {
+        let p = &gxhash(input, seed) as *const state as *const u64;
+        *p
+    }
+}
+
+#[inline]
+fn gxhash(input: &[u8], seed: i32) -> state {
     unsafe {
         const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
         
         let len: isize = input.len() as isize;
-    
+
         let p = input.as_ptr() as *const i8;
         let mut v = p as *const state;
+
+        // Quick exit
+        if len <= VECTOR_SIZE {
+            let partial_vector = get_partial(v, len);
+            return finalize(partial_vector, seed);
+        }
+
         let mut end_address: usize;
         let mut remaining_blocks_count: isize = len / VECTOR_SIZE;
         let mut hash_vector: state = create_empty();
@@ -253,7 +276,7 @@ pub fn gxhash(input: &[u8]) -> u32 {
             hash_vector = compress(hash_vector, partial_vector);
         }
 
-        finalize(hash_vector)
+        finalize(hash_vector, seed)
     }
 }
 
@@ -267,12 +290,12 @@ mod tests {
     fn all_blocks_are_consumed() {
         let mut bytes = [42u8; 1200];
 
-        let ref_hash = gxhash(&bytes);
+        let ref_hash = gxhash32(&bytes, 0);
 
         for i in 0..bytes.len() {
             let swap = bytes[i];
             bytes[i] = 82;
-            let new_hash = gxhash(&bytes);
+            let new_hash = gxhash32(&bytes, 0);
             bytes[i] = swap;
 
             assert_ne!(ref_hash, new_hash, "byte {i} not processed");
@@ -289,7 +312,7 @@ mod tests {
         let mut ref_hash = 0;
 
         for i in 32..100 {
-            let new_hash = gxhash(&mut bytes[..i]);
+            let new_hash = gxhash32(&mut bytes[..i], 0);
             assert_ne!(ref_hash, new_hash, "Same hash at size {i} ({new_hash})");
             ref_hash = new_hash;
         }
@@ -297,8 +320,8 @@ mod tests {
 
     #[test]
     fn hash_of_zero_is_not_zero() {
-        assert_ne!(0, gxhash(&[0u8; 0]));
-        assert_ne!(0, gxhash(&[0u8; 1]));
-        assert_ne!(0, gxhash(&[0u8; 1200]));
+        assert_ne!(0, gxhash32(&[0u8; 0], 0));
+        assert_ne!(0, gxhash32(&[0u8; 1], 0));
+        assert_ne!(0, gxhash32(&[0u8; 1200], 0));
     }
 }
