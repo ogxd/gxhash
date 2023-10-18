@@ -23,7 +23,7 @@ fn gxhash_benchmark(c: &mut Criterion) {
         let mut group = c.benchmark_group("gxhash");
 
         for i in 1..8 {
-            let len = usize::pow(5, i);
+            let len = usize::pow(4, i);
     
             group.throughput(Throughput::Bytes(len as u64));
     
@@ -50,8 +50,6 @@ fn gxhash_benchmark(c: &mut Criterion) {
             let aligned_slice = &slice[0..len];
 
             use ahash::*;
-            use core::slice;
-            use std::hash::{BuildHasher};
             
             let build_hasher = RandomState::with_seeds(0, 0, 0, 0);
 
