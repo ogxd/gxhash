@@ -117,19 +117,23 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn get_partial(p: *const state, len: isize) -> state {
-        const MASK: [u8; size_of::<state>() * 2] = [
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
-
+        let partial_vector: state;
         // Safety check
-        if check_same_page(p) { // false {//
-            let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
-            _mm256_and_si256(_mm256_loadu_si256(p), mask)
+        if check_same_page(p) {
+            let indices = _mm256_setr_epi8(
+                0, 1, 2, 3, 4, 5, 6, 7,
+                8, 9, 10, 11, 12, 13, 14, 15,
+                16, 17, 18, 19, 20, 21, 22, 23,
+                24, 25, 26, 27, 28, 29, 30, 31
+            );
+    
+            let mask = _mm256_cmpgt_epi8(_mm256_set1_epi8(len as i8), indices);
+            partial_vector = _mm256_and_si256(_mm256_loadu_si256(p), mask);
         } else {
-            get_partial_safe(p as *const u8, len as usize)
+             partial_vector = get_partial_safe(p as *const u8, len as usize)
         }
+        // Prevents padded zeroes to introduce bias
+        _mm256_add_epi32(partial_vector, _mm256_set1_epi32(len as i32))
     }
 
     #[inline]
