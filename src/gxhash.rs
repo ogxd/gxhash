@@ -67,9 +67,13 @@ mod platform_defs {
 
     #[inline]
     pub unsafe fn compress(a: state, b: state) -> state {
-        ReinterpretUnion{ uint8: aes_encrypt_last(
-            ReinterpretUnion{ int8: a }.uint8, 
-            ReinterpretUnion{ int8: b }.uint8) }.int8
+        let keys_1 = vld1q_u32([0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542].as_ptr());
+        let keys_2 = vld1q_u32([0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9].as_ptr());
+
+        // 2+1 rounds of AES for compression
+        let mut b = aes_encrypt(ReinterpretUnion { int8: b }.uint8, ReinterpretUnion { uint32: keys_1 }.uint8);
+        b = aes_encrypt(b, ReinterpretUnion { uint32: keys_2 }.uint8);
+        return ReinterpretUnion { uint8: aes_encrypt_last(ReinterpretUnion { int8: a }.uint8, b) }.int8;
     }
 
     #[inline]
@@ -179,9 +183,9 @@ mod platform_defs {
         let keys_2 = _mm256_set_epi32(0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9, 0x7A83D76B, 0xB1E8F9F0, 0x028925A8, 0x3B9A4E71);
 
         // 2+1 rounds of AES for compression
-        let mut b = _mm256_aesdec_epi128(b, keys_1);
-        b = _mm256_aesdec_epi128(b, keys_2);
-        return _mm256_aesdeclast_epi128(a, b);
+        let mut b = _mm256_aesenc_epi128(b, keys_1);
+        b = _mm256_aesenc_epi128(b, keys_2);
+        return _mm256_aesenclast_epi128(a, b);
     }
 
     #[inline]
@@ -193,10 +197,10 @@ mod platform_defs {
         let keys_3 = _mm256_set_epi32(0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32, 0xE2784542, 0x4155EE07, 0xC897CCE2, 0x780BF2C2);
 
         // 4 rounds of AES
-        let mut hash = _mm256_aesdec_epi128(hash, _mm256_set1_epi32(seed));
-        hash = _mm256_aesdec_epi128(hash, keys_1);
-        hash = _mm256_aesdec_epi128(hash, keys_2);
-        hash = _mm256_aesdeclast_epi128(hash, keys_3);
+        let mut hash = _mm256_aesenc_epi128(hash, _mm256_set1_epi32(seed));
+        hash = _mm256_aesenc_epi128(hash, keys_1);
+        hash = _mm256_aesenc_epi128(hash, keys_2);
+        hash = _mm256_aesenclast_epi128(hash, keys_3);
 
         // Merge the two 128 bit lanes entropy, so we can after safely truncate up to 128-bits
         let permuted = _mm256_permute2x128_si256(hash, hash, 0x21);

@@ -8,7 +8,29 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughpu
 use gxhash::*;
 use rand::Rng;
 
-fn gxhash_benchmark(c: &mut Criterion) {
+fn benchmark<F>(c: &mut Criterion, data: &[u8], name: &str, delegate: F)
+    where F: Fn(&[u8], i32) -> u64
+{
+    let mut group = c.benchmark_group(name);
+
+    for i in 1..8 {
+        let len = usize::pow(4, i);
+
+        group.throughput(Throughput::Bytes(len as u64));
+
+        let aligned_slice = &data[0..len];
+        group.bench_with_input(format!("{} bytes (aligned)", len), aligned_slice, |bencher, input| {
+            bencher.iter(|| black_box(delegate(input, 0)))
+        });
+
+        // let unaligned_slice = &slice[1..len];
+        // group.bench_with_input(format!("{} bytes (unaligned)", len), unaligned_slice, |bencher, input| {
+        //     bencher.iter(|| black_box(gxhash(input)))
+        // });
+    }
+}
+
+fn benchmark_all(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
 
     // Allocate 32-bytes-aligned
@@ -19,46 +41,26 @@ fn gxhash_benchmark(c: &mut Criterion) {
     // Fill with random bytes
     rng.fill(slice);
 
-    {
-        let mut group = c.benchmark_group("gxhash");
-
-        for i in 1..8 {
-            let len = usize::pow(4, i);
+    // GxHash
+    benchmark(c, slice, "gxhash", gxhash64);
     
-            group.throughput(Throughput::Bytes(len as u64));
-    
-            let aligned_slice = &slice[0..len];
-            group.bench_with_input(format!("{} bytes (aligned)", len), aligned_slice, |bencher, input| {
-                bencher.iter(|| black_box(gxhash32(input, 0)))
-            });
-    
-            // let unaligned_slice = &slice[1..len];
-            // group.bench_with_input(format!("{} bytes (unaligned)", len), unaligned_slice, |bencher, input| {
-            //     bencher.iter(|| black_box(gxhash(input)))
-            // });
-        }
-    }
+    // AHash
+    let build_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
+    benchmark(c, slice, "ahash", |data: &[u8], _: i32| -> u64 {
+        build_hasher.hash_one(data)
+    });
 
-    {
-        let mut group = c.benchmark_group("ahash");
+    // T1ha0
+    benchmark(c, slice, "t1ha0", |data: &[u8], seed: i32| -> u64 {
+        t1ha::t1ha0(data, seed as u64)
+    });
 
-        for i in 1..8 {
-            let len = usize::pow(4, i);
+    // XxHash (twox-hash)
+    benchmark(c, slice, "xxhash (twox-hash)", |data: &[u8], seed: i32| -> u64 {
+        twox_hash::xxh3::hash64_with_seed(data, seed as u64)
+    });
 
-            group.throughput(Throughput::Bytes(len as u64));
-
-            let aligned_slice = &slice[0..len];
-
-            use ahash::*;
-            
-            let build_hasher = RandomState::with_seeds(0, 0, 0, 0);
-
-            group.bench_with_input(format!("{} bytes (aligned)", len), aligned_slice, |bencher, input| {
-                bencher.iter(|| black_box(build_hasher.hash_one(input)))
-            });
-        }
-    }
-    
+    // Free benchmark data
     unsafe { dealloc(ptr, layout) };
 }
 
@@ -67,6 +69,6 @@ criterion_group! {
     config = Criterion::default()
         .sample_size(1000)
         .measurement_time(Duration::from_secs(5));
-    targets = gxhash_benchmark,
+    targets = benchmark_all,
 }
 criterion_main!(benches);
