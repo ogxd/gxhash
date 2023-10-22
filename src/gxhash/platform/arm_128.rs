@@ -63,7 +63,7 @@ unsafe fn get_partial_safe(data: *const i8, len: usize) -> state {
 }
 
 #[inline(always)]
-pub unsafe fn compress(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+pub unsafe fn compress_1(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     // 37 GiB/s
     let keys_1 = vld1q_u32([0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542].as_ptr());
     let keys_2 = vld1q_u32([0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9].as_ptr());
@@ -126,6 +126,11 @@ pub unsafe fn compress(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     // vextq_s8(f, f, 1)
 
     //ve
+}
+
+#[inline(always)]
+pub unsafe fn compress_0(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    vreinterpretq_s8_u8(aes_encrypt(vreinterpretq_u8_s8(a), vreinterpretq_u8_s8(b)))
 }
 
 #[inline(always)]

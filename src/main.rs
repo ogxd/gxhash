@@ -11,7 +11,7 @@ fn main() {
     let mut sum: u32 = 0;
 
     for _ in 0..100_000_000 {
-        sum = sum.wrapping_add(gxhash32(&random_bytes, 0));
+        sum = sum.wrapping_add(gxhash0_32(&random_bytes, 0));
     }
 
     println!("{}", sum);

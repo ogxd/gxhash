@@ -5,20 +5,20 @@ use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
 
 use criterion::measurement::{WallTime};
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup};
+use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup, BenchmarkId};
 use gxhash::*;
 use rand::Rng;
 
 fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, delegate: F)
     where F: Fn(&[u8], i32) -> u64
 {
-    for i in 1..8 {
-        let len = usize::pow(4, i);
+    for i in 1..16 {
+        let len = usize::pow(2, i);
 
         c.throughput(Throughput::Bytes(len as u64));
 
         let aligned_slice = &data[0..len];
-        c.bench_with_input(format!("{} bytes", len), aligned_slice, |bencher, input| {
+        c.bench_with_input(BenchmarkId::new(name, len), aligned_slice, |bencher, input| {
             bencher.iter(|| black_box(delegate(input, 0)))
         });
 
@@ -40,12 +40,19 @@ fn benchmark_all(c: &mut Criterion) {
     // Fill with random bytes
     rng.fill(slice);
 
-    let mut group = c.benchmark_group("hash algos");
+    let mut group = c.benchmark_group("all");
     let plot_config = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
     group.plot_config(plot_config);
 
-    // GxHash
-    benchmark(&mut group, slice, "gxhash", gxhash64);
+    // GxHash0
+    benchmark(&mut group, slice, "gxhash0", |data: &[u8], _: i32| -> u64 {
+        gxhash0_64(data, 0)
+    });
+
+    // GxHash1
+    benchmark(&mut group, slice, "gxhash1", |data: &[u8], _: i32| -> u64 {
+        gxhash1_64(data, 0)
+    });
     
     // AHash
     let build_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
@@ -59,7 +66,7 @@ fn benchmark_all(c: &mut Criterion) {
     });
 
     // XxHash (twox-hash)
-    benchmark(&mut group, slice, "xxhash (twox-hash)", |data: &[u8], seed: i32| -> u64 {
+    benchmark(&mut group, slice, "xxhash", |data: &[u8], seed: i32| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed as u64)
     });
 

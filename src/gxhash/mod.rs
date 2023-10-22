@@ -5,23 +5,39 @@ mod platform;
 pub use platform::*;
 
 #[inline] // To be disabled when profiling
-pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
+pub fn gxhash0_32(input: &[u8], seed: i32) -> u32 {
     unsafe {
-        let p = &gxhash(input, seed) as *const state as *const u32;
+        let p = &gxhash::<0>(input, seed) as *const state as *const u32;
         *p
     }
 }
 
 #[inline] // To be disabled when profiling
-pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
+pub fn gxhash0_64(input: &[u8], seed: i32) -> u64 {
     unsafe {
-        let p = &gxhash(input, seed) as *const state as *const u64;
+        let p = &gxhash::<0>(input, seed) as *const state as *const u64;
+        *p
+    }
+}
+
+#[inline] // To be disabled when profiling
+pub fn gxhash1_32(input: &[u8], seed: i32) -> u32 {
+    unsafe {
+        let p = &gxhash::<1>(input, seed) as *const state as *const u32;
+        *p
+    }
+}
+
+#[inline] // To be disabled when profiling
+pub fn gxhash1_64(input: &[u8], seed: i32) -> u64 {
+    unsafe {
+        let p = &gxhash::<1>(input, seed) as *const state as *const u64;
         *p
     }
 }
 
 #[inline]
-fn gxhash(input: &[u8], seed: i32) -> state {
+fn gxhash<const N: usize>(input: &[u8], seed: i32) -> state {
     unsafe {
         const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
         
@@ -39,6 +55,14 @@ fn gxhash(input: &[u8], seed: i32) -> state {
         let mut end_address: usize;
         let mut remaining_blocks_count: isize = len / VECTOR_SIZE;
         let mut hash_vector: state = create_empty();
+
+        // Choose compression function depending on version.
+        // Lower is faster, higher is more collision resistant.
+        let c = match N {
+            0 => compress_0,
+            1 => compress_1,
+            _ => compress_1
+        };
 
         macro_rules! load_unaligned {
             ($($var:ident),+) => {
@@ -64,19 +88,19 @@ fn gxhash(input: &[u8], seed: i32) -> state {
 
                 prefetch(v);
 
-                s0 = compress(s0, v0);
-                s1 = compress(s1, v1);
-                s2 = compress(s2, v2);
-                s3 = compress(s3, v3);
-                s4 = compress(s4, v4);
-                s5 = compress(s5, v5);
-                s6 = compress(s6, v6);
-                s7 = compress(s7, v7);
+                s0 = c(s0, v0);
+                s1 = c(s1, v1);
+                s2 = c(s2, v2);
+                s3 = c(s3, v3);
+                s4 = c(s4, v4);
+                s5 = c(s5, v5);
+                s6 = c(s6, v6);
+                s7 = c(s7, v7);
             }
         
-            let a = compress(compress(s0, s1), compress(s2, s3));
-            let b = compress(compress(s4, s5), compress(s6, s7));
-            hash_vector = compress(a, b);
+            let a = c(c(s0, s1), c(s2, s3));
+            let b = c(c(s4, s5), c(s6, s7));
+            hash_vector = c(a, b);
 
             remaining_blocks_count -= unrollable_blocks_count;
         }
@@ -85,13 +109,13 @@ fn gxhash(input: &[u8], seed: i32) -> state {
 
         while likely((v as usize) < end_address) {
             load_unaligned!(v0);
-            hash_vector = compress(hash_vector, v0);
+            hash_vector = c(hash_vector, v0);
         }
 
         let remaining_bytes = len & (VECTOR_SIZE - 1);
         if likely(remaining_bytes > 0) {
             let partial_vector = get_partial(v, remaining_bytes);
-            hash_vector = compress(hash_vector, partial_vector);
+            hash_vector = c(hash_vector, partial_vector);
         }
 
         finalize(hash_vector, seed)
@@ -108,12 +132,12 @@ mod tests {
     fn all_blocks_are_consumed() {
         let mut bytes = [42u8; 1200];
 
-        let ref_hash = gxhash32(&bytes, 0);
+        let ref_hash = gxhash0_32(&bytes, 0);
 
         for i in 0..bytes.len() {
             let swap = bytes[i];
             bytes[i] = 82;
-            let new_hash = gxhash32(&bytes, 0);
+            let new_hash = gxhash0_32(&bytes, 0);
             bytes[i] = swap;
 
             assert_ne!(ref_hash, new_hash, "byte {i} not processed");
@@ -130,13 +154,14 @@ mod tests {
         let mut ref_hash = 0;
 
         for i in 32..100 {
-            let new_hash = gxhash32(&mut bytes[..i], 0);
+            let new_hash = gxhash0_32(&mut bytes[..i], 0);
             assert_ne!(ref_hash, new_hash, "Same hash at size {i} ({new_hash})");
             ref_hash = new_hash;
         }
     }
 
     #[test]
+    // Test collisions for all possible inputs of size n bits with m bits set
     fn test_collisions_bits() {
         let mut bytes = [0u8; 120];
         let bits_to_set = 2;
@@ -160,7 +185,7 @@ mod tests {
             }
 
             i += 1;
-            set.insert(gxhash64(&bytes, 0));
+            set.insert(gxhash0_64(&bytes, 0));
             // for &byte in bytes.iter() {
             //     print!("{:08b}", byte);
             // }
@@ -198,8 +223,8 @@ mod tests {
 
     #[test]
     fn hash_of_zero_is_not_zero() {
-        assert_ne!(0, gxhash32(&[0u8; 0], 0));
-        assert_ne!(0, gxhash32(&[0u8; 1], 0));
-        assert_ne!(0, gxhash32(&[0u8; 1200], 0));
+        assert_ne!(0, gxhash0_32(&[0u8; 0], 0));
+        assert_ne!(0, gxhash0_32(&[0u8; 1], 0));
+        assert_ne!(0, gxhash0_32(&[0u8; 1200], 0));
     }
 }
