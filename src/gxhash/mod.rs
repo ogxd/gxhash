@@ -1,8 +1,5 @@
-use std::intrinsics::likely;
-
 mod platform;
-
-pub use platform::*;
+use platform::*;
 
 #[inline(always)] // To be disabled when profiling
 pub fn gxhash0_32(input: &[u8], seed: i32) -> u32 {
@@ -51,16 +48,15 @@ unsafe fn compress<const N: usize>(a: state, b: state) -> state {
 fn gxhash<const N: usize>(input: &[u8], seed: i32) -> state {
     unsafe {
         let len: isize = input.len() as isize;
+        let ptr = input.as_ptr() as *const state;
 
-        let p = input.as_ptr() as *const i8;
-        let v = p as *const state;
-
-        let hash_vector = if len <= 16 {
-            get_partial(v, len)
-        } else if len < 128 {
-            gxhash_process_1::<N>(v, create_empty(), len)
+        // Lower sizes first, as comparison/branching overhead will become negligible as input size grows.
+        let hash_vector = if len <= VECTOR_SIZE {
+            gxhash_process_last::<N>(ptr, create_empty(), len)
+        } else if len < VECTOR_SIZE * 8 {
+            gxhash_process_1::<N>(ptr, create_empty(), len)
         } else {
-            gxhash_process_8::<N>(v, create_empty(), len)
+            gxhash_process_8::<N>(ptr, create_empty(), len)
         };
 
         finalize(hash_vector, seed)
@@ -78,20 +74,20 @@ macro_rules! load_unaligned {
 }
 
 #[inline(always)]
-unsafe fn gxhash_process_8<const N: usize>(mut v: *const state, hash_vector: state, remaining_bytes: isize) -> state {
+unsafe fn gxhash_process_8<const N: usize>(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
 
     const UNROLL_FACTOR: isize = 8;
 
     let unrollable_blocks_count: isize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
-    let end_address = v.offset(unrollable_blocks_count as isize) as usize;
+    let end_address = ptr.offset(unrollable_blocks_count as isize) as usize;
 
-    load_unaligned!(v, s0, s1, s2, s3, s4, s5, s6, s7);
+    load_unaligned!(ptr, s0, s1, s2, s3, s4, s5, s6, s7);
 
-    while (v as usize) < end_address {
+    while (ptr as usize) < end_address {
         
-        load_unaligned!(v, v0, v1, v2, v3, v4, v5, v6, v7);
+        load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
 
-        prefetch(v);
+        prefetch(ptr);
 
         s0 = compress::<N>(s0, v0);
         s1 = compress::<N>(s1, v1);
@@ -107,31 +103,30 @@ unsafe fn gxhash_process_8<const N: usize>(mut v: *const state, hash_vector: sta
     let b = compress::<N>(compress::<N>(s4, s5), compress::<N>(s6, s7));
     let hash_vector = compress::<N>(hash_vector, compress::<N>(a, b));
 
-    gxhash_process_1::<N>(v, hash_vector, remaining_bytes - unrollable_blocks_count * VECTOR_SIZE)
+    gxhash_process_1::<N>(ptr, hash_vector, remaining_bytes - unrollable_blocks_count * VECTOR_SIZE)
 }
 
 #[inline(always)]
-unsafe fn gxhash_process_1<const N: usize>(mut v: *const state, hash_vector: state, remaining_bytes: isize) -> state {
+unsafe fn gxhash_process_1<const N: usize>(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
     
-    let end_address = v.offset((remaining_bytes / VECTOR_SIZE) as isize) as usize;
+    let end_address = ptr.offset((remaining_bytes / VECTOR_SIZE) as isize) as usize;
 
     let mut hash_vector = hash_vector;
-    while (v as usize) < end_address {
-        load_unaligned!(v, v0);
+    while (ptr as usize) < end_address {
+        load_unaligned!(ptr, v0);
         hash_vector = compress::<N>(hash_vector, v0);
     }
 
     let remaining_bytes = remaining_bytes & (VECTOR_SIZE - 1);
     if remaining_bytes > 0 {
-        hash_vector = gxhash_process_last::<N>(v, hash_vector, remaining_bytes);
+        hash_vector = gxhash_process_last::<N>(ptr, hash_vector, remaining_bytes);
     }
     hash_vector
 }
 
 #[inline(always)]
-unsafe fn gxhash_process_last<const N: usize>(v: *const state, hash_vector: state, remaining_bytes: isize) -> state {
-
-    let partial_vector = get_partial(v, remaining_bytes);
+unsafe fn gxhash_process_last<const N: usize>(ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
+    let partial_vector = get_partial(ptr, remaining_bytes);
     compress::<N>(hash_vector, partial_vector)
 }
 
