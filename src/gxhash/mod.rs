@@ -38,7 +38,6 @@ pub fn gxhash1_64(input: &[u8], seed: i32) -> u64 {
 
 const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
 
-
 #[inline(always)]
 unsafe fn compress<const N: usize>(a: state, b: state) -> state {
     match N {
@@ -141,6 +140,7 @@ mod tests {
 
     use super::*;
     use rand::Rng;
+    use rstest::rstest;
 
     #[test]
     fn all_blocks_are_consumed() {
@@ -174,13 +174,23 @@ mod tests {
         }
     }
 
-    #[test]
+    #[rstest]
+    #[case(16, 9)]
+    #[case(24, 8)]
+    #[case(32, 7)]
+    #[case(40, 6)]
+    #[case(56, 5)]
+    #[case(72, 5)]
+    #[case(96, 4)]
+    #[case(160, 4)]
+    #[case(256, 3)]
+    #[case(512, 3)]
+    #[case(2048, 2)]
     // Test collisions for all possible inputs of size n bits with m bits set
-    fn test_collisions_bits() {
-        let mut bytes = [0u8; 120];
-        let bits_to_set = 2;
+    // Equivalent to SMHasher "Sparse" test
+    fn test_collisions_bits(#[case] size_bits: usize, #[case] bits_to_set: usize) {
+        let mut bytes = vec![0u8; size_bits / 8];
 
-        let n = bytes.len() * 8;
         let mut digits: Vec<usize> = vec![0; bits_to_set];
 
         for i in 0..bits_to_set {
@@ -188,7 +198,7 @@ mod tests {
         }
 
         let mut i = 0;
-        let mut set = std::collections::HashSet::new();
+        let mut set = ahash::AHashSet::new();
     
         'stop: loop {
 
@@ -199,11 +209,7 @@ mod tests {
             }
 
             i += 1;
-            set.insert(gxhash0_64(&bytes, 0));
-            // for &byte in bytes.iter() {
-            //     print!("{:08b}", byte);
-            // }
-            // println!();
+            set.insert(gxhash1_64(&bytes, 0));
 
             // Reset bits
             for d in digits.iter() {
@@ -213,16 +219,18 @@ mod tests {
             // Increment the rightmost digit
             for i in (0..bits_to_set).rev() {
                 digits[i] += 1;
-                if digits[i] == n - bits_to_set + i + 1 {
+                if digits[i] == size_bits - bits_to_set + i + 1 {
                     if i == 0 {
                         break 'stop;
                     }
+                    // Reset digit. It will be set to an appropriate value after.
                     digits[i] = 0;
                 } else {
                     break;
                 }
             }
 
+            // Make sure digits are coherent
             for i in 1..bits_to_set {
                 if digits[i] < digits[i - 1] {
                     digits[i] = digits[i - 1] + 1;
@@ -230,7 +238,7 @@ mod tests {
             }
         }
 
-        println!("count: {}, collisions: {}", i, i - set.len());
+        println!("{}-bit keys with {} bits set. Combinations: {}, Collisions: {}", size_bits, bits_to_set, i, i - set.len());
 
         assert_eq!(0, i - set.len(), "Collisions!");
     }
