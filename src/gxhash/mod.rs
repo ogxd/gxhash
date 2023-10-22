@@ -53,6 +53,8 @@ fn gxhash<const N: usize>(input: &[u8], seed: i32) -> state {
         // Lower sizes first, as comparison/branching overhead will become negligible as input size grows.
         let hash_vector = if len <= VECTOR_SIZE {
             gxhash_process_last::<N>(ptr, create_empty(), len)
+        } else if len <= VECTOR_SIZE * 2 {
+            gxhash_process_last::<N>(ptr.offset(1), compress::<N>(*ptr, create_empty()), len - VECTOR_SIZE)
         } else if len < VECTOR_SIZE * 8 {
             gxhash_process_1::<N>(ptr, create_empty(), len)
         } else {
@@ -80,28 +82,24 @@ unsafe fn gxhash_process_8<const N: usize>(mut ptr: *const state, hash_vector: s
 
     let unrollable_blocks_count: isize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
     let end_address = ptr.offset(unrollable_blocks_count as isize) as usize;
-
-    load_unaligned!(ptr, s0, s1, s2, s3, s4, s5, s6, s7);
-
+    
+    let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
         
         load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
 
         prefetch(ptr);
 
-        s0 = compress::<N>(s0, v0);
-        s1 = compress::<N>(s1, v1);
-        s2 = compress::<N>(s2, v2);
-        s3 = compress::<N>(s3, v3);
-        s4 = compress::<N>(s4, v4);
-        s5 = compress::<N>(s5, v5);
-        s6 = compress::<N>(s6, v6);
-        s7 = compress::<N>(s7, v7);
-    }
+        v0 = compress::<0>(v0, v1);
+        v0 = compress::<0>(v0, v2);
+        v0 = compress::<0>(v0, v3);
+        v0 = compress::<0>(v0, v4);
+        v0 = compress::<0>(v0, v5);
+        v0 = compress::<0>(v0, v6);
+        v0 = compress::<0>(v0, v7);
 
-    let a = compress::<N>(compress::<N>(s0, s1), compress::<N>(s2, s3));
-    let b = compress::<N>(compress::<N>(s4, s5), compress::<N>(s6, s7));
-    let hash_vector = compress::<N>(hash_vector, compress::<N>(a, b));
+        hash_vector = compress::<N>(hash_vector, v0);
+    }
 
     gxhash_process_1::<N>(ptr, hash_vector, remaining_bytes - unrollable_blocks_count * VECTOR_SIZE)
 }
