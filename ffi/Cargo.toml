@@ -1,0 +1,12 @@
+[package]
+name = "gxhash_ffi"
+author = "Olivier Giniaux"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "gxhash"
+crate-type = ["cdylib"]
+
+[dependencies]
+gxhash = { path = "../", default-features = false }
