@@ -30,6 +30,11 @@ pub fn gxhash1_64(input: &[u8], seed: i32) -> u64 {
     unsafe {
         let p = &gxhash::<1>(input, seed) as *const state as *const u64;
         *p
+
+        // Alternative idea is to extract the center, to avoid xoring for 256 bit state
+        // let p = &gxhash::<1>(input, seed) as *const state as *const u8;
+        // let shifted_ptr = p.offset(3) as *const u64;
+        // *shifted_ptr
     }
 }
 
