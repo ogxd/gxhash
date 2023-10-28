@@ -57,7 +57,7 @@ unsafe fn get_partial_safe(data: *const u8, len: usize) -> state {
 
 #[inline]
 #[allow(overflowing_literals)]
-pub unsafe fn compress_1(a: state, b: state) -> state {
+pub unsafe fn compress(a: state, b: state) -> state {
     let keys_1 = _mm_set_epi32(0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542);
     let keys_2 = _mm_set_epi32(0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9);
 
@@ -69,7 +69,7 @@ pub unsafe fn compress_1(a: state, b: state) -> state {
 
 #[inline]
 #[allow(overflowing_literals)]
-pub unsafe fn compress_0(a: state, b: state) -> state {
+pub unsafe fn compress_fast(a: state, b: state) -> state {
     return _mm_aesenc_si128(a, b);
 }
 

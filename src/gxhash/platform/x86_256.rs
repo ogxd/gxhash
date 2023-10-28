@@ -57,7 +57,7 @@ unsafe fn get_partial_safe(data: *const u8, len: usize) -> state {
 
 #[inline]
 #[allow(overflowing_literals)]
-pub unsafe fn compress_1(a: state, b: state) -> state {
+pub unsafe fn compress(a: state, b: state) -> state {
     let keys_1 = _mm256_set_epi32(0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542, 0x4155EE07, 0xC897CCE2, 0x780AF2C3, 0x8A72B781);
     let keys_2 = _mm256_set_epi32(0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9, 0x7A83D76B, 0xB1E8F9F0, 0x028925A8, 0x3B9A4E71);
 
@@ -69,7 +69,7 @@ pub unsafe fn compress_1(a: state, b: state) -> state {
 
 #[inline]
 #[allow(overflowing_literals)]
-pub unsafe fn compress_0(a: state, b: state) -> state {
+pub unsafe fn compress_fast(a: state, b: state) -> state {
     return _mm256_aesenc_epi128(a, b);
 }
 
@@ -87,7 +87,5 @@ pub unsafe fn finalize(hash: state, seed: i32) -> state {
     hash = _mm256_aesenc_epi128(hash, keys_2);
     hash = _mm256_aesenclast_epi128(hash, keys_3);
 
-    // Merge the two 128 bit lanes entropy, so we can after safely truncate up to 128-bits
-    let permuted = _mm256_permute2x128_si256(hash, hash, 0x21);
-    _mm256_xor_si256(hash, permuted)
+    hash
 }

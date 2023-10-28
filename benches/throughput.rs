@@ -32,9 +32,9 @@ fn benchmark_all(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
 
     // Allocate 32-bytes-aligned
-    let layout = Layout::from_size_align(100000, 32).unwrap();
+    let layout = Layout::from_size_align(50_000, 32).unwrap();
     let ptr = unsafe { alloc(layout) };
-    let slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(ptr, 100000) };
+    let slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(ptr, layout.size()) };
 
     // Fill with random bytes
     rng.fill(slice);
@@ -43,14 +43,10 @@ fn benchmark_all(c: &mut Criterion) {
     let plot_config = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
     group.plot_config(plot_config);
 
-    // GxHash0
-    // benchmark(&mut group, slice, "gxhash0", |data: &[u8], _: i32| -> u64 {
-    //     gxhash0_64(data, 0)
-    // });
-
-    // GxHash1
-    benchmark(&mut group, slice, "gxhash", |data: &[u8], _: i32| -> u64 {
-        gxhash1_64(data, 0)
+    // GxHash
+    let algo_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
+    benchmark(&mut group, slice, algo_name, |data: &[u8], _: i32| -> u64 {
+        gxhash64(data, 0)
     });
     
     // AHash
