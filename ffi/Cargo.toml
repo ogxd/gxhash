@@ -6,7 +6,7 @@ edition = "2021"
 
 [lib]
 name = "gxhash"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 gxhash = { path = "../", default-features = false }

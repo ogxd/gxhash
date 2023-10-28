@@ -4,8 +4,11 @@ author = "Olivier Giniaux"
 version = "0.1.0"
 edition = "2021"
 
-[profile.release]
-debug = true
+[features]
+# The 256-bit state GxHash is faster for large inputs than the default 128-bit state implementation.
+# Please not however that the 256-bit GxHash and the 128-bit GxHash don't generate the same hashes for a same input.
+# Requires AVX2 and VAES (X86).
+256-bit = []
 
 [dependencies]
 rand = "0.8"
@@ -14,6 +17,7 @@ rand = "0.8"
 rstest = "0.18.2"
 criterion = { version = "0.5.1" }
 lazy_static = { version = "1.3" }
+# Other hash algorithms, for comparison.
 ahash = "0.8.3"
 t1ha = "0.1.0"
 twox-hash = "1.6.3"

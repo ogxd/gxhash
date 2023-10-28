@@ -10,7 +10,7 @@ pub unsafe fn create_empty() -> state {
 
 #[inline]
 pub unsafe fn prefetch(p: *const state) {
-    _mm_prefetch(p as *const i8, 3);
+    //_mm_prefetch(p as *const i8, 3);
 }
 
 #[inline]
@@ -24,10 +24,7 @@ pub unsafe fn get_partial(p: *const state, len: isize) -> state {
     // Safety check
     if check_same_page(p) {
         let indices = _mm256_setr_epi8(
-            0, 1, 2, 3, 4, 5, 6, 7,
-            8, 9, 10, 11, 12, 13, 14, 15,
-            16, 17, 18, 19, 20, 21, 22, 23,
-            24, 25, 26, 27, 28, 29, 30, 31
+            31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
         );
 
         let mask = _mm256_cmpgt_epi8(_mm256_set1_epi8(len as i8), indices);
@@ -36,7 +33,7 @@ pub unsafe fn get_partial(p: *const state, len: isize) -> state {
         partial_vector = get_partial_safe(p as *const u8, len as usize)
     }
     // Prevents padded zeroes to introduce bias
-    _mm256_add_epi32(partial_vector, _mm256_set1_epi32(len as i32))
+    _mm256_add_epi8(partial_vector, _mm256_set1_epi8(len as i8))
 }
 
 #[inline]
@@ -60,7 +57,7 @@ unsafe fn get_partial_safe(data: *const u8, len: usize) -> state {
 
 #[inline]
 #[allow(overflowing_literals)]
-pub unsafe fn compress(a: state, b: state) -> state {
+pub unsafe fn compress_1(a: state, b: state) -> state {
     let keys_1 = _mm256_set_epi32(0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542, 0x4155EE07, 0xC897CCE2, 0x780AF2C3, 0x8A72B781);
     let keys_2 = _mm256_set_epi32(0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9, 0x7A83D76B, 0xB1E8F9F0, 0x028925A8, 0x3B9A4E71);
 
@@ -68,6 +65,12 @@ pub unsafe fn compress(a: state, b: state) -> state {
     let mut b = _mm256_aesenc_epi128(b, keys_1);
     b = _mm256_aesenc_epi128(b, keys_2);
     return _mm256_aesenclast_epi128(a, b);
+}
+
+#[inline]
+#[allow(overflowing_literals)]
+pub unsafe fn compress_0(a: state, b: state) -> state {
+    return _mm256_aesenc_epi128(a, b);
 }
 
 #[inline]
