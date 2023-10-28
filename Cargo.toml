@@ -8,7 +8,7 @@ edition = "2021"
 # The 256-bit state GxHash is faster for large inputs than the default 128-bit state implementation.
 # Please not however that the 256-bit GxHash and the 128-bit GxHash don't generate the same hashes for a same input.
 # Requires AVX2 and VAES (X86).
-256-bit = []
+avx2 = []
 
 [dependencies]
 rand = "0.8"

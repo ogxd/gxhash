@@ -3,7 +3,7 @@
 pub mod platform;
 
 #[cfg(all(
-    feature = "256-bit",
+    feature = "avx2",
     target_arch = "x86_64",
     target_feature = "avx2")
 )]
@@ -11,7 +11,7 @@ pub mod platform;
 pub mod platform;
 
 #[cfg(all(
-    not(feature = "256-bit"),
+    not(feature = "avx2"),
     target_arch = "x86_64"
 ))]
 #[path = "x86_128.rs"]

@@ -1,69 +1,67 @@
 mod platform;
 use platform::*;
 
-#[inline(always)] // To be disabled when profiling
-pub fn gxhash0_32(input: &[u8], seed: i32) -> u32 {
+#[cfg(not(feature = "avx2"))]
+#[inline(always)]
+pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
     unsafe {
-        let p = &gxhash::<0>(input, seed) as *const state as *const u32;
+        let p = &gxhash(input, seed) as *const state as *const u32;
         *p
     }
 }
 
-#[inline(always)] // To be disabled when profiling
-pub fn gxhash0_64(input: &[u8], seed: i32) -> u64 {
+// Since the 256-bit runs AES operations on two 128-bit lanes, we need to extract
+// the hash from the center, picking the same entropy amount from the two lanes
+#[cfg(feature = "avx2")]
+#[inline(always)]
+pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
     unsafe {
-        let p = &gxhash::<0>(input, seed) as *const state as *const u64;
+        let p = &gxhash(input, seed) as *const state as *const u8;
+        let offset = std::mem::size_of::<state>() / 2 - std::mem::size_of::<u32>() / 2 - 1;
+        let shifted_ptr = p.offset(offset as isize) as *const u32;
+        *shifted_ptr
+    }
+}
+
+#[cfg(not(feature = "avx2"))]
+#[inline(always)]
+pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
+    unsafe {
+        let p = &gxhash(input, seed) as *const state as *const u64;
         *p
     }
 }
 
-#[inline(always)] // To be disabled when profiling
-pub fn gxhash1_32(input: &[u8], seed: i32) -> u32 {
+// Since the 256-bit runs AES operations on two 128-bit lanes, we need to extract
+// the hash from the center, picking the same entropy amount from the two lanes
+#[cfg(feature = "avx2")]
+#[inline(always)]
+pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
     unsafe {
-        let p = &gxhash::<1>(input, seed) as *const state as *const u32;
-        *p
-    }
-}
-
-#[inline(always)] // To be disabled when profiling
-pub fn gxhash1_64(input: &[u8], seed: i32) -> u64 {
-    unsafe {
-        let p = &gxhash::<1>(input, seed) as *const state as *const u64;
-        *p
-
-        // Alternative idea is to extract the center, to avoid xoring for 256 bit state
-        // let p = &gxhash::<1>(input, seed) as *const state as *const u8;
-        // let shifted_ptr = p.offset(3) as *const u64;
-        // *shifted_ptr
+        let p = &gxhash(input, seed) as *const state as *const u8;
+        let offset = std::mem::size_of::<state>() / 2 - std::mem::size_of::<u64>() / 2 - 1;
+        let shifted_ptr = p.offset(offset as isize) as *const u64;
+        *shifted_ptr
     }
 }
 
 const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
 
 #[inline(always)]
-unsafe fn compress<const N: usize>(a: state, b: state) -> state {
-    match N {
-        0 => compress_0(a, b),
-        1 => compress_1(a, b),
-        _ => compress_1(a, b)
-    }
-}
-
-#[inline(always)]
-fn gxhash<const N: usize>(input: &[u8], seed: i32) -> state {
+fn gxhash(input: &[u8], seed: i32) -> state {
     unsafe {
         let len: isize = input.len() as isize;
         let ptr = input.as_ptr() as *const state;
 
         // Lower sizes first, as comparison/branching overhead will become negligible as input size grows.
         let hash_vector = if len <= VECTOR_SIZE {
-            gxhash_process_last::<N>(ptr, create_empty(), len)
+            gxhash_process_last(ptr, create_empty(), len)
         } else if len <= VECTOR_SIZE * 2 {
-            gxhash_process_last::<N>(ptr.offset(1), compress::<N>(*ptr, create_empty()), len - VECTOR_SIZE)
+            gxhash_process_last(ptr.offset(1), compress(*ptr, create_empty()), len - VECTOR_SIZE)
         } else if len < VECTOR_SIZE * 8 {
-            gxhash_process_1::<N>(ptr, create_empty(), len)
+            gxhash_process_1(ptr, create_empty(), len)
         } else {
-            gxhash_process_8::<N>(ptr, create_empty(), len)
+            gxhash_process_8(ptr, create_empty(), len)
         };
 
         finalize(hash_vector, seed)
@@ -81,7 +79,7 @@ macro_rules! load_unaligned {
 }
 
 #[inline(always)]
-unsafe fn gxhash_process_8<const N: usize>(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
+unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
 
     const UNROLL_FACTOR: isize = 8;
 
@@ -95,42 +93,42 @@ unsafe fn gxhash_process_8<const N: usize>(mut ptr: *const state, hash_vector: s
 
         prefetch(ptr);
 
-        v0 = compress::<0>(v0, v1);
-        v0 = compress::<0>(v0, v2);
-        v0 = compress::<0>(v0, v3);
-        v0 = compress::<0>(v0, v4);
-        v0 = compress::<0>(v0, v5);
-        v0 = compress::<0>(v0, v6);
-        v0 = compress::<0>(v0, v7);
+        v0 = compress_fast(v0, v1);
+        v0 = compress_fast(v0, v2);
+        v0 = compress_fast(v0, v3);
+        v0 = compress_fast(v0, v4);
+        v0 = compress_fast(v0, v5);
+        v0 = compress_fast(v0, v6);
+        v0 = compress_fast(v0, v7);
 
-        hash_vector = compress::<N>(hash_vector, v0);
+        hash_vector = compress(hash_vector, v0);
     }
 
-    gxhash_process_1::<N>(ptr, hash_vector, remaining_bytes - unrollable_blocks_count * VECTOR_SIZE)
+    gxhash_process_1(ptr, hash_vector, remaining_bytes - unrollable_blocks_count * VECTOR_SIZE)
 }
 
 #[inline(always)]
-unsafe fn gxhash_process_1<const N: usize>(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
+unsafe fn gxhash_process_1(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
     
     let end_address = ptr.offset((remaining_bytes / VECTOR_SIZE) as isize) as usize;
 
     let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
         load_unaligned!(ptr, v0);
-        hash_vector = compress::<N>(hash_vector, v0);
+        hash_vector = compress(hash_vector, v0);
     }
 
     let remaining_bytes = remaining_bytes & (VECTOR_SIZE - 1);
     if remaining_bytes > 0 {
-        hash_vector = gxhash_process_last::<N>(ptr, hash_vector, remaining_bytes);
+        hash_vector = gxhash_process_last(ptr, hash_vector, remaining_bytes);
     }
     hash_vector
 }
 
 #[inline(always)]
-unsafe fn gxhash_process_last<const N: usize>(ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
+unsafe fn gxhash_process_last(ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
     let partial_vector = get_partial(ptr, remaining_bytes);
-    compress::<N>(hash_vector, partial_vector)
+    compress(hash_vector, partial_vector)
 }
 
 #[cfg(test)]
@@ -155,12 +153,12 @@ mod tests {
     fn all_blocks_are_consumed(#[case] size_bits: usize) {
         let mut bytes = vec![42u8; size_bits];
 
-        let ref_hash = gxhash0_32(&bytes, 0);
+        let ref_hash = gxhash32(&bytes, 0);
 
         for i in 0..bytes.len() {
             let swap = bytes[i];
             bytes[i] = 82;
-            let new_hash = gxhash0_32(&bytes, 0);
+            let new_hash = gxhash32(&bytes, 0);
             bytes[i] = swap;
 
             assert_ne!(ref_hash, new_hash, "byte {i} not processed");
@@ -177,7 +175,7 @@ mod tests {
         let mut ref_hash = 0;
 
         for i in 32..100 {
-            let new_hash = gxhash0_32(&mut bytes[..i], 0);
+            let new_hash = gxhash32(&mut bytes[..i], 0);
             assert_ne!(ref_hash, new_hash, "Same hash at size {i} ({new_hash})");
             ref_hash = new_hash;
         }
@@ -218,7 +216,7 @@ mod tests {
             }
 
             i += 1;
-            set.insert(gxhash1_64(&bytes, 0));
+            set.insert(gxhash64(&bytes, 0));
 
             // Reset bits
             for d in digits.iter() {
@@ -254,8 +252,8 @@ mod tests {
 
     #[test]
     fn hash_of_zero_is_not_zero() {
-        assert_ne!(0, gxhash0_32(&[0u8; 0], 0));
-        assert_ne!(0, gxhash0_32(&[0u8; 1], 0));
-        assert_ne!(0, gxhash0_32(&[0u8; 1200], 0));
+        assert_ne!(0, gxhash32(&[0u8; 0], 0));
+        assert_ne!(0, gxhash32(&[0u8; 1], 0));
+        assert_ne!(0, gxhash32(&[0u8; 1200], 0));
     }
 }

@@ -63,73 +63,18 @@ unsafe fn get_partial_safe(data: *const i8, len: usize) -> state {
 }
 
 #[inline(always)]
-pub unsafe fn compress_1(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    // 37 GiB/s
+pub unsafe fn compress(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     let keys_1 = vld1q_u32([0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542].as_ptr());
     let keys_2 = vld1q_u32([0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9].as_ptr());
+
     let b = aes_encrypt(vreinterpretq_u8_s8(b), vreinterpretq_u8_u32(keys_1));
     let a = aes_encrypt(vreinterpretq_u8_s8(a), vreinterpretq_u8_u32(keys_2));
+
     vreinterpretq_s8_u8(aes_encrypt_last(a, b))
-
-    // 70 GiB/s
-    //vreinterpretq_s8_u8(aes_encrypt(vreinterpretq_u8_s8(a), vreinterpretq_u8_s8(b)))
-
-    //vreinterpretq_s8_u8(chmuck(vreinterpretq_u8_s8(a), vreinterpretq_u8_s8(b)))
-    // 26 GiB/s
-    // let keys_1 = vld1q_u32([0x713B01D0, 0x8F2F35DB, 0xAF163956, 0x85459F85].as_ptr());
-    // let keys_2 = vld1q_u32([0x1DE09647, 0x92CFA39C, 0x3DD99ACA, 0xB89C054F].as_ptr());
-    // let keys_3 = vld1q_u32([0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32].as_ptr());
-    // let b1 = vaddq_u32(vreinterpretq_u32_s8(b), keys_2); // Cheap
-    // let b2 = vreinterpretq_s8_u32(vmulq_u32(b1, keys_1)); // Cheap
-    // let b3 = vreinterpretq_u32_s8(vextq_s8(b2, b2, 3)); // Expensive
-    // let b4 = vaddq_u32(b3, keys_3); // Cheap
-    // let b5 = vreinterpretq_s8_u32(vmulq_u32(b4, keys_2)); // Cheap
-    // let b6 = vreinterpretq_u32_s8(vextq_s8(b5, b5, 3)); // Expensive
-    // let b7 = vaddq_u32(b6, keys_1); // Cheap
-    // let b8 = vmulq_u32(b7, keys_3); // Cheap
-    // let b9 = veorq_s8(a, vreinterpretq_s8_u32(b8));
-    // vextq_s8(b9, b9, 7)
-
-    //let primes = vld1q_u32([0x9e3779b9, 0x9e3779b9, 0x9e3779b9, 0x9e3779b9].as_ptr());
-    // let keys_2 = vld1q_u32([0x1DE09647, 0x92CFA39C, 0x3DD99ACA, 0xB89C054F].as_ptr());
-    // let keys_3 = vld1q_u32([0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32].as_ptr());
-    // let b1 = vaddq_u32(vreinterpretq_u32_s8(b), primes); // Cheap
-    // let b2 = vreinterpretq_s8_u32(vmulq_u32(vreinterpretq_u32_s8(b), primes)); // Cheap
-    // let shifted = vshlq_n_s8::<1>(b2);
-    // let b3 = veorq_s8(b, shifted);
-    //let b3: uint32x4_t = vreinterpretq_u32_s8(vextq_s8(b2, b2, 3)); // Expensive
-    // let b4 = vaddq_u32(b3, keys_3); // Cheap
-    // let b5 = vreinterpretq_s8_u32(vmulq_u32(b4, keys_2)); // Cheap
-    // let b6 = vreinterpretq_u32_s8(vextq_s8(b5, b5, 3)); // Expensive
-    // let b7 = vaddq_u32(b6, keys_1); // Cheap
-    // let b8 = vmulq_u32(b7, keys_3); // Cheap
-    // let b9 = vaddq_u32(
-    //     vreinterpretq_u32_s8(b),
-    //     veorq_u32(
-    //         primes,
-    //         vaddq_u32(
-    //             vshrq_n_u32::<2>(vreinterpretq_u32_s8(a)),
-    //             vshlq_n_u32::<6>(vreinterpretq_u32_s8(a)))));
-
-    // vextq_s8(vreinterpretq_s8_u32(b9), vreinterpretq_s8_u32(b9), 1)
-
-    // let mut x = vreinterpretq_u32_s8(b);
-    // // Round 1
-    // x = veorq_u32(x, vshrq_n_u32::<16>(x));
-    // x = vmulq_u32(x, vld1q_u32([0x7feb352d, 0x7feb352d, 0x7feb352d, 0x7feb352d].as_ptr()));
-    // // Round 2
-    // x = veorq_u32(x, vshrq_n_u32::<15>(x));
-    // x = vmulq_u32(x, vld1q_u32([0x846ca68b, 0x846ca68b, 0x846ca68b, 0x846ca68b].as_ptr()));
-    // // Round 3
-    // x = veorq_u32(x, vshrq_n_u32::<16>(x));
-    // let f = vaddq_s8(a, vreinterpretq_s8_u32(x));
-    // vextq_s8(f, f, 1)
-
-    //ve
 }
 
 #[inline(always)]
-pub unsafe fn compress_0(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+pub unsafe fn compress_fast(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     vreinterpretq_s8_u8(aes_encrypt(vreinterpretq_u8_s8(a), vreinterpretq_u8_s8(b)))
 }
 
