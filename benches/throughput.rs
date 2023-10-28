@@ -12,20 +12,19 @@ mod fnv;
 fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, delegate: F)
     where F: Fn(&[u8], i32) -> u64
 {
-    for i in 1..16 {
+    for i in 1.. {
         let len = usize::pow(4, i);
+        if len > data.len() {
+            break;
+        }  
 
         c.throughput(Throughput::Bytes(len as u64));
 
-        let aligned_slice = &data[0..len];
-        c.bench_with_input(BenchmarkId::new(name, len), aligned_slice, |bencher, input| {
+        let slice = &data[0..len]; // Aligned
+        // let slice = &data[1..len]; // Unaligned
+        c.bench_with_input(BenchmarkId::new(name, len), slice, |bencher, input| {
             bencher.iter(|| black_box(delegate(input, 0)))
         });
-
-        // let unaligned_slice = &slice[1..len];
-        // group.bench_with_input(format!("{} bytes (unaligned)", len), unaligned_slice, |bencher, input| {
-        //     bencher.iter(|| black_box(gxhash(input)))
-        // });
     }
 }
 
@@ -50,7 +49,7 @@ fn benchmark_all(c: &mut Criterion) {
     // });
 
     // GxHash1
-    benchmark(&mut group, slice, "gxhash1", |data: &[u8], _: i32| -> u64 {
+    benchmark(&mut group, slice, "gxhash", |data: &[u8], _: i32| -> u64 {
         gxhash1_64(data, 0)
     });
     
@@ -68,6 +67,12 @@ fn benchmark_all(c: &mut Criterion) {
     // XxHash (twox-hash)
     benchmark(&mut group, slice, "xxhash", |data: &[u8], seed: i32| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed as u64)
+    });
+
+    // HighwayHash
+    benchmark(&mut group, slice, "highwayhash", |data: &[u8], _: i32| -> u64 {
+        use highway::{HighwayHasher, HighwayHash};
+        HighwayHasher::default().hash64(data)
     });
 
     // FNV-1a
