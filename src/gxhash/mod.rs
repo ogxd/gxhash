@@ -1,7 +1,6 @@
 mod platform;
 use platform::*;
 
-#[cfg(not(feature = "avx2"))]
 #[inline(always)]
 pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
     unsafe {
@@ -10,38 +9,11 @@ pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
     }
 }
 
-// Since the 256-bit runs AES operations on two 128-bit lanes, we need to extract
-// the hash from the center, picking the same entropy amount from the two lanes
-#[cfg(feature = "avx2")]
-#[inline(always)]
-pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
-    unsafe {
-        let p = &gxhash(input, seed) as *const state as *const u8;
-        let offset = std::mem::size_of::<state>() / 2 - std::mem::size_of::<u32>() / 2 - 1;
-        let shifted_ptr = p.offset(offset as isize) as *const u32;
-        *shifted_ptr
-    }
-}
-
-#[cfg(not(feature = "avx2"))]
 #[inline(always)]
 pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
     unsafe {
         let p = &gxhash(input, seed) as *const state as *const u64;
         *p
-    }
-}
-
-// Since the 256-bit runs AES operations on two 128-bit lanes, we need to extract
-// the hash from the center, picking the same entropy amount from the two lanes
-#[cfg(feature = "avx2")]
-#[inline(always)]
-pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
-    unsafe {
-        let p = &gxhash(input, seed) as *const state as *const u8;
-        let offset = std::mem::size_of::<state>() / 2 - std::mem::size_of::<u64>() / 2 - 1;
-        let shifted_ptr = p.offset(offset as isize) as *const u64;
-        *shifted_ptr
     }
 }
 

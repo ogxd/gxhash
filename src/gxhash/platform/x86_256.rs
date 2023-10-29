@@ -87,5 +87,6 @@ pub unsafe fn finalize(hash: state, seed: i32) -> state {
     hash = _mm256_aesenc_epi128(hash, keys_2);
     hash = _mm256_aesenclast_epi128(hash, keys_3);
 
-    hash
+    let permuted = _mm256_permute2x128_si256(hash, hash, 0x21);
+    _mm256_xor_si256(hash, permuted)
 }
