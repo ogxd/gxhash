@@ -23,7 +23,7 @@ pub unsafe fn get_partial(p: *const state, len: isize) -> state {
     let partial_vector: state;
     // Safety check
     if check_same_page(p) {
-        let indices = _mm256_setr_epi8(
+        let indices = _mm256_set_epi8(
             31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
         );
 

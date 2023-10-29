@@ -23,7 +23,7 @@ pub unsafe fn get_partial(p: *const state, len: isize) -> state {
     let partial_vector: state;
     // Safety check
     if check_same_page(p) {
-        let indices = _mm_setr_epi8(
+        let indices = _mm_set_epi8(
             15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
         );
 
@@ -33,7 +33,7 @@ pub unsafe fn get_partial(p: *const state, len: isize) -> state {
         partial_vector = get_partial_safe(p as *const u8, len as usize)
     }
     // Prevents padded zeroes to introduce bias
-    _mm_add_epi32(partial_vector, _mm_set1_epi32(len as i32))
+    _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
 }
 
 #[inline]
