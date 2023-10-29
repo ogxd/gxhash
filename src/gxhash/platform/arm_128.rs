@@ -111,5 +111,6 @@ pub unsafe fn finalize(hash: state, seed: i32) -> state {
     hash = aes_encrypt(hash, ReinterpretUnion{ uint32: keys_1 }.uint8);
     hash = aes_encrypt(hash, ReinterpretUnion{ uint32: keys_2 }.uint8);
     hash = aes_encrypt_last(hash, ReinterpretUnion{ uint32: keys_3 }.uint8);
-    return ReinterpretUnion{ uint8: hash }.int8;
+    
+    ReinterpretUnion{ uint8: hash }.int8
 }
