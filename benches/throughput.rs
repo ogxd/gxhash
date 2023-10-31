@@ -32,7 +32,7 @@ fn benchmark_all(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
 
     // Allocate 32-bytes-aligned
-    let layout = Layout::from_size_align(50_000, 32).unwrap();
+    let layout = Layout::from_size_align(100_000, 32).unwrap();
     let ptr = unsafe { alloc(layout) };
     let slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(ptr, layout.size()) };
 
