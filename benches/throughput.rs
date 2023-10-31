@@ -23,7 +23,7 @@ fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, deleg
         let slice = &data[0..len]; // Aligned
         // let slice = &data[1..len]; // Unaligned
         c.bench_with_input(BenchmarkId::new(name, len), slice, |bencher, input| {
-            bencher.iter(|| black_box(delegate(input, 0)))
+            bencher.iter(|| delegate(input, 0))
         });
     }
 }
@@ -32,7 +32,7 @@ fn benchmark_all(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
 
     // Allocate 32-bytes-aligned
-    let layout = Layout::from_size_align(100_000, 32).unwrap();
+    let layout = Layout::from_size_align(300_000, 32).unwrap();
     let ptr = unsafe { alloc(layout) };
     let slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(ptr, layout.size()) };
 

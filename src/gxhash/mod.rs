@@ -29,7 +29,14 @@ fn gxhash(input: &[u8], seed: i32) -> state {
         let hash_vector = if len <= VECTOR_SIZE {
             get_partial(ptr, len)
         } else if len <= VECTOR_SIZE * 2 {
-            gxhash_process_last(ptr.offset(1), compress(load_unaligned(ptr), create_empty()), len - VECTOR_SIZE)
+            let v1 = load_unaligned(ptr);
+            let v2 = get_partial(ptr.offset(1), len - VECTOR_SIZE);
+            compress(v1, v2)
+        // } else if len <= VECTOR_SIZE * 3 {
+        //     let v1 = load_unaligned(ptr);
+        //     let v2 = load_unaligned(ptr.offset(1));
+        //     let v3 = get_partial(ptr.offset(2), len - VECTOR_SIZE * 2);
+        //     compress(compress(v1, v2), v3)
         } else if len < VECTOR_SIZE * 8 {
             gxhash_process_1(ptr, create_empty(), len)
         } else {
