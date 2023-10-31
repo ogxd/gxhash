@@ -27,7 +27,7 @@ fn gxhash(input: &[u8], seed: i32) -> state {
 
         // Lower sizes first, as comparison/branching overhead will become negligible as input size grows.
         let hash_vector = if len <= VECTOR_SIZE {
-            gxhash_process_last(ptr, create_empty(), len)
+            get_partial(ptr, len)
         } else if len <= VECTOR_SIZE * 2 {
             gxhash_process_last(ptr.offset(1), compress(load_unaligned(ptr), create_empty()), len - VECTOR_SIZE)
         } else if len < VECTOR_SIZE * 8 {

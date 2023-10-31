@@ -67,10 +67,11 @@ pub unsafe fn compress(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     let keys_1 = vld1q_u32([0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542].as_ptr());
     let keys_2 = vld1q_u32([0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9].as_ptr());
 
-    let b = aes_encrypt(vreinterpretq_u8_s8(b), vreinterpretq_u8_u32(keys_1));
-    let a = aes_encrypt(vreinterpretq_u8_s8(a), vreinterpretq_u8_u32(keys_2));
+    let mut bs = vreinterpretq_u8_s8(b);
+    bs = aes_encrypt(bs, vreinterpretq_u8_u32(keys_1));
+    bs = aes_encrypt(bs, vreinterpretq_u8_u32(keys_2));
 
-    vreinterpretq_s8_u8(aes_encrypt_last(a, b))
+    vreinterpretq_s8_u8(aes_encrypt_last(vreinterpretq_u8_s8(a), bs))
 }
 
 #[inline(always)]
