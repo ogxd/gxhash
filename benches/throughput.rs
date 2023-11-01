@@ -3,7 +3,7 @@ use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
 
 use criterion::measurement::WallTime;
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup, BenchmarkId};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup, BenchmarkId};
 use rand::Rng;
 
 use gxhash::*;
@@ -13,7 +13,7 @@ fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, deleg
     where F: Fn(&[u8], i32) -> u64
 {
     for i in 1.. {
-        let len = usize::pow(4, i);
+        let len = usize::pow(2, i);
         if len > data.len() {
             break;
         }  
