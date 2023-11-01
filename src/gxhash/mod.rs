@@ -20,41 +20,47 @@ pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
 
 const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
 
+const RANGE_1_BEGIN: isize  = VECTOR_SIZE + 1;
+const RANGE_1_END: isize    = VECTOR_SIZE * 2;
+const RANGE_2_BEGIN: isize  = RANGE_1_BEGIN + 1;
+const RANGE_2_END: isize    = VECTOR_SIZE * 3;
+const RANGE_3_BEGIN: isize  = RANGE_2_BEGIN + 1;
+const RANGE_3_END: isize    = VECTOR_SIZE * 4;
+
 #[inline(always)]
 unsafe fn gxhash(input: &[u8], seed: i32) -> state {
 
     let len: isize = input.len() as isize;
     let ptr = input.as_ptr() as *const state;
 
-    // Fast path with no compression for payloads that fit in a single state
-    let hash_vector = if len <= VECTOR_SIZE {
-        get_partial(ptr, len)
-    } else {
-        // Lower sizes first, as comparison/branching overhead will become negligible as input size grows.
-        let (mut hash_vector, remaining_bytes, p) = if len <= VECTOR_SIZE * 2 {
+    let (mut hash_vector, remaining_bytes, p) = match len {
+        0..=VECTOR_SIZE => {
+            // Fast path with no compression for payloads that fit in a single state
+            (get_partial(ptr, len), 0, ptr)
+        },
+        RANGE_1_BEGIN..=RANGE_1_END => {
             let v1 = load_unaligned(ptr);
             (v1, len - VECTOR_SIZE, ptr.offset(1))
-        } else if len <= VECTOR_SIZE * 3 {
+        },
+        RANGE_2_BEGIN..=RANGE_2_END => {
             let v1 = load_unaligned(ptr);
             let v2 = load_unaligned(ptr.offset(1));
             (compress(v1, v2), len - VECTOR_SIZE * 2, ptr.offset(2))
-        } else if len <= VECTOR_SIZE * 4 {
+        },
+        RANGE_3_BEGIN..=RANGE_3_END => {
             let v1 = load_unaligned(ptr);
             let v2 = load_unaligned(ptr.offset(1));
             let v3 = load_unaligned(ptr.offset(2));
             (compress(compress(v1, v2), v3), len - VECTOR_SIZE * 3, ptr.offset(3))
-        } else if len < VECTOR_SIZE * 8 {
-            gxhash_process_1(ptr, create_empty(), len)
-        } else {
+        },
+        _ => {
             gxhash_process_8(ptr, create_empty(), len)
-        };
-
-        if remaining_bytes > 0 {
-            hash_vector = compress(hash_vector, get_partial(p, remaining_bytes))
         }
-
-        hash_vector
     };
+
+    if remaining_bytes > 0 {
+        hash_vector = compress(hash_vector, get_partial(p, remaining_bytes))
+    }
 
     finalize(hash_vector, seed)
 }
