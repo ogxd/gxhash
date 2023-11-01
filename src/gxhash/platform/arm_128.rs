@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::{mem::size_of, intrinsics::likely, thread::sleep, time::Duration};
 use core::arch::aarch64::*;
 
 pub type state = int8x16_t;
@@ -30,29 +30,31 @@ pub unsafe fn load_unaligned(p: *const state) -> state {
 #[inline(always)]
 pub unsafe fn get_partial(p: *const state, len: isize) -> state {
     let partial_vector: state;
-    if check_same_page(p) {
+    if likely(check_same_page(p)) {
         // Unsafe (hence the check) but much faster
         let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
         let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
         partial_vector = vandq_s8(load_unaligned(p), ReinterpretUnion { uint8: mask }.int8);
     } else {
-        // Safer but slower, using memcpy
         partial_vector = get_partial_safe(p as *const i8, len as usize);
     }
     // Prevents padded zeroes to introduce bias
     return vaddq_s8(partial_vector, vdupq_n_s8(len as i8));
 }
 
+// 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
+const PAGE_SIZE: usize = 0x1000;
+
 #[inline(always)]
 unsafe fn check_same_page(ptr: *const state) -> bool {
     let address = ptr as usize;
     // Mask to keep only the last 12 bits (3 bytes)
-    let offset_within_page = address & 0xFFF;
-    // Check if the 32nd byte from the current offset exceeds the page boundary
-    offset_within_page <= (4096 - size_of::<state>() - 1)
+    let offset_within_page = address & PAGE_SIZE;
+    // Check if the 16nd byte from the current offset exceeds the page boundary
+    offset_within_page <= PAGE_SIZE - size_of::<state>()
 }
 
-#[inline(always)]
+#[inline(never)]
 unsafe fn get_partial_safe(data: *const i8, len: usize) -> state {
     // Temporary buffer filled with zeros
     let mut buffer = [0i8; size_of::<state>()];

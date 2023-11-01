@@ -1,4 +1,5 @@
 mod platform;
+
 use platform::*;
 
 #[inline(always)]
@@ -20,51 +21,60 @@ pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
 const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
 
 #[inline(always)]
-fn gxhash(input: &[u8], seed: i32) -> state {
-    unsafe {
-        let len: isize = input.len() as isize;
-        let ptr = input.as_ptr() as *const state;
+unsafe fn gxhash(input: &[u8], seed: i32) -> state {
 
+    let len: isize = input.len() as isize;
+    let ptr = input.as_ptr() as *const state;
+
+    // Fast path with no compression for payloads that fit in a single state
+    let hash_vector = if len <= VECTOR_SIZE {
+        get_partial(ptr, len)
+    } else {
         // Lower sizes first, as comparison/branching overhead will become negligible as input size grows.
-        let hash_vector = if len <= VECTOR_SIZE {
-            get_partial(ptr, len)
-        } else if len <= VECTOR_SIZE * 2 {
+        let (mut hash_vector, remaining_bytes, p) = if len <= VECTOR_SIZE * 2 {
             let v1 = load_unaligned(ptr);
-            let v2 = get_partial(ptr.offset(1), len - VECTOR_SIZE);
-            compress(v1, v2)
-        // } else if len <= VECTOR_SIZE * 3 {
-        //     let v1 = load_unaligned(ptr);
-        //     let v2 = load_unaligned(ptr.offset(1));
-        //     let v3 = get_partial(ptr.offset(2), len - VECTOR_SIZE * 2);
-        //     compress(compress(v1, v2), v3)
+            (v1, len - VECTOR_SIZE, ptr.offset(1))
+        } else if len <= VECTOR_SIZE * 3 {
+            let v1 = load_unaligned(ptr);
+            let v2 = load_unaligned(ptr.offset(1));
+            (compress(v1, v2), len - VECTOR_SIZE * 2, ptr.offset(2))
+        } else if len <= VECTOR_SIZE * 4 {
+            let v1 = load_unaligned(ptr);
+            let v2 = load_unaligned(ptr.offset(1));
+            let v3 = load_unaligned(ptr.offset(2));
+            (compress(compress(v1, v2), v3), len - VECTOR_SIZE * 3, ptr.offset(3))
         } else if len < VECTOR_SIZE * 8 {
             gxhash_process_1(ptr, create_empty(), len)
         } else {
             gxhash_process_8(ptr, create_empty(), len)
         };
 
-        finalize(hash_vector, seed)
-    }
+        if remaining_bytes > 0 {
+            hash_vector = compress(hash_vector, get_partial(p, remaining_bytes))
+        }
+
+        hash_vector
+    };
+
+    finalize(hash_vector, seed)
 }
 
 macro_rules! load_unaligned {
     ($ptr:ident, $($var:ident),+) => {
         $(
-            #[allow(unused_mut)]
-            let mut $var = load_unaligned($ptr);
-            $ptr = $ptr.offset(1);
+            let $var = load_unaligned($ptr);
+            $ptr = ($ptr).offset(1);
         )+
     };
 }
 
-#[inline(always)]
-unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
+#[inline(never)]
+unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> (state, isize, *const state) {
 
     const UNROLL_FACTOR: isize = 8;
 
     let unrollable_blocks_count: isize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
     let end_address = ptr.offset(unrollable_blocks_count as isize) as usize;
-    
     let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
         
@@ -72,13 +82,14 @@ unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_
 
         prefetch(ptr);
 
-        v0 = compress_fast(v0, v1);
-        v0 = compress_fast(v0, v2);
-        v0 = compress_fast(v0, v3);
-        v0 = compress_fast(v0, v4);
-        v0 = compress_fast(v0, v5);
-        v0 = compress_fast(v0, v6);
-        v0 = compress_fast(v0, v7);
+        let mut tmp: state;
+        tmp = compress_fast(v0, v1);
+        tmp = compress_fast(tmp, v2);
+        tmp = compress_fast(tmp, v3);
+        tmp = compress_fast(tmp, v4);
+        tmp = compress_fast(tmp, v5);
+        tmp = compress_fast(tmp, v6);
+        tmp = compress_fast(tmp, v7);
 
         hash_vector = compress(hash_vector, v0);
     }
@@ -86,8 +97,8 @@ unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_
     gxhash_process_1(ptr, hash_vector, remaining_bytes - unrollable_blocks_count * VECTOR_SIZE)
 }
 
-#[inline(always)]
-unsafe fn gxhash_process_1(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
+#[inline(never)]
+unsafe fn gxhash_process_1(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> (state, isize, *const state) {
     
     let end_address = ptr.offset((remaining_bytes / VECTOR_SIZE) as isize) as usize;
 
@@ -97,17 +108,8 @@ unsafe fn gxhash_process_1(mut ptr: *const state, hash_vector: state, remaining_
         hash_vector = compress(hash_vector, v0);
     }
 
-    let remaining_bytes = remaining_bytes & (VECTOR_SIZE - 1);
-    if remaining_bytes > 0 {
-        hash_vector = gxhash_process_last(ptr, hash_vector, remaining_bytes);
-    }
-    hash_vector
-}
-
-#[inline(always)]
-unsafe fn gxhash_process_last(ptr: *const state, hash_vector: state, remaining_bytes: isize) -> state {
-    let partial_vector = get_partial(ptr, remaining_bytes);
-    compress(hash_vector, partial_vector)
+    let remaining_bytes: isize = remaining_bytes & (VECTOR_SIZE - 1);
+    (hash_vector, remaining_bytes, ptr)
 }
 
 #[cfg(test)]
