@@ -68,7 +68,22 @@ macro_rules! load_unaligned {
     };
 }
 
-#[inline(never)]
+#[inline(always)]
+unsafe fn gxhash_process_1(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> (state, isize, *const state) {
+    
+    let end_address = ptr.offset((remaining_bytes / VECTOR_SIZE) as isize) as usize;
+
+    let mut hash_vector = hash_vector;
+    while (ptr as usize) < end_address {
+        load_unaligned!(ptr, v0);
+        hash_vector = compress(hash_vector, v0);
+    }
+
+    let remaining_bytes: isize = remaining_bytes & (VECTOR_SIZE - 1);
+    (hash_vector, remaining_bytes, ptr)
+}
+
+#[inline(always)]
 unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> (state, isize, *const state) {
 
     const UNROLL_FACTOR: isize = 8;
@@ -91,25 +106,10 @@ unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_
         tmp = compress_fast(tmp, v6);
         tmp = compress_fast(tmp, v7);
 
-        hash_vector = compress(hash_vector, v0);
+        hash_vector = compress(hash_vector, tmp);
     }
 
     gxhash_process_1(ptr, hash_vector, remaining_bytes - unrollable_blocks_count * VECTOR_SIZE)
-}
-
-#[inline(never)]
-unsafe fn gxhash_process_1(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> (state, isize, *const state) {
-    
-    let end_address = ptr.offset((remaining_bytes / VECTOR_SIZE) as isize) as usize;
-
-    let mut hash_vector = hash_vector;
-    while (ptr as usize) < end_address {
-        load_unaligned!(ptr, v0);
-        hash_vector = compress(hash_vector, v0);
-    }
-
-    let remaining_bytes: isize = remaining_bytes & (VECTOR_SIZE - 1);
-    (hash_vector, remaining_bytes, ptr)
 }
 
 #[cfg(test)]
