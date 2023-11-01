@@ -23,10 +23,7 @@ pub unsafe fn get_partial(p: *const state, len: isize) -> state {
     let partial_vector: state;
     // Safety check
     if check_same_page(p) {
-        let indices = _mm256_set_epi8(
-            31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
-        );
-
+        let indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
         let mask = _mm256_cmpgt_epi8(_mm256_set1_epi8(len as i8), indices);
         partial_vector = _mm256_and_si256(_mm256_loadu_si256(p), mask);
     } else {
@@ -36,13 +33,16 @@ pub unsafe fn get_partial(p: *const state, len: isize) -> state {
     _mm256_add_epi8(partial_vector, _mm256_set1_epi8(len as i8))
 }
 
+// 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
+const PAGE_SIZE: usize = 0x1000;
+
 #[inline]
 unsafe fn check_same_page(ptr: *const state) -> bool {
     let address = ptr as usize;
     // Mask to keep only the last 12 bits (3 bytes)
     let offset_within_page = address & 0xFFF;
     // Check if the 32nd byte from the current offset exceeds the page boundary
-    offset_within_page <= (4096 - size_of::<state>() - 1)
+    offset_within_page <= PAGE_SIZE - size_of::<state>()
 }
 
 #[inline]
