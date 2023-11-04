@@ -82,8 +82,7 @@ pub unsafe fn finalize(hash: State, seed: i32) -> State {
     let keys_3 = _mm256_set_epi32(0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32, 0xE2784542, 0x4155EE07, 0xC897CCE2, 0x780BF2C2);
 
     // 4 rounds of AES
-    //let mut hash = _mm256_aesenc_epi128(hash, _mm256_set1_epi32(seed));
-    let mut hash = _mm256_add_epi8(hash, _mm256_set1_epi32(seed));
+    let mut hash = _mm256_aesenc_epi128(hash, _mm256_set1_epi32(seed));
     hash = _mm256_aesenc_epi128(hash, keys_1);
     hash = _mm256_aesenc_epi128(hash, keys_2);
     hash = _mm256_aesenclast_epi128(hash, keys_3);

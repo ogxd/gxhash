@@ -1,3 +1,9 @@
+include!("../fnv.rs");
+
+mod result_processor;
+
+use result_processor::*;
+
 use std::hint::black_box;
 use std::time::{Instant, Duration};
 use std::alloc::{alloc, dealloc, Layout};
@@ -6,7 +12,6 @@ use std::slice;
 use rand::Rng;
 
 use gxhash::*;
-mod fnv;
 
 const ITERATIONS: u32 = 1000;
 const MAX_RUN_DURATION: Duration = Duration::from_millis(500);
@@ -23,57 +28,49 @@ fn main() {
     // Fill with random bytes
     rng.fill(slice);
 
-    print!("Input size (bytes), ");
-    for i in 2.. {
-        let len = usize::pow(2, i);
-        if len > slice.len() {
-            break;
-        }  
-        print!("{}, ", len); 
-    }
-    println!();
+    let mut processor = ResultProcessor::default();
 
     // GxHash
     let algo_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
-    benchmark(slice, algo_name, |data: &[u8], seed: i32| -> u64 {
+    benchmark(&mut processor, slice, algo_name, |data: &[u8], seed: i32| -> u64 {
         gxhash64(data, seed)
     });
     
     // AHash
     let ahash_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
-    benchmark(slice, "ahash", |data: &[u8], _: i32| -> u64 {
+    benchmark(&mut processor, slice, "ahash", |data: &[u8], _: i32| -> u64 {
         ahash_hasher.hash_one(data)
     });
 
     // T1ha0
-    benchmark(slice, "t1ha0", |data: &[u8], seed: i32| -> u64 {
+    benchmark(&mut processor, slice, "t1ha0", |data: &[u8], seed: i32| -> u64 {
         t1ha::t1ha0(data, seed as u64)
     });
 
     // XxHash (twox-hash)
-    benchmark(slice, "xxhash", |data: &[u8], seed: i32| -> u64 {
+    benchmark(&mut processor, slice, "xxhash", |data: &[u8], seed: i32| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed as u64)
     });
 
     // HighwayHash
-    benchmark(slice, "highwayhash", |data: &[u8], _: i32| -> u64 {
+    benchmark(&mut processor, slice, "highwayhash", |data: &[u8], _: i32| -> u64 {
         use highway::{HighwayHasher, HighwayHash};
         HighwayHasher::default().hash64(data)
     });
 
     // FNV-1a
-    benchmark(slice, "fnv-1a", |data: &[u8], seed: i32| -> u64 {
-        fnv::fnv_hash(data, seed as u64)
+    benchmark(&mut processor, slice, "fnv-1a", |data: &[u8], seed: i32| -> u64 {
+        fnv_hash(data, seed as u64)
     });
 
     // Free benchmark data
     unsafe { dealloc(ptr, layout) };
 }
 
-fn benchmark<F>(data: &[u8], name: &str, delegate: F)
+fn benchmark<F>(processor: &mut ResultProcessor, data: &[u8], name: &str, delegate: F)
     where F: Fn(&[u8], i32) -> u64
 {
-    print!("{}, ", name);
+    processor.on_start(name);
     for i in 2.. {
         let len = usize::pow(2, i);
         if len > data.len() {
@@ -100,9 +97,9 @@ fn benchmark<F>(data: &[u8], name: &str, delegate: F)
         }
         let throughput = (len as f64) / (1024f64 * 1024f64 * (total_duration.as_secs_f64() / runs as f64 / ITERATIONS as f64));
 
-        print!("{:.2}, ", throughput); 
+        processor.on_result(len, throughput);
     }
-    println!();
+    processor.on_end();
 }
 
 #[inline(never)]
