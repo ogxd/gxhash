@@ -12,7 +12,7 @@
 
 \title{GxHash: A High-Throughput, Non-Cryptographic Hashing Algorithm Leveraging Modern CPU Capabilities}
 \author{Olivier Giniaux}
-\date{}
+\date{Revision 1 - November 2023}
 
 \begin{document}
 
@@ -254,13 +254,13 @@ fn laned(input: &[u64]) -> u64 {
 \clearpage
 \subsubsection{Benchmark}
 Here are the timing on both an x86 and an ARM CPU. It also includes timing for the function \texttt{unrolled}, to show that performance increase comes indeed from ILP and not the loop unrolling itself.
-We can see that \texttt{temp} and \texttt{laned} performed equally, leveraging ILP for a significant performance increase over the \texttt{baseline}.
+We can see that \texttt{temporal} and \texttt{laned} performed equally, leveraging ILP for a significant performance increase over the \texttt{baseline}.
 
 \begin{figure}[H]
 \centering
 \begin{tabular}{|c|c|c|c|c|}
 \hline
-CPU & \texttt{baseline} & \texttt{unrolled} & \texttt{temp} & \texttt{laned} \\
+CPU & \texttt{baseline} & \texttt{unrolled} & \texttt{temporal} & \texttt{laned} \\
 \hline
 AMD Ryzen 5 5625U (x86 64-bit) & 92.787 µs & 93.047 µs & 37.516 µs & 37.434 µs \\
 Apple M1 Pro (ARM 64-bit) & 125.23 µs & 124.42 µs & 28.507 µs & 30.716 µs \\
@@ -270,14 +270,14 @@ Apple M1 Pro (ARM 64-bit) & 125.23 µs & 124.42 µs & 28.507 µs & 30.716 µs \\
 \label{tab:your_table_label}
 \end{figure}
 
-While the \texttt{temp} and \texttt{laned} functions won't yield exactly the same hashes as the \texttt{baseline}, they serve the same purpose, while being much faster.
-Both approaches have their pros and cons. As the \texttt{laned} explicitly declares \( n \) variables for our lanes, this approach is simpler in regards to compiler analysis and is thus more likely to benefit from ILP, regardless of the compiler or programming language used.
-The following section will delve more in depth into the definition of a \textbf{Laned Construction}.
+While the \texttt{temporal} and \texttt{laned} functions won't yield exactly the same hashes as the \texttt{baseline}, they serve the same purpose, while being much faster.
+Both approaches have their pros and cons. The \texttt{temporal} approach is simpler to implement and will lead to less bytecode generation.
+The following section will delve more in depth into the definition of a \textbf{Temporal Construction}.
 
 \clearpage
-\subsection{The Laned Construction}
+\subsection{The Temporal Construction}
 
-The \textbf{Laned Construction} introduces \( k_b \) lanes, and processes the message by groups of \( k_b \) blocks, so that for a given group each of the \( k_b \) block and be processed on its own lane. This way, we have \( k_b \) independent dependency chains. The lane hashes can then be compressed altogether thereafter upon exiting the loop.
+The \textbf{Temporal Construction} processes the message by groups of \( k_b \) blocks. Blocks of a given group are compress together into a temporary variable, which is then compressed into our state. This way, we break a large part of dependency chains because each group can be independently compressed. The remaining dependency chain that remains consists in compressing the resulting temporary variable computed for each group.
 
 \subsubsection{Intermediate Hashes}
 
@@ -285,10 +285,10 @@ Let's define \( n_g = \lfloor {n_b}/{k_b} \rfloor \) as the number of whole grou
 For each lane we compute an intermediate hash, \( H_i \), as follows:
 
 \begin{align*}
-H_{1} &= f(\ldots f(f(f(0^{s_b}, M_{0k_b + 1}), M_{1k_b + 1}), M_{2k_b + 1})\ldots, M_{n_g + 1}) \\
-H_{2} &= f(\ldots f(f(f(0^{s_b}, M_{0k_b + 2}), M_{1k_b + 2}), M_{2k_b + 2})\ldots, M_{n_g + 2}) \\
+H_{1} &= f(\ldots f(f(0^{s_b}, M_1), M_2)\ldots, M_{k_b}), \\
+H_{2} &= f(\ldots f(f(0^{s_b}, M_{k_g+1}), M_{k_g+2})\ldots, M_{2k_b}), \\
 &\vdots \\
-H_{k_b} &= f(\ldots f(f(f(0^{s_b}, M_{0k_b + k_b}), M_{1k_b + k_b}), M_{2k_b + k_b})\ldots, M_{n_g + k_b}) \\
+H_{n_g} &= f(\ldots f(f(0^{s_b}, M_{n_g+1}), M_{n_g+2})\ldots, M_{n_g+k_b})
 \end{align*}
 
 \subsubsection{Final Hash}
@@ -297,17 +297,17 @@ The final hash \( H \) is calculated using \( f \) to compress the intermediate 
 which is then passed through \( g \):
 
 \begin{equation*}
-h(M) = g\left( f( \ldots f(f(\ldots f(f(0^{s_b}, H_1), H_2) \ldots, H_{k_b}), M_{{k_b}{n_g}+1}) \ldots, M_{n_b} ) \right).
+h(M) = g\left( f( \ldots f(f(\ldots f(f(0^s, H_1), H_2) \ldots, H_{n_g}), M_{4{n_g}+1}) \ldots, M_{n_b} ) \right).
 \end{equation*}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=1\textwidth]{laned-construction.png}
-\caption{Laned Construction Overview}
+\includegraphics[width=1\textwidth]{temporal-construction.png}
+\caption{Temporal Construction Overview}
 \label{fig:linear-construction}
 \end{figure}
 
-An alternative to chaining usages of \( f \) is to compress lane hashes by pair, and subsequently compressing the resulting hashes also by pair until we are left with a single hash (for instance \(f(f(f(H_1, H_2), f(H_3, H_4)), f(...))\)). In practice, this would allow some form of ILP on the final hash composition as well, decreasing as we get closer to the final hash.
+The yellow and cyan blocks represent two separate dependency chains from the processing of two groups of 4 blocks each. Thanks to this separation, instruction level parallelism is possible and will in theory allow intructions parallelization of each group, limited to the number of registry available and the memory bandwidth.
 
 \clearpage
 \section{The GxHash Algorithm}
@@ -341,36 +341,30 @@ Given the nature of the compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^
 
 With the inevitable non-bijectivity, the performance requirements and the limited set of available SIMD intrinsics, the selection for the compression has to be empirical, thus implying specifying a version to account for these current choices that may be improved in future versions.\\
 
-TODO
-In practice, the \textbf{GxHash} uses the AES block cipher intrinsics to combines two 128-bit SIMD vectors together combination of SIMD 8-bit wrapping add and state-wide circular shift of one. The addition is a simple way to mix the state with the next message block bits, while providing an arithmetic carry which helps in regard to distribution (as opposed to a XOR for instance). Adding on a 8-bit basis also helps in regards to distribution, as opposed to adding on larger bit widths. This operation alone however comes with several weaknesses:
-\begin{itemize}
-\item Such a simple operation is inherently weak to different kind of attacks. This can however be partially addressed with a more robust bit mixing for the finalization function. In the context of non-cryptographic hashing, which is the scope of usage of our algorithm, we think it is an acceptable compromise.
-\item A major issue lies in the addition being associative (\(a \cdot b) \cdot c = a \cdot (b \cdot c \)). An associative compression function would make the hashing algorithm insensitive to the ordering of the input message blocks, which is something we want to avoid. To address this, we circularly shift the state bits by one.
-\end{itemize}
+Modern CPUs feature SIMD instructions for the AES block cipher, which we have adopted in \textbf{GxHash} to combine vectors, allowing robust bit mixing at a low computational cost. In practice, we employ a compression with 3 AES rounds, and a faster alternative employing a single AES round for compressing the \( k_b \) blocks of the temporal construction.
+
+The AES block cipher instrinsics is pivotal in GxHash, allowing high quality properties without compromising too much on performance.
 
 \begin{figure}[H]
 \begin{multicols}{2}
 \begin{lstlisting}[language=Rust, style=boxed]
-// For ARM 64-bit
+use core::arch::x86_64::*;
 
-use core::arch::aarch64::*;
-
-pub fn compress(a: int8x16_t, b: int8x16_t)
--> int8x16_t {
-    let sum: int8x16_t = vaddq_s8(a, b);
-    return vextq_s8(sum, sum, 1);
+pub fn compress_fast(a: __m128i, b: __m128i)
+-> __m128i {
+    return _mm_aesenc_si128(a, b);
 }
 \end{lstlisting}
 \columnbreak
 \begin{lstlisting}[language=Rust, style=boxed]
-// For x86 64-bit
+pub fn compress(a: __m128i, b: __m128i)
+-> __m128i {
+    let keys_1 = _mm_set_epi32(0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542);
+    let keys_2 = _mm_set_epi32(0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9);
 
-use core::arch::x86_64::*;
-
-pub fn compress(a: __m256i, b: __m256i)
--> __m256i {
-    let sum: state = _mm256_add_epi8(a, b);
-    return _mm256_alignr_epi8(sum, sum, 1);
+    let mut b = _mm_aesenc_si128(b, keys_1);
+    b = _mm_aesenc_si128(b, keys_2);
+    return _mm_aesenclast_si128(a, b);
 }
 \end{lstlisting}
 \end{multicols}
@@ -383,10 +377,10 @@ pub fn compress(a: __m256i, b: __m256i)
 The finalization process in the GxHash algorithm is crucial to ensure the transformation of its internal state into a fixed-size, uniformly distributed hash output. This process is delineated into two primary steps: mixing the bits and reducing to the desired hash size.
 
 This mixing step is responsible for ensuring the even distribution of bits in the state, thereby reducing patterns or biases that might arise from the input data or the compression process. Given the inherent simplicity of the GxHash compression, it is worth for the finalization to incorporate slightly more intricate bit mixing operations, especially given it runs only once per message hashed, as opposed to the compression that occurs once for each block.\\
-Leveraging SIMD capabilities can help in regard to performance and efficiency, which remains for us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of three AES block cipher rounds ensures a robust diffusion of bits across the state at a cheap computational cost.\\
+Leveraging SIMD capabilities can help in regard to performance and efficiency, which remains for us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of four AES block cipher rounds ensures a robust diffusion of bits across the state at a cheap computational cost.\\
 The AES keys can be set changed, providing a way to have unique hashes per-application and even per-process, protecting from eventual precomputed or replay attack attempts.
 
-Once the state's bits have been thoroughly mixed, the next step is to reduce this state into a smaller, fixed-size hash output, typically 32 or 64 bits. There are several approaches to this, one being combiniting the \( X \)-bit integer parts of the mixed state together (by xoring them together for instance). GxHash takes a simpler path by reinterpreting our state into a smaller \( X \)-bit value, assuming an uniform distribution at the mixing stage thanks to the 3 rounds of AES. This allow the GxHash algorithm to generate hashes of any size up to \( s_b \) bits with virtually no additional computational cost.
+Once the state's bits have been thoroughly mixed, the next step is to reduce this state into a smaller, fixed-size hash output, typically 32 or 64 bits. There are several approaches to this, one being combiniting the \( X \)-bit integer parts of the mixed state together (by xoring them together for instance). GxHash takes a simpler path by reinterpreting our state into a smaller \( X \)-bit value, assuming an uniform distribution at the mixing stage thanks to the four rounds of AES. This allow the GxHash algorithm to generate hashes of any size up to \( s_b \) bits with virtually no additional computational cost.
 
 \subsection{Implementation Details}
 
@@ -633,24 +627,29 @@ The bits distribution is very close for all algorithms benchmarked, at about 0.0
 
 Bucketed distribution is looking good in all cases for the English words case.
 
+\paragraph{Random Blobs}\leavevmode\\
+
 \subsubsection{Conclusion}
 
 This was just an overview of the quality of the hashes produced by GxHash and a few comparisons to some established non-cryptographic algorithms. 
 
 Our results demonstrate promising quality characteristics of GxHash with low collisions, good distribution, and a high avalanche effect, and its quality is comparable to other well-established non-cryptographic algorithms. However, it is essential to acknowledge the limitations of the presented evaluation scenarios. The benchmarks presented herein, namely random inputs, sequential inputs, and English word inputs, offer a glimpse into the algorithm's quality but are by no means exhaustive. In real-world applications, the behavior of a hash algorithm can be influenced by a myriad of factors and specific data patterns. As such, while our findings provide a foundational understanding of GxHash's quality, potential users should be cognizant that results may vary based on the actual use case and the nature of the input data.
 
+\paragraph{SMHasher}\leavevmode\\
+GxHash has been rigorously evaluated using the SMHasher\cite{smhasher} test suite, a comprehensive set of tests designed to assess the quality of hash functions. SMHasher is widely recognized in the industry for its ability to identify a wide range of potential weaknesses in hash functions, such as poor distribution, bias, and collision resistance. Passing the SMHasher test suite is a notable achievement that indicates a hash function's reliability and suitability for practical applications. Our GxHash algorithm has successfully met all the criteria set forth by SMHasher, demonstrating its robustness and confirming its effectiveness in producing high-quality, collision-resistant hashes. 
+
 \clearpage
 \subsection{Performance}
 
-Performance is measured as a throughput, in gibibytes of data hashed per second (higher is better). This is a common measurement unit for performance in this field. Performance is measured against inputs of size 4, 16, 64, 246, 1024, 4096 and 16384 to cover a broad range of use cases.
+Performance is measured as a throughput, in mibibytes of data hashed per second (higher is better). This is a common measurement unit for performance in this field. Performance is measured against inputs of power-of-two sizes (4, 8, 16, ..., 32768) to cover a broad range of use cases.
 
-For reference, we'll also benchmark other non-cryptographic algorithms under the same conditions, thanks to their Rust implementations, namely: t1ha\cite{rust-t1ha}, xxhash\cite{twox-hash} and HighwayHash\cite{highway-rs}.
+For reference, we'll also benchmark other non-cryptographic algorithms under the same conditions, thanks to their Rust implementations, namely: T1ha-0\cite{rust-t1ha}, XxHash\cite{twox-hash} and HighwayHash\cite{highway-rs}.
 
 The benchmark is run on three different setups:
 \begin{itemize}
     \item A Ryzen 5 equipped low-budget desktop PC
     \item An n2-standard-2 compute GCP virtual machine (likely equipped with an Intel Xeon 8376H). Cloud computing is very popular nowadays and the hardware is quite different from the desktop PC.
-    \item A Macbook Pro with an M1 Pro chip, to test the algorithm on an ARM architecture which implies different SIMD intrinsics and likely different performance results. Note that the T1ha-0 implementation benchmarked does not leverage ARM intrinsics, and this is why it is not benchmarked for this platform (the portable version would perform too poorly).
+    \item A Macbook Pro with an M1 Pro chip, to test the algorithm on an ARM architecture which implies different SIMD intrinsics and likely different performance results.
 \end{itemize}
 
 \begin{figure}[H]
@@ -679,7 +678,8 @@ The Temporal Construction presented in this paper is implemented for GxHash by d
 Despite the outstanding benchmark results, we think there are still many possible paths for research and improvement. Here is a non-exhaustive list:
 \begin{itemize}
     \item Leverage larger SIMD intrinsics, such as Intel AVX-512 or ARM SVE2.
-    \item Run more quality benchmarks
+    \item Make use of compiler hints to improve branching predictions.
+    \item Run more quality benchmarks.
     \item Analyze security properties.
     \item Rewrite the algorithm in assembly code or a language that is more explicit about registers.
     \item Introduce more than one stage of laning. For instance 16 lanes, then 8 lanes, then 4 lanes, and finally 2 lanes, to leverage ILP as much as possible.
