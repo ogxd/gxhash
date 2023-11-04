@@ -93,16 +93,6 @@ unsafe fn gxhash_process_8(mut ptr: *const State, hash_vector: State, remaining_
         tmp = compress_fast(tmp, v6);
         tmp = compress_fast(tmp, v7);
 
-        // let t1 = compress(v0, v3);
-        // let t2 = compress(v2, v1);
-        // let t3 = compress(v4, v7);
-        // let t4 = compress(v6, v5);
-
-        // let t5 = compress_fast(t1, t3);
-        // let t6 = compress_fast(t2, t4);
-        
-        // let tmp = compress_fast(t6, t5);
-
         hash_vector = compress(hash_vector, tmp);
     }
 
@@ -248,5 +238,14 @@ mod tests {
         assert_ne!(0, gxhash32(&[0u8; 0], 0));
         assert_ne!(0, gxhash32(&[0u8; 1], 0));
         assert_ne!(0, gxhash32(&[0u8; 1200], 0));
+    }
+
+    // GxHash with a 128-bit state must be stable despite the different endianesses / CPU instrinsics
+    #[cfg(not(feature = "avx2"))]
+    #[test]
+    fn is_stable() {
+        assert_eq!(456576800, gxhash32(&[0u8; 0], 0));
+        assert_eq!(978957914, gxhash32(&[0u8; 1], 0));
+        assert_eq!(3128839713, gxhash32(&[42u8; 1000], 1234));
     }
 }
