@@ -5,7 +5,7 @@ use platform::*;
 #[inline(always)]
 pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
     unsafe {
-        let p = &gxhash(input, seed) as *const state as *const u32;
+        let p = &gxhash(input, seed) as *const State as *const u32;
         *p
     }
 }
@@ -13,7 +13,7 @@ pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
 #[inline(always)]
 pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
     unsafe {
-        let p = &gxhash(input, seed) as *const state as *const u64;
+        let p = &gxhash(input, seed) as *const State as *const u64;
         *p
     }
 }
@@ -28,7 +28,7 @@ macro_rules! load_unaligned {
     };
 }
 
-const VECTOR_SIZE: isize = std::mem::size_of::<state>() as isize;
+const VECTOR_SIZE: isize = std::mem::size_of::<State>() as isize;
 
 const RANGE_1_BEGIN: isize  = VECTOR_SIZE + 1;
 const RANGE_1_END: isize    = VECTOR_SIZE * 2;
@@ -38,10 +38,10 @@ const RANGE_3_BEGIN: isize  = RANGE_2_BEGIN + 1;
 const RANGE_3_END: isize    = VECTOR_SIZE * 4;
 
 #[inline(always)]
-unsafe fn gxhash(input: &[u8], seed: i32) -> state {
+unsafe fn gxhash(input: &[u8], seed: i32) -> State {
 
     let len: isize = input.len() as isize;
-    let mut ptr = input.as_ptr() as *const state;
+    let mut ptr = input.as_ptr() as *const State;
 
     let (mut hash_vector, remaining_bytes, p) = match len {
         // Fast path with no compression for payloads that fit in a single state
@@ -73,7 +73,7 @@ unsafe fn gxhash(input: &[u8], seed: i32) -> state {
 }
 
 #[inline(always)]
-unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> (state, isize, *const state) {
+unsafe fn gxhash_process_8(mut ptr: *const State, hash_vector: State, remaining_bytes: isize) -> (State, isize, *const State) {
 
     const UNROLL_FACTOR: isize = 8;
 
@@ -84,16 +84,24 @@ unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_
         
         load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
 
-        prefetch(ptr);
+        // let mut tmp: state;
+        // tmp = compress_fast(v0, v1);
+        // tmp = compress_fast(tmp, v2);
+        // tmp = compress_fast(tmp, v3);
+        // tmp = compress_fast(tmp, v4);
+        // tmp = compress_fast(tmp, v5);
+        // tmp = compress_fast(tmp, v6);
+        // tmp = compress_fast(tmp, v7);
 
-        let mut tmp: state;
-        tmp = compress_fast(v0, v1);
-        tmp = compress_fast(tmp, v2);
-        tmp = compress_fast(tmp, v3);
-        tmp = compress_fast(tmp, v4);
-        tmp = compress_fast(tmp, v5);
-        tmp = compress_fast(tmp, v6);
-        tmp = compress_fast(tmp, v7);
+        let t1 = compress_fast(v0, v1);
+        let t2 = compress_fast(v2, v3);
+        let t3 = compress_fast(v4, v5);
+        let t4 = compress_fast(v6, v7);
+
+        let t5 = compress_fast(t1, t2);
+        let t6 = compress_fast(t3, t4);
+        
+        let tmp = compress_fast(t5, t6);
 
         hash_vector = compress(hash_vector, tmp);
     }
@@ -102,7 +110,7 @@ unsafe fn gxhash_process_8(mut ptr: *const state, hash_vector: state, remaining_
 }
 
 #[inline(always)]
-unsafe fn gxhash_process_1(mut ptr: *const state, hash_vector: state, remaining_bytes: isize) -> (state, isize, *const state) {
+unsafe fn gxhash_process_1(mut ptr: *const State, hash_vector: State, remaining_bytes: isize) -> (State, isize, *const State) {
     
     let end_address = ptr.offset((remaining_bytes / VECTOR_SIZE) as isize) as usize;
 

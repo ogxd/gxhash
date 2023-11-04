@@ -13,7 +13,7 @@ fn main() {
 }
 
 #[inline(never)]
-fn noop(data: &[u8], seed: i32) -> u64 {
+fn noop(_: &[u8], seed: i32) -> u64 {
     return seed as u64;
 }
 
@@ -21,8 +21,8 @@ fn benchmark<F>(data: &[u8], name: &str, delegate: F)
     where F: Fn(&[u8], i32) -> u64
 {
     print!("{}, ", name);
-    for i in 1.. {
-        let len = usize::pow(4, i);
+    for i in 2.. {
+        let len = usize::pow(2, i);
         if len > data.len() {
             break;
         }  
@@ -59,8 +59,8 @@ fn time<F>(len: usize, data: &[u8], delegate: &F) -> f64
     let iterations = isize::max(100_000 - len as isize, 100);
 
     let now = Instant::now();
-    for j in 0..iterations {   
-        let slice_start: usize = (seed & 0xFF) as usize;
+    for _ in 0..iterations {   
+        let slice_start: usize = (seed & 1) as usize;
         let slice_end = slice_start + len;
         let slice = &data[slice_start..slice_end];
         let hash = black_box(noop(slice, seed));
@@ -69,8 +69,8 @@ fn time<F>(len: usize, data: &[u8], delegate: &F) -> f64
     let overhead = now.elapsed().as_nanos();
     
     let now = Instant::now();
-    for j in 0..iterations {   
-        let slice_start: usize = (seed & 0xFF) as usize;
+    for _ in 0..iterations {   
+        let slice_start: usize = (seed & 1) as usize;
         let slice_end = slice_start + len;
         let slice = &data[slice_start..slice_end];
         let hash = black_box(delegate(slice, seed));
@@ -90,6 +90,16 @@ fn benchmark_all() {
 
     // Fill with random bytes
     rng.fill(slice);
+
+    print!("Input size (bytes), ");
+    for i in 2.. {
+        let len = usize::pow(2, i);
+        if len > slice.len() {
+            break;
+        }  
+        print!("{}, ", len); 
+    }
+    println!();
 
     // GxHash
     let algo_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
