@@ -20,6 +20,7 @@ fn noop(data: &[u8], seed: i32) -> u64 {
 fn benchmark<F>(data: &[u8], name: &str, delegate: F)
     where F: Fn(&[u8], i32) -> u64
 {
+    print!("{}, ", name);
     for i in 1.. {
         let len = usize::pow(4, i);
         if len > data.len() {
@@ -30,15 +31,24 @@ fn benchmark<F>(data: &[u8], name: &str, delegate: F)
         black_box( time(len, data, &delegate)); 
 
         let mut total_time: f64 = 0f64;
-        const RUNS: usize = 10;
-        for k in 0..RUNS {
-            total_time += time(len, data, &delegate);
+        let mut runs: usize = 0;
+        let now = Instant::now();
+        while runs == 0 || now.elapsed().as_millis() < 500 {
+            let time = time(len, data, &delegate);
+            if time < 0.1f64 {
+                // Invalid timing, ignore
+                continue;
+            }
+            total_time += time;
+            runs += 1;
         }
-        let average_time = total_time / (RUNS as f64);
+        let average_time = total_time / (runs as f64);
         let throughput = (len as f64) / (0.00_000_0001f64 * 1024f64 * 1024f64 * average_time);
 
-        println!("{}/{} {} MiB/s", name, len, throughput);
+        //println!("{}/{}\t\t{:.0} MiB/s", name, len, throughput);
+        print!("{:.2}, ", throughput); 
     }
+    println!();
 }
 
 #[inline(never)]
