@@ -13,7 +13,7 @@ fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, deleg
     where F: Fn(&[u8], i32) -> u64
 {
     for i in 1.. {
-        let len = usize::pow(2, i);
+        let len = usize::pow(4, i);
         if len > data.len() {
             break;
         }  
@@ -72,8 +72,8 @@ fn benchmark_all(c: &mut Criterion) {
     });
 
     // FNV-1a
-    benchmark(&mut group, slice, "fnv-1a", |data: &[u8], _: i32| -> u64 {
-        fnv::fnv_hash(data)
+    benchmark(&mut group, slice, "fnv-1a", |data: &[u8], seed: i32| -> u64 {
+        fnv::fnv_hash(data, seed as u64)
     });
 
     group.finish();
