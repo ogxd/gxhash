@@ -110,7 +110,8 @@ pub unsafe fn finalize(hash: state, seed: i32) -> state {
 
     // 3 rounds of AES
     let mut hash = ReinterpretUnion{ int8: hash }.uint8;
-    hash = aes_encrypt(hash, ReinterpretUnion{ int32: vdupq_n_s32(seed) }.uint8);
+    //hash = aes_encrypt(hash, ReinterpretUnion{ int32: vdupq_n_s32(seed) }.uint8);
+    hash = vaddq_u8(hash, ReinterpretUnion{ int32: vdupq_n_s32(seed) }.uint8);
     hash = aes_encrypt(hash, ReinterpretUnion{ uint32: keys_1 }.uint8);
     hash = aes_encrypt(hash, ReinterpretUnion{ uint32: keys_2 }.uint8);
     hash = aes_encrypt_last(hash, ReinterpretUnion{ uint32: keys_3 }.uint8);
