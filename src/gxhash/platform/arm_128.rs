@@ -1,7 +1,7 @@
 use std::{mem::size_of, intrinsics::likely, thread::sleep, time::Duration};
 use core::arch::aarch64::*;
 
-pub type state = int8x16_t;
+pub type State = int8x16_t;
 
 #[repr(C)]
 union ReinterpretUnion {
@@ -13,23 +13,23 @@ union ReinterpretUnion {
 }
 
 #[inline(always)]
-pub unsafe fn create_empty() -> state {
+pub unsafe fn create_empty() -> State {
     vdupq_n_s8(0)
 }
 
 #[inline(always)]
-pub unsafe fn prefetch(p: *const state) {
+pub unsafe fn prefetch(p: *const State) {
     //__pld(p as *const i8);
 }
 
 #[inline(always)]
-pub unsafe fn load_unaligned(p: *const state) -> state {
+pub unsafe fn load_unaligned(p: *const State) -> State {
     vld1q_s8(p as *const i8)
 }
 
 #[inline(always)]
-pub unsafe fn get_partial(p: *const state, len: isize) -> state {
-    let partial_vector: state;
+pub unsafe fn get_partial(p: *const State, len: isize) -> State {
+    let partial_vector: State;
     if likely(check_same_page(p)) {
         // Unsafe (hence the check) but much faster
         let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
@@ -46,18 +46,18 @@ pub unsafe fn get_partial(p: *const state, len: isize) -> state {
 const PAGE_SIZE: usize = 0x1000;
 
 #[inline(always)]
-unsafe fn check_same_page(ptr: *const state) -> bool {
+unsafe fn check_same_page(ptr: *const State) -> bool {
     let address = ptr as usize;
     // Mask to keep only the last 12 bits (3 bytes)
     let offset_within_page = address & PAGE_SIZE;
     // Check if the 16nd byte from the current offset exceeds the page boundary
-    offset_within_page <= PAGE_SIZE - size_of::<state>()
+    offset_within_page <= PAGE_SIZE - size_of::<State>()
 }
 
 #[inline(never)]
-unsafe fn get_partial_safe(data: *const i8, len: usize) -> state {
+unsafe fn get_partial_safe(data: *const i8, len: usize) -> State {
     // Temporary buffer filled with zeros
-    let mut buffer = [0i8; size_of::<state>()];
+    let mut buffer = [0i8; size_of::<State>()];
     // Copy data into the buffer
     std::ptr::copy(data, buffer.as_mut_ptr(), len);
     // Load the buffer into a __m256i vector
@@ -102,7 +102,7 @@ unsafe fn aes_encrypt_last(data: uint8x16_t, keys: uint8x16_t) -> uint8x16_t {
 }
 
 #[inline(always)]
-pub unsafe fn finalize(hash: state, seed: i32) -> state {
+pub unsafe fn finalize(hash: State, seed: i32) -> State {
     // Hardcoded AES keys
     let keys_1 = vld1q_u32([0x713B01D0, 0x8F2F35DB, 0xAF163956, 0x85459F85].as_ptr());
     let keys_2 = vld1q_u32([0x1DE09647, 0x92CFA39C, 0x3DD99ACA, 0xB89C054F].as_ptr());
@@ -115,6 +115,6 @@ pub unsafe fn finalize(hash: state, seed: i32) -> state {
     hash = aes_encrypt(hash, ReinterpretUnion{ uint32: keys_1 }.uint8);
     hash = aes_encrypt(hash, ReinterpretUnion{ uint32: keys_2 }.uint8);
     hash = aes_encrypt_last(hash, ReinterpretUnion{ uint32: keys_3 }.uint8);
-    
+
     ReinterpretUnion{ uint8: hash }.int8
 }
