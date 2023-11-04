@@ -1,5 +1,3 @@
-include!("../fnv.rs");
-
 mod result_processor;
 
 use result_processor::*;
@@ -8,6 +6,7 @@ use std::hint::black_box;
 use std::time::{Instant, Duration};
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
+use std::hash::Hasher;
 
 use rand::Rng;
 
@@ -35,6 +34,11 @@ fn main() {
     benchmark(&mut processor, slice, algo_name, |data: &[u8], seed: i32| -> u64 {
         gxhash64(data, seed)
     });
+
+    // XxHash (twox-hash)
+    benchmark(&mut processor, slice, "xxhash", |data: &[u8], seed: i32| -> u64 {
+        twox_hash::xxh3::hash64_with_seed(data, seed as u64)
+    });
     
     // AHash
     let ahash_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
@@ -47,9 +51,16 @@ fn main() {
         t1ha::t1ha0(data, seed as u64)
     });
 
-    // XxHash (twox-hash)
-    benchmark(&mut processor, slice, "xxhash", |data: &[u8], seed: i32| -> u64 {
-        twox_hash::xxh3::hash64_with_seed(data, seed as u64)
+    // SeaHash
+    benchmark(&mut processor, slice, "seahash", |data: &[u8], seed: i32| -> u64 {
+        seahash::hash_seeded(data, seed as u64, 0, 0, 0)
+    });
+
+    // MetroHash
+    benchmark(&mut processor, slice, "metrohash", |data: &[u8], seed: i32| -> u64 {
+        let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
+        metrohash_hasher.write(data);
+        metrohash_hasher.finish()
     });
 
     // HighwayHash
@@ -60,7 +71,9 @@ fn main() {
 
     // FNV-1a
     benchmark(&mut processor, slice, "fnv-1a", |data: &[u8], seed: i32| -> u64 {
-        fnv_hash(data, seed as u64)
+        let mut fnv_hasher = fnv::FnvHasher::with_key(seed as u64);
+        fnv_hasher.write(data);
+        fnv_hasher.finish()
     });
 
     // Free benchmark data

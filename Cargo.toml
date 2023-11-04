@@ -25,6 +25,9 @@ ahash = "0.8.3"
 t1ha = "0.1.0"
 twox-hash = "1.6.3"
 highway = "1.1.0"
+seahash = "4.1.0"
+metrohash = "1.0.6"
+fnv = "1.0.3"
 
 [[bench]]
 name = "throughput"

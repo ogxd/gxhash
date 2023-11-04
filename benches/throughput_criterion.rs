@@ -1,13 +1,13 @@
 use std::time::Duration;
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
+use std::hash::Hasher;
 
 use criterion::measurement::WallTime;
 use criterion::{criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup, BenchmarkId};
 use rand::Rng;
 
 use gxhash::*;
-mod fnv;
 
 fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, delegate: F)
     where F: Fn(&[u8], i32) -> u64
@@ -73,7 +73,9 @@ fn benchmark_all(c: &mut Criterion) {
 
     // FNV-1a
     benchmark(&mut group, slice, "fnv-1a", |data: &[u8], seed: i32| -> u64 {
-        fnv::fnv_hash(data, seed as u64)
+        let mut fnv_hasher = fnv::FnvHasher::with_key(seed as u64);
+        fnv_hasher.write(data);
+        fnv_hasher.finish()
     });
 
     group.finish();
