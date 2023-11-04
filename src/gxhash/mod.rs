@@ -84,24 +84,24 @@ unsafe fn gxhash_process_8(mut ptr: *const State, hash_vector: State, remaining_
         
         load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
 
-        // let mut tmp: state;
-        // tmp = compress_fast(v0, v1);
-        // tmp = compress_fast(tmp, v2);
-        // tmp = compress_fast(tmp, v3);
-        // tmp = compress_fast(tmp, v4);
-        // tmp = compress_fast(tmp, v5);
-        // tmp = compress_fast(tmp, v6);
-        // tmp = compress_fast(tmp, v7);
+        let mut tmp: State;
+        tmp = compress_fast(v0, v1);
+        tmp = compress_fast(tmp, v2);
+        tmp = compress_fast(tmp, v3);
+        tmp = compress_fast(tmp, v4);
+        tmp = compress_fast(tmp, v5);
+        tmp = compress_fast(tmp, v6);
+        tmp = compress_fast(tmp, v7);
 
-        let t1 = compress_fast(v0, v1);
-        let t2 = compress_fast(v2, v3);
-        let t3 = compress_fast(v4, v5);
-        let t4 = compress_fast(v6, v7);
+        // let t1 = compress(v0, v3);
+        // let t2 = compress(v2, v1);
+        // let t3 = compress(v4, v7);
+        // let t4 = compress(v6, v5);
 
-        let t5 = compress_fast(t1, t2);
-        let t6 = compress_fast(t3, t4);
+        // let t5 = compress_fast(t1, t3);
+        // let t6 = compress_fast(t2, t4);
         
-        let tmp = compress_fast(t5, t6);
+        // let tmp = compress_fast(t6, t5);
 
         hash_vector = compress(hash_vector, tmp);
     }

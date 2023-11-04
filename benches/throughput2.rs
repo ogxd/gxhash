@@ -1,5 +1,5 @@
 use std::hint::black_box;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
 
@@ -8,79 +8,11 @@ use rand::Rng;
 use gxhash::*;
 mod fnv;
 
+const ITERATIONS: u32 = 1000;
+const MAX_RUN_DURATION: Duration = Duration::from_millis(500);
+const FORCE_NO_INLINING: bool = false;
+
 fn main() {
-    benchmark_all();
-}
-
-#[inline(never)]
-fn noop(_: &[u8], seed: i32) -> u64 {
-    return seed as u64;
-}
-
-fn benchmark<F>(data: &[u8], name: &str, delegate: F)
-    where F: Fn(&[u8], i32) -> u64
-{
-    print!("{}, ", name);
-    for i in 2.. {
-        let len = usize::pow(2, i);
-        if len > data.len() {
-            break;
-        }  
-
-        // Warmup
-        black_box( time(len, data, &delegate)); 
-
-        let mut total_time: f64 = 0f64;
-        let mut runs: usize = 0;
-        let now = Instant::now();
-        while runs == 0 || now.elapsed().as_millis() < 500 {
-            let time = time(len, data, &delegate);
-            if time < 0.1f64 {
-                // Invalid timing, ignore
-                continue;
-            }
-            total_time += time;
-            runs += 1;
-        }
-        let average_time = total_time / (runs as f64);
-        let throughput = (len as f64) / (0.00_000_0001f64 * 1024f64 * 1024f64 * average_time);
-
-        //println!("{}/{}\t\t{:.0} MiB/s", name, len, throughput);
-        print!("{:.2}, ", throughput); 
-    }
-    println!();
-}
-
-#[inline(never)]
-fn time<F>(len: usize, data: &[u8], delegate: &F) -> f64
-    where F: Fn(&[u8], i32) -> u64 {
-
-    let mut seed: i32 = 0;
-    let iterations = isize::max(100_000 - len as isize, 100);
-
-    let now = Instant::now();
-    for _ in 0..iterations {   
-        let slice_start: usize = (seed & 1) as usize;
-        let slice_end = slice_start + len;
-        let slice = &data[slice_start..slice_end];
-        let hash = black_box(noop(slice, seed));
-        seed = hash as i32;
-    }
-    let overhead = now.elapsed().as_nanos();
-    
-    let now = Instant::now();
-    for _ in 0..iterations {   
-        let slice_start: usize = (seed & 1) as usize;
-        let slice_end = slice_start + len;
-        let slice = &data[slice_start..slice_end];
-        let hash = black_box(delegate(slice, seed));
-        seed = hash as i32;
-    }
-    let time = now.elapsed().as_nanos();
-    return (time - overhead) as f64 / (iterations as f64);
-}
-
-fn benchmark_all() {
     let mut rng = rand::thread_rng();
 
     // Allocate 32-bytes-aligned
@@ -136,4 +68,61 @@ fn benchmark_all() {
 
     // Free benchmark data
     unsafe { dealloc(ptr, layout) };
+}
+
+fn benchmark<F>(data: &[u8], name: &str, delegate: F)
+    where F: Fn(&[u8], i32) -> u64
+{
+    print!("{}, ", name);
+    for i in 2.. {
+        let len = usize::pow(2, i);
+        if len > data.len() {
+            break;
+        }
+
+        // Warmup
+        black_box(time(ITERATIONS, &|| delegate(&data[..len], 0))); 
+
+        let mut total_duration: Duration = Duration::ZERO;
+        let mut runs: usize = 0;
+        let now = Instant::now();
+        while now.elapsed() < MAX_RUN_DURATION {
+            // Prevent optimizations from predictable seed
+            let seed = total_duration.as_nanos() as i32;
+            // Prevent optimizations from predictable slice
+            // Also makes the benchmark use both aligned on unaligned data
+            let start = seed as usize & 0xFF;
+            let end = start + len;
+            let slice = &data[start..end];
+            // Execute method for a new iterations
+            total_duration += time(ITERATIONS, &|| delegate(slice, seed));
+            runs += 1;
+        }
+        let throughput = (len as f64) / (1024f64 * 1024f64 * (total_duration.as_secs_f64() / runs as f64 / ITERATIONS as f64));
+
+        print!("{:.2}, ", throughput); 
+    }
+    println!();
+}
+
+#[inline(never)]
+fn time<F>(iterations: u32, delegate: &F) -> Duration
+    where F: Fn() -> u64
+{
+    let now = Instant::now();
+    for _ in 0..iterations {  
+        if FORCE_NO_INLINING {
+            black_box(execute_noinlining(delegate));
+        } else {
+            black_box(delegate());
+        }
+    }
+    now.elapsed()
+}
+
+#[inline(never)]
+fn execute_noinlining<F>(delegate: &F) -> u64
+    where F: Fn() -> u64
+{
+    delegate()
 }
