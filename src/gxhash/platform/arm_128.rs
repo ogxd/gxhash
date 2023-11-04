@@ -1,4 +1,4 @@
-use std::{mem::size_of, intrinsics::likely, thread::sleep, time::Duration};
+use std::{mem::size_of, intrinsics::likely};
 use core::arch::aarch64::*;
 
 pub type State = int8x16_t;
