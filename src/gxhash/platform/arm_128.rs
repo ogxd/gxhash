@@ -18,11 +18,6 @@ pub unsafe fn create_empty() -> State {
 }
 
 #[inline(always)]
-pub unsafe fn prefetch(p: *const State) {
-    //__pld(p as *const i8);
-}
-
-#[inline(always)]
 pub unsafe fn load_unaligned(p: *const State) -> State {
     vld1q_s8(p as *const i8)
 }

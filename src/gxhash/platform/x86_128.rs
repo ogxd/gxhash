@@ -9,11 +9,6 @@ pub unsafe fn create_empty() -> State {
 }
 
 #[inline]
-pub unsafe fn prefetch(p: *const State) {
-    _mm_prefetch(p as *const i8, 3);
-}
-
-#[inline]
 pub unsafe fn load_unaligned(p: *const State) -> State {
     _mm_loadu_si128(p)
 }
