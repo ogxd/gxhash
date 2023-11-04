@@ -321,7 +321,7 @@ This design philosophy introduces specific constraints for the compression and f
     \item \textbf{Hash Quality Assurance:} Despite these performance optimizations, the algorithm must ensure a minimum level of hash quality to maintain low collision probabilities.
 \end{itemize}
 
-In the next sections, we'll delve into the specific operations and transformations chosen for the compression and finalization functions of the \textbf{GxHash-0} (version 0) algorithm.
+In the next sections, we'll delve into the specific operations and transformations chosen for the compression and finalization functions of the \textbf{GxHash} algorithm (version 1.0.0).
 
 \subsection{Pipe Width}
 
@@ -341,13 +341,12 @@ Given the nature of the compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^
 
 With the inevitable non-bijectivity, the performance requirements and the limited set of available SIMD intrinsics, the selection for the compression has to be empirical, thus implying specifying a version to account for these current choices that may be improved in future versions.\\
 
-In practice, the \textbf{GxHash-0} uses a combination of SIMD 8-bit wrapping add and state-wide circular shift of one. The addition is a simple way to mix the state with the next message block bits, while providing an arithmetic carry which helps in regard to distribution (as opposed to a XOR for instance). Adding on a 8-bit basis also helps in regards to distribution, as opposed to adding on larger bit widths. This operation alone however comes with several weaknesses:
+TODO
+In practice, the \textbf{GxHash} uses the AES block cipher intrinsics to combines two 128-bit SIMD vectors together combination of SIMD 8-bit wrapping add and state-wide circular shift of one. The addition is a simple way to mix the state with the next message block bits, while providing an arithmetic carry which helps in regard to distribution (as opposed to a XOR for instance). Adding on a 8-bit basis also helps in regards to distribution, as opposed to adding on larger bit widths. This operation alone however comes with several weaknesses:
 \begin{itemize}
 \item Such a simple operation is inherently weak to different kind of attacks. This can however be partially addressed with a more robust bit mixing for the finalization function. In the context of non-cryptographic hashing, which is the scope of usage of our algorithm, we think it is an acceptable compromise.
 \item A major issue lies in the addition being associative (\(a \cdot b) \cdot c = a \cdot (b \cdot c \)). An associative compression function would make the hashing algorithm insensitive to the ordering of the input message blocks, which is something we want to avoid. To address this, we circularly shift the state bits by one.
 \end{itemize}
-
-While mathematically collisions are inevitable due to the inherent non-bijectivity, odds of collisions using the GxHash-0 compression remain statically low given the uniformity of distribution, although those collisions are predictable due to the inherent simplicity of the function.
 
 \begin{figure}[H]
 \begin{multicols}{2}
@@ -375,19 +374,19 @@ pub fn compress(a: __m256i, b: __m256i)
 }
 \end{lstlisting}
 \end{multicols}
-\caption{GxHash-0 Compression in Rust}
+\caption{GxHash Compression in Rust}
 \label{fig:compression_rust_example}
 \end{figure}
 
 \subsection{Finalization}
 
-The finalization process in the GxHash-0 algorithm is crucial to ensure the transformation of its internal state into a fixed-size, uniformly distributed hash output. This process is delineated into two primary steps: mixing the bits and reducing to the desired hash size.
+The finalization process in the GxHash algorithm is crucial to ensure the transformation of its internal state into a fixed-size, uniformly distributed hash output. This process is delineated into two primary steps: mixing the bits and reducing to the desired hash size.
 
-This mixing step is responsible for ensuring the even distribution of bits in the state, thereby reducing patterns or biases that might arise from the input data or the compression process. Given the inherent simplicity of the GxHash-0 compression, it is worth for the finalization to incorporate slightly more intricate bit mixing operations, especially given it runs only once per message hashed, as opposed to the compression that occurs once for each block.\\
+This mixing step is responsible for ensuring the even distribution of bits in the state, thereby reducing patterns or biases that might arise from the input data or the compression process. Given the inherent simplicity of the GxHash compression, it is worth for the finalization to incorporate slightly more intricate bit mixing operations, especially given it runs only once per message hashed, as opposed to the compression that occurs once for each block.\\
 Leveraging SIMD capabilities can help in regard to performance and efficiency, which remains for us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of three AES block cipher rounds ensures a robust diffusion of bits across the state at a cheap computational cost.\\
 The AES keys can be set changed, providing a way to have unique hashes per-application and even per-process, protecting from eventual precomputed or replay attack attempts.
 
-Once the state's bits have been thoroughly mixed, the next step is to reduce this state into a smaller, fixed-size hash output, typically 32 or 64 bits. There are several approaches to this, one being combiniting the \( X \)-bit integer parts of the mixed state together (by xoring them together for instance). GxHash0 takes a simpler path by reinterpreting our state into a smaller \( X \)-bit value, assuming an uniform distribution at the mixing stage thanks to the 3 rounds of AES. This allow the GxHash0 algorithm to generate hashes of any size up to \( s_b \) bits with virtually no additional computational cost.
+Once the state's bits have been thoroughly mixed, the next step is to reduce this state into a smaller, fixed-size hash output, typically 32 or 64 bits. There are several approaches to this, one being combiniting the \( X \)-bit integer parts of the mixed state together (by xoring them together for instance). GxHash takes a simpler path by reinterpreting our state into a smaller \( X \)-bit value, assuming an uniform distribution at the mixing stage thanks to the 3 rounds of AES. This allow the GxHash algorithm to generate hashes of any size up to \( s_b \) bits with virtually no additional computational cost.
 
 \subsection{Implementation Details}
 
@@ -397,13 +396,13 @@ Data alignment in memory, commonly referred to as CPU alignment, directly impact
 
 In practice, programs typically allocate memory with alignment, ensuring data is generally aligned. However, a given input message to our hash function is still not guaranteed to be aligned. To handle this case, we can either read our data with an offset to account for the misalignment (at the cost of a much-increased complexity) or use specific SIMD intrinsics designed to handle potentially unaligned data. 
 
-Benchmarks conducted show a less than 20\% performance degradation on both our x86 and ARM hardware when using the second solution. This is the chosen solution for GxHash-0.
+Benchmarks conducted show a less than 20\% performance degradation on both our x86 and ARM hardware when using the second solution. For simplicity, GxHash treats aligned and unaligned data the same way.
 
 \subsubsection{Low-Overhead Looping}
 
-While the looping semantics will vary from one language to another, any overhead from looping over the input message blocks is likely to directly affect the overall throughput of the algorithm, given how optimized the rest of the algorithm is meant to be. In some cases, compilers might do a great job at generating loop instructions with minimal overhead, but it isn't the case in the language where GxHash-0 was ported, where looping using pointer arithmetics was needed.
+While the looping semantics will vary from one language to another, any overhead from looping over the input message blocks is likely to directly affect the overall throughput of the algorithm, given how optimized the rest of the algorithm is meant to be. In some cases, compilers might do a great job at generating loop instructions with minimal overhead, but it isn't the case in the language where GxHash was ported, where looping using pointer arithmetics was needed.
 
-Unrolling the loop is a complementary optimization that diminishes greatly any loop overhead. In the case of GxHash, the laned construction implies some kind of unrolling, which is sufficient for achieving the high throughput numbers we see in our benchmarks.
+Unrolling the loop is a complementary optimization that diminishes greatly any loop overhead. In the case of GxHash, the temporal construction implies some kind of unrolling, which is sufficient for achieving the high throughput numbers we see in our benchmarks.
 
 \subsubsection{Padding}
 
@@ -412,27 +411,23 @@ Unrolling the loop is a complementary optimization that diminishes greatly any l
 In practice, a naive implementation for \( p \) for GxHash in computer code implies copying the remaining bytes into a zero-initialized buffer of size \( s_b \), which can then be loaded onto an SIMD registry and then handed to the compression. In our performance-critical context, these allocations and copies introduce significant overhead.
 
 \paragraph{Read Beyond and Mask}\leavevmode\\
-To avoid this overhead, one possible trick consists of reading \( s_b \) bytes starting from the last block address, even if it implies reading beyond the memory storing the input message. The read bytes can then be masked with the help of a sliding mask, transforming the trailing bytes that don't belong to our message into zeros, in a single SIMD operation. Compared to the naive method, this solution is up to ten times faster on our test machine (Ryzen 5, x86 64-bit, AVX2).
+To avoid this overhead, one possible trick consists of reading \( s_b \) bytes starting from the last block address, even if it implies reading beyond the memory storing the input message. The read bytes can then be masked with the help of a sliding mask, transforming the trailing bytes that don't belong to our message into zeros, in a single SIMD operation. Compared to the naive method, this solution is up to ten times faster on our test machine (Ryzen 5, x86 64-bit).
 
 \begin{figure}[H]
 \begin{lstlisting}[language=Rust, style=boxed]
 use core::arch::x86_64::*;
 
-unsafe fn read_padded(p: *const __m256i, len: isize) -> __m256i {
-    // The mask array is twice as long as the SIMD registry size (32*2 here), so that
-    // each 32-byte slice accounts for a different number of trailing bytes to mask out
-    const MASK: [u8; 64] = [
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
-    // Loading the mask slice
-    let mask = _mm256_loadu_epi8((MASK.as_ptr() as *const i8).offset(32 - len));
+unsafe fn read_padded(p: *const __m128i, len: isize) -> __m128i {
+    // Consecuive indices on which we compare the length against, byte per byte, to retreive our mask.
+    // The order is descending or ascending depending on the endianness
+    let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    // Computing the mask
+    let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
     // Read beyond and mask
-    return _mm256_and_si256(_mm256_loadu_si256(p), mask);
+    partial_vector = _mm_and_si128(_mm_loadu_si128(p), mask);
 }
 \end{lstlisting}
-\caption{GxHash-0 Padding in Rust}
+\caption{GxHash Padding in Rust}
 \label{fig:read_beyond_example}
 \end{figure}
 
@@ -445,14 +440,14 @@ Memory pages are designed so addresses within them share higher bits and vary on
 
 \begin{figure}[H]
 \begin{lstlisting}[language=Rust, style=boxed]
-unsafe fn is_same_page(ptr: *const __m256i) -> bool {
+unsafe fn is_same_page(ptr: *const __m128i) -> bool {
     // Usual minimal page size on modern computers
     const PAGE_SIZE = 4096;
     // Get the actual pointer address integer value
     let address = ptr as usize;
     // Mask to keep only the last 12 bits (2^12 = 4096)
     let offset_within_page = address & 0xFFF;
-    // Check if the 32nd byte from the current offset exceeds the page boundary
+    // Check if the 16th byte from the current offset exceeds the page boundary
     offset_within_page <= (PAGE_SIZE - 31)
 }
 \end{lstlisting}
@@ -484,7 +479,7 @@ The primary quality criteria for non-cryptographic hash functions include:
 
 \subsubsection{Quality Results}
 
-While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash0 algorithm qualifies in specific scenarios against some well-known non-cryptographic algorithms, such as:
+While we can compute quality metrics, the result will greatly vary depending on the actual inputs used for our hash function. Let's see how the GxHash algorithm qualifies in specific scenarios against some well-known non-cryptographic algorithms, such as:
 
 \begin{itemize}
 \item \textbf{HighwayHash}\cite{highwayhash} The latest non-cryptographic hash algorithm from Google Research
@@ -502,9 +497,9 @@ For the first scenario, we randomly generate 1,000,000 inputs of size 4 bytes, 6
 \hline
 \textbf{Function for Random dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
 \hline
-UInt32 GxHash0(4)            & 0,0241\% & 0,001094  & 0,000002 & 0,00412 \\
-UInt32 GxHash0(64)           & 0,0103\% & 0,001081  & 0,000002 & 0,00296 \\
-UInt32 GxHash0(1000)         & 0,012\%  & 0,001148  & 0,000002 & 0,00336 \\
+UInt32 GxHash(4)            & 0,0241\% & 0,001094  & 0,000002 & 0,00034 \\
+UInt32 GxHash(64)           & 0,0115\% & 0,000795  & 0,000002 & 0,00002 \\
+UInt32 GxHash(1000)         & 0,0108\%  & 0,001007  & 0,000002 & 0,00007 \\
 UInt32 HighwayHash(4)        & 0,0237\% & 0,001135  & 0,000002 & 0,00001 \\
 UInt32 HighwayHash(64)       & 0,0117\% & 0,001028  & 0,000002 & 0,00078 \\
 UInt32 HighwayHash(1000)     & 0,0103\% & 0,00092   & 0,000002 & 0,00032 \\
@@ -526,10 +521,9 @@ UInt32 Crc(1000)            & 0,0123\% & 0,001097  & 0,000002 & 0,00514 \\
 \label{tab:quality-data-random}
 \end{table}
     
-All numbers are very low, and GxHash0 quality results are of the same order of magnitude as for other algorithms. Distribution is very good for all algorithms. Avalanche is good for most algorithms, except for FNV-1a and CRC.
+All numbers are very low, and GxHash quality results are of the same order of magnitude as for other algorithms. Distribution is very good for all algorithms. Avalanche is good for most algorithms, except for FNV-1a and CRC. We can notice that avalanche score for GxHash is an order of magnitude better than other algorithms for larger input sizes.
 
-We can notice a collision rate of about 0.011\% and even 0.022\% for the 4 bytes inputs. There is an explanation: we can derive from the birthday paradox problem the following formula to
-estimate the \% of collisions:
+We can notice a collision rate of about 0.011\% and even 0.022\% for the 4 bytes inputs. There is an explanation: we can derive from the birthday paradox problem the following formula to estimate the \% of collisions:
 
 \begin{align*}
     100 \times \frac{n^2}{2 \times m \times n}
@@ -561,9 +555,9 @@ For the second scenario, we generate consecutive integers as inputs to observe h
 \hline
 \textbf{Function for Sequential dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
 \hline
-UInt32 GxHash0(4)                & 0,0104\% & 0,000009  & 0,000002 & 0,00308 \\
-UInt32 GxHash0(64)               & 0,0106\% & 0,000009  & 0,0000019 & 0,00225 \\
-UInt32 GxHash0(1000)             & 0,0104\% & 0,000009  & 0,000002 & 0,00283 \\
+UInt32 GxHash(4)                & 0,013\% & 0,001132  & 0,000002 & 0,00044 \\
+UInt32 GxHash(64)               & 0,0112\% & 0,000651  & 0,0000019 & 0,00039 \\
+UInt32 GxHash(1000)             & 0,0126\% & 0,000818  & 0,000002 & 0,00029 \\
 UInt32 HighwayHash(4)            & 0,0117\% & 0,00112   & 0,000002 & 0,00011 \\
 UInt32 HighwayHash(64)           & 0,0104\% & 0,001204  & 0,000002 & 0,00044 \\
 UInt32 HighwayHash(1000)         & 0,0112\% & 0,001188  & 0,000002 & 0,00131 \\
@@ -587,7 +581,8 @@ UInt32 Crc(1000)                & 0\%      & 0,00001   & 0,0000004 & 0,0046 \\
 
 We still observe about 0.0116\% of collisions, which is still expected given the size of the hashes generated and the number of iterations. We can notice however that a few algorithms have managed to have 0 collisions. This is an interesting feature but nevertheless anecdotical: as inputs of this dataset may only have at most the four first bytes different than zero, some algorithms are able to keep the possible bijectivity.
 
-Regarding distribution, we can notice that GxHash0 outperforms HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha0\cite{rust-t1ha}. Avalanche is slightly worse, however, possibly due to the tradeoff of doing fewer operations for greater performances. Overall, the numbers are all still very low and remain in the same ballpark, except for FNV-1a and CRC which still suffer from a relatively "high" avalanche.
+TODO
+Regarding distribution, we can notice that GxHash outperforms HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha0\cite{rust-t1ha}. Avalanche is slightly worse, however, possibly due to the tradeoff of doing fewer operations for greater performances. Overall, the numbers are all still very low and remain in the same ballpark, except for FNV-1a and CRC which still suffer from a relatively "high" avalanche.
 
 \begin{figure}[H]
 \centering
@@ -596,7 +591,7 @@ Regarding distribution, we can notice that GxHash0 outperforms HighwayHash\cite{
 \label{fig:quality-sequential}
 \end{figure}
 
-The distribution map is more interesting for sequential inputs. As a matter of fact, we clearly identify distribution patterns for FNV-1a and CRC. It isn't necessarily a bad thing, because a hash function can distribute the hash in a way that the distribution map looks evenly distributed (such as what we observe with CRC with 1000-bytes long inputs), however it implies that values hashes are correlated in a way, which a property we prefer to avoid for a non-cryptographic hash function. GxHash0 performs well in that matter, with a distribution that looks as uniform and uncorrelated than its counterparts HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha0\cite{rust-t1ha}.
+The distribution map is more interesting for sequential inputs. As a matter of fact, we clearly identify distribution patterns for FNV-1a and CRC. It isn't necessarily a bad thing, because a hash function can distribute the hash in a way that the distribution map looks evenly distributed (such as what we observe with CRC with 1000-bytes long inputs), however it implies that values hashes are correlated in a way, which a property we prefer to avoid for a non-cryptographic hash function. GxHash performs well in that matter, with a distribution that looks as uniform and uncorrelated than its counterparts HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha0\cite{rust-t1ha}.
 
 \clearpage
 \paragraph{English Words}\leavevmode\\
@@ -608,8 +603,8 @@ For the third scenario, we generate English-looking words as inputs by deriving 
 \hline
 \textbf{Function for MarkovWords dataset} & \textbf{Collisions} & \textbf{Bits Distribution} & \textbf{Distribution} & \textbf{Avalanche} \\
 \hline
-UInt32 GxHash0(64)                & 0,0136\% & 0,001082  & 0,000002 & 0,00319 \\
-UInt32 GxHash0(1000)              & 0,0119\% & 0,000894  & 0,000002 & 0,0034 \\
+UInt32 GxHash(64)                & 0,0108\% & 0,00122  & 0,000002 & 0,00044 \\
+UInt32 GxHash(1000)              & 0,0121\% & 0,001106  & 0,000002 & 0,00035 \\
 UInt32 HighwayHash(64)            & 0,0123\% & 0,000809  & 0,000002 & 0,00048 \\
 UInt32 HighwayHash(1000)          & 0,0117\% & 0,00092   & 0,000002 & 0,00078 \\
 UInt32 T1ha(64)                   & 0,0111\% & 0,000803  & 0,000002 & 0,00064 \\
@@ -627,7 +622,7 @@ UInt32 Crc(1000)                 & 0,0123\% & 0,000708  & 0,000002 & 0,00499 \\
 \end{table}
 
 We still observe about 0.0116\% of collisions for all algorithms, explainable by the birthday paradox as seen previously. This time however, XxHash\cite{xxhash}, Fnv1a and Crc are not able to beep bijectivity as inputs use more bytes compared to the sequential case, making the bijectivity property impossible and thus leading to inevitable collision.
-The bits distribution is very close for all algorithms benchmarked, at about 0.001. The avalanche is a little worse for GxHash0 compared to HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha\cite{rust-t1ha}, but remains quite good, and is still higher than Fnv1a and Crc avalanche scores.
+The bits distribution is very close for all algorithms benchmarked, at about 0.001. The avalanche score for GxHash is very good, on pair with HighwayHash\cite{highwayhash}, XxHash\cite{xxhash} and T1ha\cite{rust-t1ha}.
 
 \begin{figure}[H]
 \centering
@@ -640,9 +635,9 @@ Bucketed distribution is looking good in all cases for the English words case.
 
 \subsubsection{Conclusion}
 
-This was just an overview of the quality of the hashes produced by GxHash0 and a few comparisons to some established non-cryptographic algorithms. 
+This was just an overview of the quality of the hashes produced by GxHash and a few comparisons to some established non-cryptographic algorithms. 
 
-Our results demonstrate promising quality characteristics of GxHash0 with low collisions, good distribution, and a high avalanche effect, and its quality is comparable to other well-established non-cryptographic algorithms. However, it is essential to acknowledge the limitations of the presented evaluation scenarios. The benchmarks presented herein, namely random inputs, sequential inputs, and English word inputs, offer a glimpse into the algorithm's quality but are by no means exhaustive. In real-world applications, the behavior of a hash algorithm can be influenced by a myriad of factors and specific data patterns. As such, while our findings provide a foundational understanding of GxHash0's quality, potential users should be cognizant that results may vary based on the actual use case and the nature of the input data.
+Our results demonstrate promising quality characteristics of GxHash with low collisions, good distribution, and a high avalanche effect, and its quality is comparable to other well-established non-cryptographic algorithms. However, it is essential to acknowledge the limitations of the presented evaluation scenarios. The benchmarks presented herein, namely random inputs, sequential inputs, and English word inputs, offer a glimpse into the algorithm's quality but are by no means exhaustive. In real-world applications, the behavior of a hash algorithm can be influenced by a myriad of factors and specific data patterns. As such, while our findings provide a foundational understanding of GxHash's quality, potential users should be cognizant that results may vary based on the actual use case and the nature of the input data.
 
 \clearpage
 \subsection{Performance}
@@ -661,42 +656,44 @@ The benchmark is run on three different setups:
 \begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{throughput.png}
-\caption{Gibibytes of data hashed per second (throughput) per input size. Log10 scale.}
+\caption{Mibibytes of data hashed per second (throughput) per input size.}
 \label{fig:benchmark-throughput}
 \end{figure}
 
-The results are compelling: GxHash0 consistently outperforms its counterparts, achieving throughput rates that are an order of magnitude higher in many instances. Depending on the input size, we observed performance gains ranging from x5 to an impressive x210. On the GCP and Apple M1 Pro benchmarks, the algorithm reaches an impressive 10 Gb/s for 4 bytes inputs, likely showing that the algorithm is memory-bound (and thus can hardly be faster). A second observation is a substantial gap in performances between 64 and 256 bytes inputs, which can be explained by the 8-lane processing starting to kick in when inputs are large enough, leveraging ILP for even more throughput.
+The results are compelling: GxHash consistently outperforms its counterparts, achieving throughput rates that are an order of magnitude higher in many instances. For almost any input size and on all platforms used for the benchmark, the 128-bit state GxHash was the fastest.
+The 256-bit GxHash reaches almost two times the maximum throughput of the 128-bit GxHash implementation, as excepted. We can notice however that it performs slightly worse for inputs of small sizes, which can be explained by the overhead of extracting and xoring the two 128-bit parts of the state. Ahash slightly outperforms the 256-bit GxHash for inputs smaller than 128 bytes, but becomes much slower as input size grows.
 
-While these results are promising, it's essential to approach them with a balanced perspective. The benchmarks serve as an indicator of GxHash0's potential in specific scenarios, and while the performance advantage is clear, it's always prudent to consider the broader context and the specific requirements of any given application before drawing definitive conclusions.
+\paragraph{A word on inlining}\leavevmode\\
+On the GCP and Apple M1 Pro benchmarks, the algorithm reaches an impressive 11 Gb/s for 8 bytes inputs. While some algorithms that are supposed to be heavily optimized for small input sizes such as XxHash, they only reach up to a quarter of that throughput. After some analysis, a theory was that assembly code for XxHash was much larger than GxHash, thus preventing the algorithm to be inlined in the benchmark itself. After analysis using cargo asm, it turned out that on ARM XxHash produces 10 times as much assembly than GxHash. Forcing all methods not to be inlined in the benchmarks tend to prove this theory, as timing for small inputs are now all in the same ballpark. Inlining being a important part of the optimization done by compilers is also why special care was taken to make GxHash implementation leading to as little as bytecode as possible. Since criterion.rs benchmarking fixture is also leading the GxHash to be inlined, we think those benchmark results are viable and representative of the real world usage.
 
 \section{Discussion}
 \subsection{Limitations}
 
 \subsubsection{Portability}
-As mentioned at the beginning of this paper, portability wasn't a design goal for GxHash-0. Consequently, while GxHash-0 can work on different platforms (x86, ARM, and possibly more), it is not recommended to have the hashes outlive the process lifetime, as there is a risk for persistent hashes to imply a hardware dependency afterward, which is something we generally want to avoid. We think it is an acceptable limitation when GxHash0 is used at the process scope, such as for hashtables for instance.
-It would be possible however to derive from the GxHash0 implementation presented in this paper to come up with a portable version, but likely at the cost of performance.
+As previously stated, portability between different state sizes was not a design goal for GxHash. The algorithm functions across a variety of platforms, such as x86 and ARM, with consistent results within the same state size implementation. However, it is important to note that the 128-bit and 256-bit state versions of GxHash will produce distinct hashes for the same input. This discrepancy means that hashes generated by one state size are not directly comparable to those generated by another. To prevent any potential confusion, it is recommended that users choose one state size and maintain consistency throughout the hashing process, especially when hashes may need to be compared or persisted. This limitation is deemed acceptable for use-cases such as in-process hash tables where the state size does not change. Developing a version of GxHash that harmonizes the outputs of different state sizes would involve trade-offs, likely affecting the algorithm’s performance or complexity.
 
 \subsubsection{Compiler Dependencies} 
-The Laned Construction presented in this paper is implemented for GxHash0 by declaring each lane with its own variable. While it worked at the time of writing (rustc 1.68.0), it is in the end the compiler's responsibility to decide how many registers to use. We cannot exclude that in another context (different version, different language/compiler, ...) the compiler will undo the ILP we tried to implicitly introduce. This could be countered by writing the algorithm directly in assembly code, at the cost of complexity.
+The Temporal Construction presented in this paper is implemented for GxHash by declaring each lane with its own variable. While it worked at the time of writing (rustc 1.68.0), it is in the end the compiler's responsibility to decide how many registers to use. We cannot exclude that in another context (different version, different language/compiler, ...) the compiler will undo the ILP we tried to implicitly introduce. This could be countered by writing the algorithm directly in assembly code, at the cost of complexity.
 
 \subsection{Future Work}
 Despite the outstanding benchmark results, we think there are still many possible paths for research and improvement. Here is a non-exhaustive list:
 \begin{itemize}
     \item Leverage larger SIMD intrinsics, such as Intel AVX-512 or ARM SVE2.
-    \item Use leading zero count intrinsics followed by a C-style fallthrough to process small inputs faster.
+    \item Run more quality benchmarks
+    \item Analyze security properties.
     \item Rewrite the algorithm in assembly code or a language that is more explicit about registers.
     \item Introduce more than one stage of laning. For instance 16 lanes, then 8 lanes, then 4 lanes, and finally 2 lanes, to leverage ILP as much as possible.
+    \item Organize processing loop to result in even less bytecode to be generated, favoring inlining opportunities.
     \item Fine-tune the finalization stage to find the perfect balance between performance and avalanche effect.
-    \item Run GxHash0 against more quality benchmarks, such as SMHasher\cite{smhasher}.
 \end{itemize}
 
 \section{Conclusion}
 
-By leveraging the capabilities of modern CPUs, such as Single Instruction, Multiple Data (SIMD), GxHash0 achieves unparalleled throughput, setting a new standard for efficiency and performance amongst non-cryptographic hashing algorithms. A pivotal innovation in this endeavor is the "Laned Construction," which is specifically designed to harness Instruction-Level Parallelism (ILP), further optimizing the hashing process.
+By leveraging the capabilities of modern CPUs, such as Single Instruction, Multiple Data (SIMD), GxHash achieves unparalleled throughput, setting a new standard for efficiency and performance amongst non-cryptographic hashing algorithms. A pivotal innovation in this endeavor is the "Temporal Construction," which is specifically designed to harness Instruction-Level Parallelism (ILP), further optimizing the hashing process.
 
-However, it's essential to note that while GxHash0 offers significant improvements, the behavior of any hash algorithm can be influenced by various factors. As such, potential users should approach with an understanding that results might vary based on specific use cases and input data.\\
+However, it's essential to note that while GxHash offers significant improvements, the behavior of any hash algorithm can be influenced by various factors. As such, potential users should approach with an understanding that results might vary based on specific use cases and input data.\\
 
-The capabilities of GxHash0 represent a significant step forward in non-cryptographic hashing. In a world where real-time processing is becoming a standard, this algorithm not only enables systems to respond more swiftly but also promotes greater energy efficiency.
+The capabilities of GxHash represent a significant step forward in non-cryptographic hashing. In a world where real-time processing is becoming a standard, this algorithm not only enables systems to respond more swiftly but also promotes greater energy efficiency.
 
 \bibliography{references}
 \bibliographystyle{plain}
