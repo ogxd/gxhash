@@ -20,9 +20,7 @@
 
 \begin{abstract}
 
-In the rapidly evolving landscape of data processing and cybersecurity, hashing algorithms play a pivotal role in ensuring data integrity and security.
-Traditional hashing methods, while effective, often fail to fully utilize the computational capabilities of modern processors.
-This paper introduces the GxHash hashing algorithm, a novel approach that harnesses the power of high Instruction-Level Parallelism (ILP) and Single Instruction, Multiple Data (SIMD) capabilities of contemporary CPUs to achieve high-throughput non-cryptographic hashing. Through a comprehensive analysis, including benchmarks and comparisons with existing methods, we demonstrate that GxHash significantly outperforms conventional algorithms in terms of speed and computational efficiency without compromising on security. The paper also explores the implications, limitations, and avenues for future research in this burgeoning field.
+Efficiency and speed are the keystones of modern data processing, especially when handling vast datasets or operating within latency-critical applications. In this landscape, non-cryptographic hashing functions are fundamental, offering rapid data organization and retrieval mechanisms. Recognizing the limitations of existing hashing techniques, which often underutilize modern processing capabilities, this paper presents GxHash—an high-throughput non-cryptographic hashing algorithm. GxHash is meticulously engineered to exploit the full spectrum of Instruction-Level Parallelism (ILP) and Single Instruction, Multiple Data (SIMD) features available in contemporary CPUs. Our empirical analysis, corroborated by extensive benchmarks, reveals that GxHash substantially surpasses traditional hashing functions in processing velocity while maintaining a reliable distribution of hash values. The subsequent discussions delineate the algorithm's practical significance, explore its operational boundaries, and suggest trajectories for further innovation in the domain of high-speed data hashing.
 
 \end{abstract}
 
@@ -35,14 +33,12 @@ This paper introduces the GxHash hashing algorithm, a novel approach that harnes
 
 \subsection{Motivations}
 
-As a software engineer at Equativ, a company specializing in high-performance AdServing backends that handle billions of auctions daily,
-I face unique challenges in maximizing throughput while minimizing latency. In this high-stakes environment, every millisecond counts, and the performance of underlying data structures becomes critically important. As we heavily rely on in-memory caches and other hash-based data structures, making the efficiency of hashing algorithms a non-trivial concern in our system's overall performance.\\\\
+As a software engineer at Equativ, which specializes in high-performance AdServing backends managing billions of auctions daily, I encounter unique challenges in maximizing throughput and minimizing latency. In this critical environment, where every millisecond is valuable, the performance of underlying data structures is crucial. Our significant reliance on in-memory caches and other hash-based data structures makes the efficiency of hashing algorithms an essential factor in our system's overall performance.\\\\
 While diving into the theory of hashing out of both necessity and intellectual curiosity, I discovered that existing hashing algorithms, including those built on well-known constructions like Merkle–Damgård, are not optimized to exploit the full capabilities of modern general-purpose CPUs.
 These CPUs offer advanced features such as Single Instruction, Multiple Data (SIMD) and Instruction-Level Parallelism (ILP), which remain largely untapped by current hashing methods.\\\\
 The challenge of creating a faster, more efficient hashing algorithm became not just a professional necessity but also a personal quest.
 It was both challenging and exhilarating to delve into hashing theory and experiment with new approaches. The result is what I believe to be the fastest non-cryptographic hashing algorithm developed to date.\\\\
-The primary motivation behind this research is to bridge the existing performance gap by designing a hashing algorithm that fully leverages SIMD and ILP capabilities. The aim is to achieve an order-of-magnitude improvement in hashing speed, thereby revolutionizing the efficiency of various applications, from databases to real-time analytics and beyond.\\\\
-In summary, this work is driven by both the practical needs of my professional environment and a personal passion for pushing the boundaries of what is technically possible in the realm of hashing algorithms.
+The primary motivation behind this research is to bridge the existing performance gap by designing a hashing algorithm that fully leverages SIMD and ILP capabilities. The aim is to achieve an order-of-magnitude improvement in hashing speed, thereby revolutionizing the efficiency of various applications, from databases to real-time analytics and beyond.
 
 \subsection{Scope Limitation}
 
@@ -55,7 +51,7 @@ Firstly, it's worth mentioning that TLP is orthogonal to the methods being explo
 TLP focuses on optimizing coarser-grained operations by distributing tasks across multiple threads, which doesn't directly align with the fine-grained performance improvements we aim to achieve.\\\\
 Secondly, introducing TLP would necessitate the incorporation of task scheduling, synchronization, and context switching.
 These overheads, while perhaps manageable in applications that can afford greater latencies, become less justifiable when aiming for high-throughput, low-latency operations that are typical in non-cryptographic hashing scenarios.\\\\
-In summary, while TLP might be a suitable performance optimization strategy in other computational contexts, we chose to leave it aside in this paper.
+For these reasons, TLP has been left aside in this paper.
 
 \subsubsection{Portability}
 
@@ -144,10 +140,9 @@ While tree-based hashing constructions offer a degree of parallelism, it is esse
 Although the tree-based hashing approach has a theoretical advantage in parallelization, practical implementations often face several challenges that can impact efficiency. These issues can make tree hashing hardly as efficient as a sequential structure for certain applications. Here are the primary factors:
 
 \begin{itemize}
-\item \textbf{Synchronization Overhead:} The parallel nature of the algorithm necessitates synchronization between different processing threads or units, especially at higher tree levels where dependencies exist. This overhead counters the gains from parallelization.
 \item \textbf{Memory Consumption:} Tree constructions typically require more memory to store intermediate hash values, particularly when branching factors are high. Memory allocation and fragmentation usually impact performance.
 \item \textbf{Cache Efficiency:} Unlike sequential algorithms that can benefit from cache locality, the tree-based approach often has to handle multiple non-contiguous data blocks, potentially leading to cache misses and reduced efficiency.
-\item \textbf{Implementation Complexity:} The algorithmic and data-structure requirements for implementing tree-based hashing are more complex than those of a straightforward sequential hashing algorithm. The increased complexity can introduce more room for errors and maintenance challenges.
+\item \textbf{Implementation Complexity:} The algorithmic and data-structure requirements for implementing tree-based hashing are more complex than those of a straightforward sequential hashing algorithm. The increased complexity can introduce more room for errors, maintenance challenges, and less inlining opportunities as the bytecode for a given implementation will be subtantially larger compared to a simpler construction.
 \end{itemize}
 
 In light of these practical challenges, tree-based constructions might not be the best fit given our high-performance goals and the architecture of today's general-purpose computers.
@@ -161,12 +156,12 @@ The key limitation for ILP in the Merkle–Damgård construction is the inherent
 
 \subsection{ILP Awareness}
 
-While compilers and CPUs employ various techniques to optimize ILP, their capabilities are often constrained by the inherent data dependencies in the code. It's for this reason that algorithmic design can be pivotal. By structuring algorithms to minimize dependency chains from the outset, we create opportunities for higher ILP that even the most advanced compiler optimizations and CPU features cannot achieve alone. Therefore, algorithmic design that is mindful of ILP can be a game-changer for performance optimization.
+While compilers and CPUs employ various techniques to optimize ILP, their capabilities are constrained by the inherent data dependencies in the code. It's for this reason that algorithmic design can be pivotal. By structuring algorithms to minimize dependency chains from the outset, we create opportunities for higher ILP that even the most advanced compiler optimizations and CPU features cannot achieve alone. Therefore, algorithmic design that is mindful of ILP can be a game-changer for performance optimization.
 
 \subsubsection{Example}
 Let's take a FNV-like hashing function. The "naive" way to process an array of elements would look like the \texttt{baseline} method, as shown in Rust snippet (Figure~\ref{fig:ilp_rust_example}). As we can see, every loop iteration requires the value of \texttt{h}, which has been computed the iteration before. Here we have a dependency chain, preventing the compiler from doing any optimization.
 
-To make ILP possible, for the function \texttt{temp} we unroll the loop and hash a few inputs altogether, independently from \texttt{h}, and mix it once thereafter with \texttt{h}. We still have a dependency chain on \texttt{h}, but for fewer iterations.
+To make ILP possible, for the function \texttt{temporal} we unroll the loop and hash a few inputs altogether, independently from \texttt{h}, and mix it once thereafter with \texttt{h}. We still have a dependency chain on \texttt{h}, but for fewer iterations.
 The temporary hashes are independent and thus eligible for ILP.
 
 Another track taken for the function \texttt{laned} is to unroll the loop and hash on separate lanes, and then mix the lanes together upon exiting the loop. Each lane has its own dependency chain but also on fewer iterations.
@@ -210,7 +205,7 @@ fn unrolled(input: &[u64]) -> u64 {
 \end{lstlisting}
 \columnbreak
 \begin{lstlisting}[language=Rust, style=boxed]
-fn temp(input: &[u64]) -> u64 {
+fn temporal(input: &[u64]) -> u64 {
     let mut h: u64 = OFFSET;
     let mut i: usize = 0;
     while i < input.len() {
@@ -277,7 +272,7 @@ The following section will delve more in depth into the definition of a \textbf{
 \clearpage
 \subsection{The Temporal Construction}
 
-The \textbf{Temporal Construction} processes the message by groups of \( k_b \) blocks. Blocks of a given group are compress together into a temporary variable, which is then compressed into our state. This way, we break a large part of dependency chains because each group can be independently compressed. The remaining dependency chain that remains consists in compressing the resulting temporary variable computed for each group.
+The \textbf{Temporal Construction} processes the message by groups of \( k_b \) blocks. Blocks of a given group are compressed together into a temporary variable, which is then compressed into our state. This way, we break a large part of dependency chains because each group can be independently compressed. The remaining dependency chain consists in compressing the resulting temporary variable computed for each group.
 
 \subsubsection{Intermediate Hashes}
 
@@ -285,10 +280,10 @@ Let's define \( n_g = \lfloor {n_b}/{k_b} \rfloor \) as the number of whole grou
 For each lane we compute an intermediate hash, \( H_i \), as follows:
 
 \begin{align*}
-H_{1} &= f(\ldots f(f(0^{s_b}, M_1), M_2)\ldots, M_{k_b}), \\
-H_{2} &= f(\ldots f(f(0^{s_b}, M_{k_g+1}), M_{k_g+2})\ldots, M_{2k_b}), \\
+H_{1} &= f(\ldots f(f(M_1, M_2), M_3)\ldots, M_{k_b}), \\
+H_{2} &= f(\ldots f(f(M_{k_g+1}, M_{k_g+2}), M_{k_g+3})\ldots, M_{2k_b}), \\
 &\vdots \\
-H_{n_g} &= f(\ldots f(f(0^{s_b}, M_{n_g+1}), M_{n_g+2})\ldots, M_{n_g+k_b})
+H_{n_g} &= f(\ldots f(f(M_{n_g+1}, M_{n_g+2}), M_{n_g+3})\ldots, M_{n_g+k_b})
 \end{align*}
 
 \subsubsection{Final Hash}
@@ -317,7 +312,7 @@ This design philosophy introduces specific constraints for the compression and f
 
 \begin{itemize}
     \item \textbf{Utilization of Hardware Intrinsics:} To achieve the SIMD-oriented goal, arithmetic operations are tailored to be compatible with both x86 and ARM Neon intrinsics.
-    \item \textbf{Efficiency through Simplicity:} Minimizing the number of operations is crucial, as fewer operations typically translate to faster execution.
+    \item \textbf{Efficiency through Simplicity:} Minimizing the number of operations is crucial, as fewer operations typically translate to faster execution. Also, less operations often translates to less bytecode, which increases the odds of inlining, further improving performance.
     \item \textbf{Hash Quality Assurance:} Despite these performance optimizations, the algorithm must ensure a minimum level of hash quality to maintain low collision probabilities.
 \end{itemize}
 
@@ -325,11 +320,8 @@ In the next sections, we'll delve into the specific operations and transformatio
 
 \subsection{Pipe Width}
 
-To optimize throughput, the pipe width \( s_b \) is set to match the native width of the CPU's SIMD registers.
-This alignment ensures that each SIMD instruction operates on the entire pipe width, maximizing data processed per instruction.
-Given that typical SIMD registers are at least 128 bits in width, the pipe width surpasses common 32-bit or 64-bit output hash sizes.
-Consequently, the GxHash design aligns with the characteristics of a wide-pipe construction, as discussed in section \ref{widepipe}.
-This makes GxHash more resistant to multicollision attacks.
+To optimize throughput, the pipe width \( s_b \) is set to match the width of the CPU's SIMD registers. This alignment ensures that each SIMD instruction operates on the entire pipe width, maximizing data processed per instruction. Given that typical SIMD registers are at least 128 bits in width, the pipe width surpasses common 32-bit or 64-bit output hash sizes. Consequently, the GxHash design aligns with the characteristics of a wide-pipe construction, as discussed in section \ref{widepipe}.
+This makes GxHash more resistant to collisions.
 
 \subsection{Compression}
 
@@ -337,11 +329,9 @@ The role of the compression function is to transform a larger input (or message)
 
 To delve deeper into this, consider the definition of a bijective function. A function is bijective if and only if it is both injective (one-to-one) and surjective (onto). In simpler terms, for every unique input, there is a unique output, and every possible output has a corresponding input.
 
-Given the nature of the compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \), where the domain is much larger than the codomain (\( s_b \times s_b > s_b \)), it becomes mathematically impossible for the function to be one-to-one. There will inevitably be multiple different inputs that map to the same output, known as collisions.\\
+Given the nature of the compression function \( f: \{0,1\}^{s_b} \times \{0,1\}^{s_b} \to \{0,1\}^{s_b} \), where the domain is much larger than the codomain (\( s_b \times s_b > s_b \)), it becomes mathematically impossible for the function to be injective. There will inevitably be multiple different inputs that map to the same output, known as collisions. Given this, the selection for the compression has to be empirical.
 
-With the inevitable non-bijectivity, the performance requirements and the limited set of available SIMD intrinsics, the selection for the compression has to be empirical, thus implying specifying a version to account for these current choices that may be improved in future versions.\\
-
-Modern CPUs feature SIMD instructions for the AES block cipher, which we have adopted in \textbf{GxHash} to combine vectors, allowing robust bit mixing at a low computational cost. In practice, we employ a compression with 3 AES rounds, and a faster alternative employing a single AES round for compressing the \( k_b \) blocks of the temporal construction.
+Modern CPUs feature SIMD instructions for the AES (Advanced Encryption Standard) block cipher, which we have adopted in \textbf{GxHash} to combine vectors, allowing robust bit mixing at a low computational cost. In practice, we employ a compression with 3 AES rounds, and a faster alternative employing a single AES round for compressing the \( k_b \) blocks of the temporal construction.
 
 The AES block cipher instrinsics is pivotal in GxHash, allowing high quality properties without compromising too much on performance.
 
@@ -377,8 +367,8 @@ pub fn compress(a: __m128i, b: __m128i)
 The finalization process in the GxHash algorithm is crucial to ensure the transformation of its internal state into a fixed-size, uniformly distributed hash output. This process is delineated into two primary steps: mixing the bits and reducing to the desired hash size.
 
 This mixing step is responsible for ensuring the even distribution of bits in the state, thereby reducing patterns or biases that might arise from the input data or the compression process. Given the inherent simplicity of the GxHash compression, it is worth for the finalization to incorporate slightly more intricate bit mixing operations, especially given it runs only once per message hashed, as opposed to the compression that occurs once for each block.\\
-Leveraging SIMD capabilities can help in regard to performance and efficiency, which remains for us a primary consideration. Fortunately, both x86 and ARM architectures provide AES (Advanced Encryption Standard) intrinsics that serve as efficient tools for bit mixing. The use of four AES block cipher rounds ensures a robust diffusion of bits across the state at a cheap computational cost.\\
-The AES keys can be set changed, providing a way to have unique hashes per-application and even per-process, protecting from eventual precomputed or replay attack attempts.
+As performance and efficiency remains for us a primary consideration, we once again leverage SIMD capabilities with AES intrinsics, ensuring a robust diffusion of bits across the state at a cheap computational cost.\\
+A seed is injected at this finalization stage, more specifically as a key for the first AES round, providing a way to have unique hashes per-application and even per-process, protecting from eventual precomputed or replay attack attempts.
 
 Once the state's bits have been thoroughly mixed, the next step is to reduce this state into a smaller, fixed-size hash output, typically 32 or 64 bits. There are several approaches to this, one being combiniting the \( X \)-bit integer parts of the mixed state together (by xoring them together for instance). GxHash takes a simpler path by reinterpreting our state into a smaller \( X \)-bit value, assuming an uniform distribution at the mixing stage thanks to the four rounds of AES. This allow the GxHash algorithm to generate hashes of any size up to \( s_b \) bits with virtually no additional computational cost.
 
@@ -679,7 +669,7 @@ Despite the outstanding benchmark results, we think there are still many possibl
 \begin{itemize}
     \item Leverage larger SIMD intrinsics, such as Intel AVX-512 or ARM SVE2.
     \item Make use of compiler hints to improve branching predictions.
-    \item Run more quality benchmarks.
+    \item Benchmark in more test suite to further assess the distribution and avalanche properties.
     \item Analyze security properties.
     \item Rewrite the algorithm in assembly code or a language that is more explicit about registers.
     \item Introduce more than one stage of laning. For instance 16 lanes, then 8 lanes, then 4 lanes, and finally 2 lanes, to leverage ILP as much as possible.
@@ -687,6 +677,7 @@ Despite the outstanding benchmark results, we think there are still many possibl
     \item Fine-tune the finalization stage to find the perfect balance between performance and avalanche effect.
 \end{itemize}
 
+\clearpage
 \section{Conclusion}
 
 By leveraging the capabilities of modern CPUs, such as Single Instruction, Multiple Data (SIMD), GxHash achieves unparalleled throughput, setting a new standard for efficiency and performance amongst non-cryptographic hashing algorithms. A pivotal innovation in this endeavor is the "Temporal Construction," which is specifically designed to harness Instruction-Level Parallelism (ILP), further optimizing the hashing process.
