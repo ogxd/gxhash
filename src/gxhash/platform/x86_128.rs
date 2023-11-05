@@ -53,8 +53,8 @@ unsafe fn get_partial_safe(data: *const u8, len: usize) -> State {
 #[inline]
 #[allow(overflowing_literals)]
 pub unsafe fn compress(a: State, b: State) -> State {
-    let keys_1 = _mm_set_epi32(0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542);
-    let keys_2 = _mm_set_epi32(0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9);
+    let keys_1 = _mm_set_epi32(0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E);
+    let keys_2 = _mm_set_epi32(0x39136BD9, 0xB361DC58, 0xCB6B2E9B, 0x03FCE279);
 
     // 2+1 rounds of AES for compression
     let mut b = _mm_aesenc_si128(b, keys_1);
@@ -72,9 +72,9 @@ pub unsafe fn compress_fast(a: State, b: State) -> State {
 #[allow(overflowing_literals)]
 pub unsafe fn finalize(hash: State, seed: i32) -> State {
     // Hardcoded AES keys
-    let keys_1 = _mm_set_epi32(0x713B01D0, 0x8F2F35DB, 0xAF163956, 0x85459F85);
-    let keys_2 = _mm_set_epi32(0x1DE09647, 0x92CFA39C, 0x3DD99ACA, 0xB89C054F);
-    let keys_3 = _mm_set_epi32(0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32);
+    let keys_1 = _mm_set_epi32(0x85459F85, 0xAF163956, 0x8F2F35DB, 0x713B01D0);
+    let keys_2 = _mm_set_epi32(0xB89C054F, 0x3DD99ACA, 0x92CFA39C, 0x1DE09647);
+    let keys_3 = _mm_set_epi32(0xD0012E32, 0x689D2B7D, 0x5544B1B7, 0xC78B122B);
 
     // 4 rounds of AES
     let mut hash = _mm_aesenc_si128(hash, _mm_set1_epi32(seed));
