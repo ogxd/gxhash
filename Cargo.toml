@@ -40,3 +40,7 @@ harness = false
 [[bench]]
 name = "ilp"
 harness = false
+
+[[bench]]
+name = "hashset"
+harness = false
