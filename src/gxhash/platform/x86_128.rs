@@ -8,6 +8,11 @@ pub unsafe fn create_empty() -> State {
     _mm_setzero_si128()
 }
 
+#[inline(always)]
+pub unsafe fn create_seed(seed: i32) -> State {
+    _mm_set1_epi32(seed)
+}
+
 #[inline]
 pub unsafe fn load_unaligned(p: *const State) -> State {
     _mm_loadu_si128(p)
@@ -70,14 +75,14 @@ pub unsafe fn compress_fast(a: State, b: State) -> State {
 
 #[inline]
 #[allow(overflowing_literals)]
-pub unsafe fn finalize(hash: State, seed: i32) -> State {
+pub unsafe fn finalize(hash: State, seed: State) -> State {
     // Hardcoded AES keys
     let keys_1 = _mm_set_epi32(0x85459F85, 0xAF163956, 0x8F2F35DB, 0x713B01D0);
     let keys_2 = _mm_set_epi32(0xB89C054F, 0x3DD99ACA, 0x92CFA39C, 0x1DE09647);
     let keys_3 = _mm_set_epi32(0xD0012E32, 0x689D2B7D, 0x5544B1B7, 0xC78B122B);
 
     // 4 rounds of AES
-    let mut hash = _mm_aesenc_si128(hash, _mm_set1_epi32(seed));
+    let mut hash = _mm_aesenc_si128(hash, seed);
     hash = _mm_aesenc_si128(hash, keys_1);
     hash = _mm_aesenc_si128(hash, keys_2);
     hash = _mm_aesenclast_si128(hash, keys_3);
