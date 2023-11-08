@@ -1,4 +1,4 @@
-mod platform;
+pub(crate) mod platform;
 
 use platform::*;
 
@@ -38,7 +38,7 @@ const RANGE_3_BEGIN: isize  = RANGE_2_BEGIN + 1;
 const RANGE_3_END: isize    = VECTOR_SIZE * 4;
 
 #[inline(always)]
-unsafe fn gxhash(input: &[u8], seed: State) -> State {
+pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 
     let len: isize = input.len() as isize;
     let mut ptr = input.as_ptr() as *const State;
@@ -114,73 +114,12 @@ unsafe fn gxhash_process_1(mut ptr: *const State, hash_vector: State, remaining_
     (hash_vector, remaining_bytes, ptr)
 }
 
-use std::hash::{Hasher, BuildHasherDefault};
-use std::collections::{HashMap, HashSet};
-
-pub struct GxHasher(State);
-
-impl Default for GxHasher {
-    #[inline]
-    fn default() -> GxHasher {
-        GxHasher(unsafe { create_empty() })
-    }
-}
-
-impl GxHasher {
-    #[inline]
-    pub fn with_seed(seed: i32) -> GxHasher {
-        // Use gxhash64 to generate an initial state from a seed
-        GxHasher(unsafe { gxhash(&[], create_seed(seed)) })
-    }
-}
-
-impl Hasher for GxHasher {
-    #[inline]
-    fn finish(&self) -> u64 {
-        unsafe {
-            let p = &self.0 as *const State as *const u64;
-            *p
-        }
-    }
-
-    #[inline]
-    fn write(&mut self, bytes: &[u8]) {
-        self.0 = unsafe { gxhash(bytes, self.0) };
-    }
-}
-
-/// A builder for default FNV hashers.
-pub type GxBuildHasher = BuildHasherDefault<GxHasher>;
-
-/// A `HashMap` using a default GxHash hasher.
-//#[cfg(feature = "std")]
-pub type GxHashMap<K, V> = HashMap<K, V, GxBuildHasher>;
-
-/// A `HashSet` using a default GxHash hasher.
-//#[cfg(feature = "std")]
-pub type GxHashSet<T> = HashSet<T, GxBuildHasher>;
-
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    use ahash::HashSetExt;
     use rand::Rng;
     use rstest::rstest;
-
-    #[test]
-    fn hasher_works() {
-        let mut hashset = GxHashSet::new();
-        assert!(hashset.insert(1234));
-        assert!(!hashset.insert(1234));
-        assert!(hashset.insert(42));
-
-        let mut hashset = GxHashSet::new();
-        assert!(hashset.insert("hello"));
-        assert!(hashset.insert("world"));
-        assert!(!hashset.insert("hello"));
-        assert!(hashset.insert("bye"));
-    }
 
     #[rstest]
     #[case(4)]
