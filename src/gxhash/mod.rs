@@ -2,6 +2,15 @@ pub(crate) mod platform;
 
 use platform::*;
 
+/// Hashes an arbitrary stream of bytes to an u32.
+///
+/// # Example
+///
+/// ```
+/// let bytes = [42u8; 1000];
+/// let seed = 1234;
+/// println!("Hash is {:x}!", gxhash::gxhash32(bytes, seed));
+/// ```
 #[inline(always)]
 pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
     unsafe {
@@ -10,6 +19,15 @@ pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
     }
 }
 
+/// Hashes an arbitrary stream of bytes to an u64.
+///
+/// # Example
+///
+/// ```
+/// let bytes = [42u8; 1000];
+/// let seed = 1234;
+/// println!("Hash is {:x}!", gxhash::gxhash32(bytes, seed));
+/// ```
 #[inline(always)]
 pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
     unsafe {
