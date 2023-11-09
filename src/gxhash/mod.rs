@@ -9,7 +9,7 @@ use platform::*;
 /// ```
 /// let bytes = [42u8; 1000];
 /// let seed = 1234;
-/// println!("Hash is {:x}!", gxhash::gxhash32(bytes, seed));
+/// println!("Hash is {:x}!", gxhash::gxhash32(&bytes, seed));
 /// ```
 #[inline(always)]
 pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
@@ -26,7 +26,7 @@ pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
 /// ```
 /// let bytes = [42u8; 1000];
 /// let seed = 1234;
-/// println!("Hash is {:x}!", gxhash::gxhash32(bytes, seed));
+/// println!("Hash is {:x}!", gxhash::gxhash32(&bytes, seed));
 /// ```
 #[inline(always)]
 pub fn gxhash64(input: &[u8], seed: i32) -> u64 {

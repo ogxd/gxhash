@@ -1,35 +1,40 @@
-# gxhash
+# GxHash
 ![CI](https://github.com/ogxd/gxhash-rust/actions/workflows/rust.yml/badge.svg)
 
-Up to this date, the fastest non-cryptographic hashing algorithm
+Up to this date, the fastest non-cryptographic hashing algorithm 🚀 (see benchmarks)  
+Passes all [SMHasher](https://github.com/rurban/smhasher) quality tests ✅
 
-## Publication
+## Usage
+```
+cargo add gxhash
+```
 
-> I'm committed to the open dissemination of scientific knowledge. In an era where access to information is more democratized than ever, I believe that science should be freely available to all – both for consumption and contribution. Traditional scientific journals often involve significant financial costs, which can introduce biases and can shift the focus from purely scientific endeavors to what is currently trendy. 
->
-> To counter this trend and to uphold the true spirit of research, I have chosen to share my work on "gxhash" directly on GitHub, ensuring that it's openly accessible to anyone interested. Additionally, the use of a free Zenodo DOI ensures that this research is citable and can be referenced in other works, just as traditional publications are. 
->
-> I strongly believe in a world where science is not behind paywalls, and I encourage other researchers to join this movement for a more inclusive, unbiased, and open scientific community.
->
-> _— Olivier Giniaux_
+```rust
+use gxhash::*;
 
-Publication:  
-[PDF](https://github.com/ogxd/gxhash-rust/blob/main/article/article.pdf)
+// Used as a hashing function
+let bytes = [42u8; 1000];
+let seed = 1234;
+println!("Hash is {:x}!", gxhash::gxhash64(&bytes, seed));
 
-Cite this publication / algorithm:  
-[![DOI](https://zenodo.org/badge/690754256.svg)](https://zenodo.org/badge/latestdoi/690754256)
+// Used as an Hasher for faster HashSet/HashMap
+let mut hashset = GxHashSet::default();
+hashset.insert("hello world");
+```
 
-## Prerequisites
+> **Warning**
+> This is a non-cryptographic hashing algorithm, thus it is not recommended to use it as a cryptographic algorithm (it is not a replacement for SHA).
 
-- Compatible CPU
-    - x86-64 bit OR
-    - ARM 64-bit
-- Rust with nightly enabled `rustup default nightly`
-- Environment variable `RUSTFLAGS="-C target-cpu=native"` (windows powershell `$env:RUSTFLAGS = "-C target-cpu=native"`). Required for binary to be compiled for current CPU, marking use of instrinsics. Hopefully simpler in the future thanks to [portable-simd](https://github.com/rust-lang/portable-simd) initiative.
+## Compatibility
+- ARM 64-bit using `NEON` intrinsics.
+- x86-64 bit using `SSE2` + `AES` intrinsics.
+- (optional) with `avx2` feature enabled, gxhash will use `AVX2` intrinsics, for up to twice as much performance for large inputs. Only compatible on `AVX2` enabled x86-64 platforms.
+
+> **Warning**
+> Other platforms are currently not supported (there is no fallback)
 
 ## Benchmarks
-
-Displayed numbers is throughput in Gibibytes of data hashed per second. Higher is better.  
+Displayed numbers are throughput in Mibibytes of data hashed per second. Higher is better.  
 To run the benchmarks: `cargo bench --bench throughput` (don't forget the env flag)
 
 ### Intel Ice Lake (x86 64-bit) (GCP n2-standard-2)
@@ -60,5 +65,19 @@ To run the benchmarks: `cargo bench --bench throughput` (don't forget the env fl
 | fnv-1a             | 1988.88 |  2627.51 |   1407.3 |   896.08 |   777.74 |   753.23 |   745.68 |
 
 ## Debugging
+The algorithm is mostly inlined, making most profilers fail at providing useful intrinsics. The best I could achieve is profiling at assembly level. [cargo-asm](https://github.com/gnzlbg/cargo-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash`). [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on time spent per instruction.
 
-Algorithm is mostly inlined, making most profilers fail at providing useful intrinsics. The best I could achieve is profiling at assembly level. [cargo-asm](https://github.com/gnzlbg/cargo-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash`). [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on time spent per instruction.
+## Publication
+> I'm committed to the open dissemination of scientific knowledge. In an era where access to information is more democratized than ever, I believe that science should be freely available to all – both for consumption and contribution. Traditional scientific journals often involve significant financial costs, which can introduce biases and can shift the focus from purely scientific endeavors to what is currently trendy. 
+>
+> To counter this trend and to uphold the true spirit of research, I have chosen to share my work on "gxhash" directly on GitHub, ensuring that it's openly accessible to anyone interested. Additionally, the use of a free Zenodo DOI ensures that this research is citable and can be referenced in other works, just as traditional publications are. 
+>
+> I strongly believe in a world where science is not behind paywalls, and I encourage other researchers to join this movement for a more inclusive, unbiased, and open scientific community.
+>
+> _— Olivier Giniaux_
+
+Publication:  
+[PDF](https://github.com/ogxd/gxhash-rust/blob/main/article/article.pdf)
+
+Cite this publication / algorithm:  
+[![DOI](https://zenodo.org/badge/690754256.svg)](https://zenodo.org/badge/latestdoi/690754256)
