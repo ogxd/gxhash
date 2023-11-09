@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::gxhash::*;
 use crate::gxhash::platform::*;
 
+/// A `Hasher` for hashing an arbitrary stream of bytes.
 pub struct GxHasher(State);
 
 impl Default for GxHasher {
@@ -13,6 +14,22 @@ impl Default for GxHasher {
 }
 
 impl GxHasher {
+    /// Creates a new hasher using the provided seed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::hash::Hasher;
+    /// use gxhash::GxHasher;
+    ///
+    /// let mut hasher = GxHasher::with_seed(1234);
+    ///
+    /// hasher.write(b"Hello");
+    /// hasher.write_u32(123);
+    /// hasher.write_u8(42);
+    ///
+    /// println!("Hash is {:x}!", hasher.finish());
+    /// ```
     #[inline]
     pub fn with_seed(seed: i32) -> GxHasher {
         // Use gxhash64 to generate an initial state from a seed
@@ -40,11 +57,9 @@ impl Hasher for GxHasher {
 pub type GxBuildHasher = BuildHasherDefault<GxHasher>;
 
 /// A `HashMap` using a default GxHash hasher.
-//#[cfg(feature = "std")]
 pub type GxHashMap<K, V> = HashMap<K, V, GxBuildHasher>;
 
 /// A `HashSet` using a default GxHash hasher.
-//#[cfg(feature = "std")]
 pub type GxHashSet<T> = HashSet<T, GxBuildHasher>;
 
 #[cfg(test)]
