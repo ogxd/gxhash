@@ -4,7 +4,7 @@
 Up to this date, the fastest non-cryptographic hashing algorithm 🚀 (see benchmarks)  
 Passes all [SMHasher](https://github.com/rurban/smhasher) quality tests ✅
 
-#### Why makes it so fast?
+#### What makes it so fast?
 Here are the principal reasons:
 - SIMD all the way (and usage of SIMD AES for efficient bit mixing)
 - High ILP processing for large inputs
