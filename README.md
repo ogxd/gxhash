@@ -4,6 +4,13 @@
 Up to this date, the fastest non-cryptographic hashing algorithm 🚀 (see benchmarks)  
 Passes all [SMHasher](https://github.com/rurban/smhasher) quality tests ✅
 
+#### Why makes it so fast?
+Here are the principal reasons:
+- SIMD all the way (and usage of SIMD AES for efficient bit mixing)
+- High ILP processing for large inputs
+- Small bytecode for greater inlining opportunities
+Checkout the [article](https://github.com/ogxd/gxhash-rust/blob/main/article/article.pdf) for more details.
+
 ## Usage
 ```
 cargo add gxhash
@@ -35,7 +42,7 @@ hashset.insert("hello world");
 
 ## Benchmarks
 Displayed numbers are throughput in Mibibytes of data hashed per second. Higher is better.  
-To run the benchmarks: `cargo bench --bench throughput` (don't forget the env flag)
+To run the benchmarks: `cargo bench --bench throughput`.
 
 ### Intel Ice Lake (x86 64-bit) (GCP n2-standard-2)
 
