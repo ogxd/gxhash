@@ -139,30 +139,20 @@ mod tests {
     use rand::Rng;
     use rstest::rstest;
 
-    #[rstest]
-    #[case(4)]
-    #[case(16)]
-    #[case(24)]
-    #[case(32)]
-    #[case(56)]
-    #[case(72)]
-    #[case(96)]
-    #[case(160)]
-    #[case(256)]
-    #[case(512)]
-    #[case(1200)]
-    fn all_blocks_are_consumed(#[case] size_bits: usize) {
-        let mut bytes = vec![42u8; size_bits];
-
-        let ref_hash = gxhash32(&bytes, 0);
-
-        for i in 0..bytes.len() {
-            let swap = bytes[i];
-            bytes[i] = 82;
-            let new_hash = gxhash32(&bytes, 0);
-            bytes[i] = swap;
-
-            assert_ne!(ref_hash, new_hash, "byte {i} not processed");
+    #[test]
+    fn all_blocks_are_consumed() {
+        for s in 1..1200 {
+            let mut bytes = vec![42u8; s];
+            let ref_hash = gxhash32(&bytes, 0);
+    
+            for i in 0..bytes.len() {
+                let swap = bytes[i];
+                bytes[i] = 82;
+                let new_hash = gxhash32(&bytes, 0);
+                bytes[i] = swap;
+    
+                assert_ne!(ref_hash, new_hash, "byte {i} not processed for input of size {s}");
+            }
         }
     }
 
