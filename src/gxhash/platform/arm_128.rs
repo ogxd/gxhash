@@ -20,8 +20,8 @@ pub unsafe fn create_empty() -> State {
 }
 
 #[inline(always)]
-pub unsafe fn create_seed(seed: i32) -> State {
-    vreinterpretq_s8_s32(vdupq_n_s32(seed))
+pub unsafe fn create_seed(seed: i64) -> State {
+    vreinterpretq_s8_s64(vdupq_n_s64(seed))
 }
 
 #[inline(always)]
@@ -31,27 +31,30 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 
 #[inline(always)]
 pub unsafe fn get_partial(p: *const State, len: usize) -> State {
-    let partial_vector: State;
     if likely(check_same_page(p)) {
-        // Unsafe (hence the check) but much faster
-        let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
-        let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
-        partial_vector = vandq_s8(load_unaligned(p), ReinterpretUnion { uint8: mask }.int8);
+        get_partial_unsafe(p, len)
     } else {
-        partial_vector = get_partial_safe(p as *const i8, len as usize);
+        get_partial_safe(p, len)
     }
-    // Prevents padded zeroes to introduce bias
-    return vaddq_s8(partial_vector, vdupq_n_s8(len as i8));
 }
 
 #[inline(never)]
-unsafe fn get_partial_safe(data: *const i8, len: usize) -> State {
+pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
     let mut buffer = [0i8; VECTOR_SIZE];
     // Copy data into the buffer
-    std::ptr::copy(data, buffer.as_mut_ptr(), len);
+    std::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
     // Load the buffer into a __m256i vector
-    vld1q_s8(buffer.as_ptr())
+    let partial_vector = vld1q_s8(buffer.as_ptr());
+    vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
+}
+
+#[inline(always)]
+pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
+    let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
+    let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
+    let partial_vector = vandq_s8(load_unaligned(data), ReinterpretUnion { uint8: mask }.int8);
+    vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
 }
 
 #[inline(always)]

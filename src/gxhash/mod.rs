@@ -1,5 +1,7 @@
 pub(crate) mod platform;
 
+use std::intrinsics::likely;
+
 use platform::*;
 
 /// Hashes an arbitrary stream of bytes to an u32.
@@ -12,7 +14,7 @@ use platform::*;
 /// println!("Hash is {:x}!", gxhash::gxhash32(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
+pub fn gxhash32(input: &[u8], seed: i64) -> u32 {
     unsafe {
         let p = &gxhash(input, create_seed(seed)) as *const State as *const u32;
         *p
@@ -29,7 +31,7 @@ pub fn gxhash32(input: &[u8], seed: i32) -> u32 {
 /// println!("Hash is {:x}!", gxhash::gxhash64(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
+pub fn gxhash64(input: &[u8], seed: i64) -> u64 {
     unsafe {
         let p = &gxhash(input, create_seed(seed)) as *const State as *const u64;
         *p
@@ -46,7 +48,7 @@ pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
 /// println!("Hash is {:x}!", gxhash::gxhash128(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash128(input: &[u8], seed: i32) -> u128 {
+pub fn gxhash128(input: &[u8], seed: i64) -> u128 {
     unsafe {
         let p = &gxhash(input, create_seed(seed)) as *const State as *const u128;
         *p
@@ -58,17 +60,11 @@ macro_rules! load_unaligned {
         $(
             #[allow(unused_mut)]
             let mut $var = load_unaligned($ptr);
+            #[allow(unused_assignments)]
             $ptr = ($ptr).offset(1);
         )+
     };
 }
-
-const RANGE_1_BEGIN: usize  = VECTOR_SIZE + 1;
-const RANGE_1_END: usize    = VECTOR_SIZE * 2;
-const RANGE_2_BEGIN: usize  = RANGE_1_BEGIN + 1;
-const RANGE_2_END: usize    = VECTOR_SIZE * 3;
-const RANGE_3_BEGIN: usize  = RANGE_2_BEGIN + 1;
-const RANGE_3_END: usize    = VECTOR_SIZE * 4;
 
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
@@ -78,40 +74,51 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 #[inline(always)]
 unsafe fn compress_all(input: &[u8]) -> State {
 
-    let len: usize = input.len();
+    let len = input.len();
     let mut ptr = input.as_ptr() as *const State;
 
-    let (mut hash_vector, remaining_bytes, p) = match len {
-        // Fast path with no compression for payloads that fit in a single state
-        0..=VECTOR_SIZE => {
-            (get_partial(ptr, len), 0, ptr)
-        },
-        RANGE_1_BEGIN..=RANGE_1_END => {
-            load_unaligned!(ptr, v1);
-            (v1, len - VECTOR_SIZE, ptr)
-        },
-        RANGE_2_BEGIN..=RANGE_2_END => {
-            load_unaligned!(ptr, v1, v2);
-            (compress(v1, v2), len - VECTOR_SIZE * 2, ptr)
-        },
-        RANGE_3_BEGIN..=RANGE_3_END => {
-            load_unaligned!(ptr, v1, v2, v3);
-            (compress(compress(v1, v2), v3), len - VECTOR_SIZE * 3, ptr)
-        },
-        _ => {
-            compress_many(ptr, create_empty(), len)
-        }
-    };
+    if likely(len <= VECTOR_SIZE) {
+        // Input fits on a single SIMD vector, however we might read beyond the input message
+        // Thus we need this safe method that checks if it can safely read beyond or must copy
+        return get_partial(ptr, len);
+    }
+    
+    let remaining_bytes = len % VECTOR_SIZE;
 
-    if remaining_bytes > 0 {
-        hash_vector = compress(hash_vector, get_partial(p, remaining_bytes))
+    // The input does not fit on a single SIMD vector
+    let hash_vector: State;
+    if remaining_bytes == 0 {
+        load_unaligned!(ptr, v0);
+        hash_vector = v0;
+    } else {
+        // If the input length does not match the length of a whole number of SIMD vectors,
+        // it means we'll need to read a partial vector. We can start with the partial vector first,
+        // so that we can safely read beyond since we expect the following bytes to still be part of
+        // the input
+        hash_vector = get_partial_unsafe(ptr,remaining_bytes as usize);
+        ptr = ptr.byte_add(remaining_bytes);
     }
 
-    hash_vector
+    if len <= VECTOR_SIZE * 2 {
+        // Fast path when input length > 16 and <= 32
+        load_unaligned!(ptr, v0);
+        compress(hash_vector, v0)
+    } else if len <= VECTOR_SIZE * 3 {
+        // Fast path when input length > 32 and <= 48
+        load_unaligned!(ptr, v0, v1);
+        compress(hash_vector, compress(v0, v1))
+    } else if len <= VECTOR_SIZE * 4 {
+        // Fast path when input length > 48 and <= 64
+        load_unaligned!(ptr, v0, v1, v2);
+        compress(hash_vector, compress(compress(v0, v1), v2))
+    } else {
+        // Input message is large and we can use the high ILP loop
+        compress_many(ptr, hash_vector, len)
+    }
 }
 
 #[inline(always)]
-unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_bytes: usize) -> (State, usize, *const State) {
+unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_bytes: usize) -> State {
 
     const UNROLL_FACTOR: usize = 8;
 
@@ -143,8 +150,7 @@ unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_byt
         hash_vector = compress(hash_vector, v0);
     }
 
-    let remaining_bytes: usize = remaining_bytes & (VECTOR_SIZE - 1);
-    (hash_vector, remaining_bytes, ptr)
+    hash_vector
 }
 
 #[cfg(test)]
@@ -269,6 +275,7 @@ mod tests {
     fn is_stable() {
         assert_eq!(456576800, gxhash32(&[0u8; 0], 0));
         assert_eq!(978957914, gxhash32(&[0u8; 1], 0));
-        assert_eq!(3128839713, gxhash32(&[42u8; 1000], 1234));
+        assert_eq!(3325885698, gxhash32(&[0u8; 1000], 0));
+        assert_eq!(3805815999, gxhash32(&[42u8; 4242], 42));
     }
 }
