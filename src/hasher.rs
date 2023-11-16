@@ -31,7 +31,7 @@ impl GxHasher {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     #[inline]
-    pub fn with_seed(seed: i32) -> GxHasher {
+    pub fn with_seed(seed: i64) -> GxHasher {
         // Use gxhash64 to generate an initial state from a seed
         GxHasher(unsafe { gxhash(&[], create_seed(seed)) })
     }
