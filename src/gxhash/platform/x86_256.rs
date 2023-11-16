@@ -4,47 +4,51 @@ use super::*;
 
 pub type State = __m256i;
 
-#[inline]
+#[inline(always)]
 pub unsafe fn create_empty() -> State {
     _mm256_setzero_si256()
 }
 
 #[inline(always)]
-pub unsafe fn create_seed(seed: i32) -> State {
-    _mm256_set1_epi32(seed)
+pub unsafe fn create_seed(seed: i64) -> State {
+    _mm256_set1_epi64x(seed)
 }
 
-#[inline]
+#[inline(always)]
 pub unsafe fn load_unaligned(p: *const State) -> State {
     _mm256_loadu_si256(p)
 }
 
-#[inline]
+#[inline(always)]
 pub unsafe fn get_partial(p: *const State, len: usize) -> State {
-    let partial_vector: State;
     // Safety check
     if check_same_page(p) {
-        let indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-        let mask = _mm256_cmpgt_epi8(_mm256_set1_epi8(len as i8), indices);
-        partial_vector = _mm256_and_si256(_mm256_loadu_si256(p), mask);
+        get_partial_unsafe(p, len as usize)
     } else {
-        partial_vector = get_partial_safe(p as *const u8, len as usize)
+        get_partial_safe(p, len as usize)
     }
-    // Prevents padded zeroes to introduce bias
+}
+
+#[inline(always)]
+pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
+    // Temporary buffer filled with zeros
+    let mut buffer = [0i8; VECTOR_SIZE];
+    // Copy data into the buffer
+    std::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
+    // Load the buffer into a __m256i vector
+    let partial_vector = _mm256_loadu_epi8(buffer.as_ptr());
     _mm256_add_epi8(partial_vector, _mm256_set1_epi8(len as i8))
 }
 
-#[inline]
-unsafe fn get_partial_safe(data: *const u8, len: usize) -> State {
-    // Temporary buffer filled with zeros
-    let mut buffer = [0u8; VECTOR_SIZE];
-    // Copy data into the buffer
-    std::ptr::copy(data, buffer.as_mut_ptr(), len);
-    // Load the buffer into a __m256i vector
-    _mm256_loadu_si256(buffer.as_ptr() as *const State)
+#[inline(always)]
+pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
+    let indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    let mask = _mm256_cmpgt_epi8(_mm256_set1_epi8(len as i8), indices);
+    let partial_vector = _mm256_and_si256(_mm256_loadu_si256(data), mask);
+    _mm256_add_epi8(partial_vector, _mm256_set1_epi8(len as i8))
 }
 
-#[inline]
+#[inline(always)]
 #[allow(overflowing_literals)]
 pub unsafe fn compress(a: State, b: State) -> State {
     let keys_1 = _mm256_set_epi32(0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542, 0x4155EE07, 0xC897CCE2, 0x780AF2C3, 0x8A72B781);
@@ -56,13 +60,13 @@ pub unsafe fn compress(a: State, b: State) -> State {
     return _mm256_aesenclast_epi128(a, b);
 }
 
-#[inline]
+#[inline(always)]
 #[allow(overflowing_literals)]
 pub unsafe fn compress_fast(a: State, b: State) -> State {
     return _mm256_aesenc_epi128(a, b);
 }
 
-#[inline]
+#[inline(always)]
 #[allow(overflowing_literals)]
 pub unsafe fn finalize(hash: State, seed: State) -> State {
     // Hardcoded AES keys
