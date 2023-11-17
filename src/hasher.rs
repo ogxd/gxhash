@@ -53,7 +53,7 @@ impl Hasher for GxHasher {
     }
 }
 
-/// A builder for default FNV hashers.
+/// A builder for default GxHash hashers.
 pub type GxBuildHasher = BuildHasherDefault<GxHasher>;
 
 /// A `HashMap` using a default GxHash hasher.
