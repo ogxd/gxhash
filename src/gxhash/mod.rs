@@ -63,14 +63,12 @@ macro_rules! load_unaligned {
     };
 }
 
-const VECTOR_SIZE: isize = std::mem::size_of::<State>() as isize;
-
-const RANGE_1_BEGIN: isize  = VECTOR_SIZE + 1;
-const RANGE_1_END: isize    = VECTOR_SIZE * 2;
-const RANGE_2_BEGIN: isize  = RANGE_1_BEGIN + 1;
-const RANGE_2_END: isize    = VECTOR_SIZE * 3;
-const RANGE_3_BEGIN: isize  = RANGE_2_BEGIN + 1;
-const RANGE_3_END: isize    = VECTOR_SIZE * 4;
+const RANGE_1_BEGIN: usize  = VECTOR_SIZE + 1;
+const RANGE_1_END: usize    = VECTOR_SIZE * 2;
+const RANGE_2_BEGIN: usize  = RANGE_1_BEGIN + 1;
+const RANGE_2_END: usize    = VECTOR_SIZE * 3;
+const RANGE_3_BEGIN: usize  = RANGE_2_BEGIN + 1;
+const RANGE_3_END: usize    = VECTOR_SIZE * 4;
 
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
@@ -80,7 +78,7 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 #[inline(always)]
 unsafe fn compress_all(input: &[u8]) -> State {
 
-    let len: isize = input.len() as isize;
+    let len: usize = input.len();
     let mut ptr = input.as_ptr() as *const State;
 
     let (mut hash_vector, remaining_bytes, p) = match len {
@@ -113,12 +111,12 @@ unsafe fn compress_all(input: &[u8]) -> State {
 }
 
 #[inline(always)]
-unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_bytes: isize) -> (State, isize, *const State) {
+unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_bytes: usize) -> (State, usize, *const State) {
 
-    const UNROLL_FACTOR: isize = 8;
+    const UNROLL_FACTOR: usize = 8;
 
-    let unrollable_blocks_count: isize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
-    let end_address = ptr.offset(unrollable_blocks_count as isize) as usize;
+    let unrollable_blocks_count: usize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
+    let end_address = ptr.add(unrollable_blocks_count) as usize;
     let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
 
@@ -137,7 +135,7 @@ unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_byt
     }
 
     let remaining_bytes = remaining_bytes - unrollable_blocks_count * VECTOR_SIZE;
-    let end_address = ptr.offset((remaining_bytes / VECTOR_SIZE) as isize) as usize;
+    let end_address = ptr.add(remaining_bytes / VECTOR_SIZE) as usize;
 
     let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
@@ -145,7 +143,7 @@ unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_byt
         hash_vector = compress(hash_vector, v0);
     }
 
-    let remaining_bytes: isize = remaining_bytes & (VECTOR_SIZE - 1);
+    let remaining_bytes: usize = remaining_bytes & (VECTOR_SIZE - 1);
     (hash_vector, remaining_bytes, ptr)
 }
 
