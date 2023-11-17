@@ -36,7 +36,7 @@ pub fn gxhash64(input: &[u8], seed: i32) -> u64 {
     }
 }
 
-/// Hashes an arbitrary stream of bytes to an u64.
+/// Hashes an arbitrary stream of bytes to an u128.
 ///
 /// # Example
 ///
