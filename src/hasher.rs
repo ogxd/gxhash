@@ -35,6 +35,18 @@ impl GxHasher {
         // Use gxhash64 to generate an initial state from a seed
         GxHasher(unsafe { gxhash(&[], create_seed(seed)) })
     }
+
+    /// Finish this hasher and return the hashed value as a 128 bit
+    /// unsigned integer.
+    #[inline]
+    fn finish_u128(&self) -> u128 {
+        debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
+
+        unsafe {
+            let p = &self.0 as *const State as *const u128;
+            *p
+        }
+    }
 }
 
 impl Hasher for GxHasher {
