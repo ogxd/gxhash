@@ -1,5 +1,4 @@
 use core::arch::x86_64::*;
-use std::mem::size_of;
 
 use super::*;
 
@@ -21,7 +20,7 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 }
 
 #[inline]
-pub unsafe fn get_partial(p: *const State, len: isize) -> State {
+pub unsafe fn get_partial(p: *const State, len: usize) -> State {
     let partial_vector: State;
     // Safety check
     if check_same_page(p) {
@@ -38,7 +37,7 @@ pub unsafe fn get_partial(p: *const State, len: isize) -> State {
 #[inline]
 unsafe fn get_partial_safe(data: *const u8, len: usize) -> State {
     // Temporary buffer filled with zeros
-    let mut buffer = [0u8; size_of::<State>()];
+    let mut buffer = [0u8; VECTOR_SIZE];
     // Copy data into the buffer
     std::ptr::copy(data, buffer.as_mut_ptr(), len);
     // Load the buffer into a __m256i vector
