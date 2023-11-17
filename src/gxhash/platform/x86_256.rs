@@ -1,6 +1,8 @@
 use core::arch::x86_64::*;
 use std::mem::size_of;
 
+use super::*;
+
 pub type State = __m256i;
 
 #[inline]
@@ -31,18 +33,6 @@ pub unsafe fn get_partial(p: *const State, len: isize) -> State {
     }
     // Prevents padded zeroes to introduce bias
     _mm256_add_epi8(partial_vector, _mm256_set1_epi8(len as i8))
-}
-
-// 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
-const PAGE_SIZE: usize = 0x1000;
-
-#[inline]
-unsafe fn check_same_page(ptr: *const State) -> bool {
-    let address = ptr as usize;
-    // Mask to keep only the last 12 bits (3 bytes)
-    let offset_within_page = address & 0xFFF;
-    // Check if the 32nd byte from the current offset exceeds the page boundary
-    offset_within_page <= PAGE_SIZE - size_of::<State>()
 }
 
 #[inline]
