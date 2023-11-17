@@ -1,6 +1,8 @@
 use std::{mem::size_of, intrinsics::likely};
 use core::arch::aarch64::*;
 
+use super::*;
+
 pub type State = int8x16_t;
 
 #[repr(C)]
@@ -40,18 +42,6 @@ pub unsafe fn get_partial(p: *const State, len: isize) -> State {
     }
     // Prevents padded zeroes to introduce bias
     return vaddq_s8(partial_vector, vdupq_n_s8(len as i8));
-}
-
-// 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
-const PAGE_SIZE: usize = 0x1000;
-
-#[inline(always)]
-unsafe fn check_same_page(ptr: *const State) -> bool {
-    let address = ptr as usize;
-    // Mask to keep only the last 12 bits (3 bytes)
-    let offset_within_page = address & PAGE_SIZE;
-    // Check if the 16nd byte from the current offset exceeds the page boundary
-    offset_within_page <= PAGE_SIZE - size_of::<State>()
 }
 
 #[inline(never)]
