@@ -39,7 +39,7 @@ impl GxHasher {
     /// Finish this hasher and return the hashed value as a 128 bit
     /// unsigned integer.
     #[inline]
-    fn finish_u128(&self) -> u128 {
+    pub fn finish_u128(&self) -> u128 {
         debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
 
         unsafe {
