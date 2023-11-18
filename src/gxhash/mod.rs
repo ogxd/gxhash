@@ -68,11 +68,11 @@ macro_rules! load_unaligned {
 
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
-    finalize(compress_all(input), seed)
+    finalize(compress_fast(compress_all(input), seed))
 }
 
 #[inline(always)]
-unsafe fn compress_all(input: &[u8]) -> State {
+pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
 
     let len = input.len();
     let mut ptr = input.as_ptr() as *const State;
