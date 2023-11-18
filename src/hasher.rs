@@ -1,20 +1,51 @@
 use std::hash::{Hasher, BuildHasherDefault};
 use std::collections::{HashMap, HashSet};
+
+use rand::Rng;
+
 use crate::gxhash::*;
 use crate::gxhash::platform::*;
 
 /// A `Hasher` for hashing an arbitrary stream of bytes.
+/// # Features
+/// - The fastest [`Hasher`] of its class<sup>1</sup>, for all input sizes
+/// - Highly collision resitant
+/// - DOS resistant thanks to seed randomization when using [`GxHasher::default()`]
+/// 
+/// *<sup>1</sup>There might me faster alternatives, such as `fxhash` for very small input sizes, but that usually have low quality properties.*
 pub struct GxHasher(State);
 
 impl Default for GxHasher {
+    /// Create a new hasher with a random seed for DOS resistance.
+    /// 
+    /// # Example
+    ///
+    /// ```
+    /// use std::hash::Hasher;
+    /// use gxhash::GxHasher;
+    ///
+    /// let mut hasher = GxHasher::default();
+    ///
+    /// hasher.write(b"Hello");
+    /// hasher.write_u32(123);
+    /// hasher.write_u8(42);
+    ///
+    /// println!("Hash is {:x}!", hasher.finish());
+    /// ```
     #[inline]
     fn default() -> GxHasher {
-        GxHasher(unsafe { create_empty() })
+        let mut rng = rand::thread_rng();
+        let seed: i64 = rng.gen::<i64>();
+        GxHasher(unsafe { create_seed(seed) })
     }
 }
 
 impl GxHasher {
     /// Creates a new hasher using the provided seed.
+    /// 
+    /// # Warning ⚠️
+    /// Hardcoding a seed may make your [`Hasher`] vulnerable to DOS attacks.  
+    /// It is recommended to use [`GxHasher::default()`] to create a DOS resistant [`Hasher`].
     ///
     /// # Example
     ///
