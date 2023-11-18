@@ -95,7 +95,7 @@ unsafe fn aes_encrypt_last(data: uint8x16_t, keys: uint8x16_t) -> uint8x16_t {
 }
 
 #[inline(always)]
-pub unsafe fn finalize(hash: State, seed: State) -> State {
+pub unsafe fn finalize(hash: State) -> State {
     // Hardcoded AES keys
     let keys_1 = vld1q_u32([0x713B01D0, 0x8F2F35DB, 0xAF163956, 0x85459F85].as_ptr());
     let keys_2 = vld1q_u32([0x1DE09647, 0x92CFA39C, 0x3DD99ACA, 0xB89C054F].as_ptr());
@@ -103,7 +103,6 @@ pub unsafe fn finalize(hash: State, seed: State) -> State {
 
     // 3 rounds of AES
     let mut hash = ReinterpretUnion{ int8: hash }.uint8;
-    hash = aes_encrypt(hash, ReinterpretUnion{ int8: seed }.uint8);
     hash = aes_encrypt(hash, ReinterpretUnion{ uint32: keys_1 }.uint8);
     hash = aes_encrypt(hash, ReinterpretUnion{ uint32: keys_2 }.uint8);
     hash = aes_encrypt_last(hash, ReinterpretUnion{ uint32: keys_3 }.uint8);
