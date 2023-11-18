@@ -1,3 +1,4 @@
+use ahash::AHashSet;
 use criterion::{criterion_group, criterion_main, Criterion};
 use fnv::FnvHashSet;
 use gxhash::*;
@@ -32,6 +33,11 @@ fn benchmark_for_string(c: &mut Criterion, string: &str) {
 
     let mut set = HashSet::<&str, BuildHasherDefault<xxh3::Hash64>>::default();
     group.bench_function("XxHash", |b| {
+        b.iter(|| set.insert(string))
+    });
+
+    let mut set = AHashSet::default();
+    group.bench_function("AHash", |b| {
         b.iter(|| set.insert(string))
     });
 
