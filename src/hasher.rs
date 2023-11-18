@@ -1,7 +1,8 @@
 use std::hash::{Hasher, BuildHasher};
 use std::collections::{HashMap, HashSet};
+use std::mem::MaybeUninit;
 
-use rand::Rng;
+use rand::{Rng, RngCore};
 
 use crate::gxhash::*;
 use crate::gxhash::platform::*;
@@ -13,7 +14,16 @@ use crate::gxhash::platform::*;
 /// - DOS resistance thanks to seed randomization when using [`GxHasher::default()`]
 /// 
 /// *<sup>1</sup>There might me faster alternatives, such as `fxhash` for very small input sizes, but that usually have low quality properties.*
-pub struct GxHasher(State);
+pub struct GxHasher {
+    state: State
+}
+
+impl GxHasher {
+    #[inline]
+    fn with_state(state: State) -> GxHasher {
+        GxHasher { state: state }
+    }
+}
 
 impl Default for GxHasher {
     /// Creates a new hasher with a empty seed.
@@ -38,7 +48,7 @@ impl Default for GxHasher {
     /// ```
     #[inline]
     fn default() -> GxHasher {
-        GxHasher(unsafe { create_empty() })
+        GxHasher::with_state(unsafe { create_empty() })
     }
 }
 
@@ -66,7 +76,7 @@ impl GxHasher {
     #[inline]
     pub fn with_seed(seed: i64) -> GxHasher {
         // Use gxhash64 to generate an initial state from a seed
-        GxHasher(unsafe { gxhash(&[], create_seed(seed)) })
+        GxHasher::with_state(unsafe { create_seed(seed) })
     }
 
     /// Finish this hasher and return the hashed value as a 128 bit
@@ -76,7 +86,7 @@ impl GxHasher {
         debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
 
         unsafe {
-            let p = &self.0 as *const State as *const u128;
+            let p = &finalize(self.state) as *const State as *const u128;
             *p
         }
     }
@@ -86,7 +96,7 @@ impl Hasher for GxHasher {
     #[inline]
     fn finish(&self) -> u64 {
         unsafe {
-            let p = &self.0 as *const State as *const u64;
+            let p = &finalize(self.state) as *const State as *const u64;
             *p
         }
     }
@@ -94,19 +104,24 @@ impl Hasher for GxHasher {
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
         // Improvement: only compress at this stage and finalize in finish
-        self.0 = unsafe { gxhash(bytes, self.0) };
+        self.state = unsafe { compress_fast(compress_all(bytes), self.state) };
     }
 }
 
 /// A builder for building GxHasher with randomized seeds by default, for improved DOS resistance.
-pub struct GxBuildHasher(i64);
+pub struct GxBuildHasher(State);
 
 impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
+        let mut uninit: MaybeUninit<State> = MaybeUninit::uninit();
         let mut rng = rand::thread_rng();
-        let seed: i64 = rng.gen::<i64>();
-        GxBuildHasher(seed)
+        unsafe {
+            let ptr = uninit.as_mut_ptr() as *mut u8;
+            let slice = std::slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
+            rng.fill_bytes(slice);
+            GxBuildHasher(uninit.assume_init())
+        }
     }
 }
 
@@ -114,7 +129,7 @@ impl BuildHasher for GxBuildHasher {
     type Hasher = GxHasher;
     #[inline]
     fn build_hasher(&self) -> GxHasher {
-        GxHasher::with_seed(self.0)
+        GxHasher::with_state(self.0)
     }
 }
 
