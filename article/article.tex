@@ -370,7 +370,7 @@ This mixing step is responsible for ensuring the even distribution of bits in th
 As performance and efficiency remains for us a primary consideration, we once again leverage SIMD capabilities with AES intrinsics, ensuring a robust diffusion of bits across the state at a cheap computational cost.\\
 A seed is injected at this finalization stage, more specifically as a key for the first AES round, providing a way to have unique hashes per-application and even per-process, protecting from eventual precomputed or replay attack attempts.
 
-Once the state's bits have been thoroughly mixed, the next step is to reduce this state into a smaller, fixed-size hash output, typically 32 or 64 bits. There are several approaches to this, one being combiniting the \( X \)-bit integer parts of the mixed state together (by xoring them together for instance). GxHash takes a simpler path by reinterpreting our state into a smaller \( X \)-bit value, assuming an uniform distribution at the mixing stage thanks to the four rounds of AES. This allow the GxHash algorithm to generate hashes of any size up to \( s_b \) bits with virtually no additional computational cost.
+Once the state's bits have been thoroughly mixed, the next step is to reduce this state into a smaller, fixed-size hash output, typically 32 or 64 bits. There are several approaches to this, one being combining the \( X \)-bit integer parts of the mixed state together (by xoring them together for instance). GxHash takes a simpler path by reinterpreting our state into a smaller \( X \)-bit value, assuming an uniform distribution at the mixing stage thanks to the four rounds of AES. This allow the GxHash algorithm to generate hashes of any size up to \( s_b \) bits with virtually no additional computational cost.
 
 \subsection{Implementation Details}
 
@@ -456,7 +456,7 @@ The primary quality criteria for non-cryptographic hash functions include:
     The collision rate can be computed by counting unique values with the help of an hash table.
     \item \textbf{Avalanche Effect:} A subtle change in the input should result in a considerably different output, ensuring sensitivity to input variations. This also contributes to lessening the risk of clustered hashes in applications like hash tables.
     
-    The avalanche effect can be computed by flipping a single random bit for a given input and checking the differences between the hashes generated before and after the bit was flipped. Ideally, half of the bit should change on average.
+    The avalanche effect can be computed by flipping a single random bit for a given input and checking the differences between the hashes generated before and after the bit was flipped. Ideally, half of the hash bits should change on average.
     \item \textbf{Performance:} The performance of a noncryptographic hash function is usually reflected by the performance of the application using it. For instance, a fast non-cryptographic hash function generally implies a fast hash table. This specific criteria will be tackled in the next section which is dedicated to it. 
 
 \end{itemize}
