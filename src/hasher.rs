@@ -112,7 +112,7 @@ impl Default for GxBuildHasher {
 
 impl BuildHasher for GxBuildHasher {
     type Hasher = GxHasher;
-
+    #[inline]
     fn build_hasher(&self) -> GxHasher {
         GxHasher::with_seed(self.0)
     }
