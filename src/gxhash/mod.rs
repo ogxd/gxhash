@@ -58,7 +58,6 @@ macro_rules! load_unaligned {
         $(
             #[allow(unused_mut)]
             let mut $var = load_unaligned($ptr);
-            #[allow(unused_assignments)]
             $ptr = ($ptr).offset(1);
         )+
     };
@@ -97,6 +96,7 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         ptr = ptr.cast::<u8>().add(remaining_bytes).cast();
     }
 
+    #[allow(unused_assignments)]
     if len <= VECTOR_SIZE * 2 {
         // Fast path when input length > 16 and <= 32
         load_unaligned!(ptr, v0);
