@@ -96,7 +96,7 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         // so that we can safely read beyond since we expect the following bytes to still be part of
         // the input
         hash_vector = get_partial_unsafe(ptr,remaining_bytes as usize);
-        ptr = ptr.byte_add(remaining_bytes);
+        ptr = ptr.cast::<u8>().add(remaining_bytes).cast();
     }
 
     if len <= VECTOR_SIZE * 2 {
