@@ -32,7 +32,7 @@ hashset.insert("hello world");
 ## Compatibility
 - ARM 64-bit using `NEON` intrinsics.
 - x86-64 bit using `SSE2` + `AES` intrinsics.
-- (optional) with `avx2` feature enabled, gxhash will use `AVX2` intrinsics, for up to twice as much performance for large inputs. Only compatible on `AVX2` enabled x86-64 platforms.
+- (optional and only on unstable toolchain) with `avx2` feature enabled, gxhash will use `AVX2` intrinsics, for up to twice as much performance for large inputs. Only compatible on `AVX2` enabled x86-64 platforms.
 
 > **Warning**
 > Other platforms are currently not supported (there is no fallback)

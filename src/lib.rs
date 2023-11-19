@@ -1,7 +1,5 @@
-//#![feature(core_intrinsics)]
-//#![feature(pointer_byte_offsets)]
-#![feature(stdsimd)]
-//#![feature(stmt_expr_attributes)]
+// Feature 'avx2' currently requires unstable 'stdsimd'
+#![cfg_attr(all(feature = "avx2", target_arch = "x86_64"), feature(stdsimd))]
 
 mod gxhash;
 mod hasher;
