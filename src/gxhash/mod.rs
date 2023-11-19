@@ -1,7 +1,5 @@
 pub(crate) mod platform;
 
-use std::intrinsics::likely;
-
 use platform::*;
 
 /// Hashes an arbitrary stream of bytes to an u32.
@@ -77,7 +75,7 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
     let len = input.len();
     let mut ptr = input.as_ptr() as *const State;
 
-    if likely(len <= VECTOR_SIZE) {
+    if len <= VECTOR_SIZE {
         // Input fits on a single SIMD vector, however we might read beyond the input message
         // Thus we need this safe method that checks if it can safely read beyond or must copy
         return get_partial(ptr, len);

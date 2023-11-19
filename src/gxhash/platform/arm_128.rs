@@ -1,4 +1,3 @@
-use std::intrinsics::likely;
 use core::arch::aarch64::*;
 
 use super::*;
@@ -31,7 +30,7 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 
 #[inline(always)]
 pub unsafe fn get_partial(p: *const State, len: usize) -> State {
-    if likely(check_same_page(p)) {
+    if check_same_page(p) {
         get_partial_unsafe(p, len)
     } else {
         get_partial_safe(p, len)
