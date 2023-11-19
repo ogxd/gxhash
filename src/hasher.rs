@@ -2,7 +2,7 @@ use std::hash::{Hasher, BuildHasher};
 use std::collections::{HashMap, HashSet};
 use std::mem::MaybeUninit;
 
-use rand::{Rng, RngCore};
+use rand::RngCore;
 
 use crate::gxhash::*;
 use crate::gxhash::platform::*;
