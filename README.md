@@ -1,4 +1,22 @@
 # GxHash
+
+GxHash is a **blazingly fast<sup>1</sup>** and **robust<sup>2</sup>** non-cryptographic hashing algorithm.
+
+<sup>1</sup>*Up to this date, GxHash is the fastest non-cryptographic hashing algorithm of its class, for all input sizes.*
+
+## Usage
+## Features
+### Performance
+What makes it fast. Some raw numbers.
+### Robustness
+SMHasher
+### Security
+
+## Benchmarks
+## Contributing
+
+
+
 ![CI](https://github.com/ogxd/gxhash-rust/actions/workflows/rust.yml/badge.svg)
 
 Up to this date, the fastest non-cryptographic hashing algorithm 🚀 (see benchmarks)  
