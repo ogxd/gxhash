@@ -29,7 +29,7 @@ fn benchmark_for_string(c: &mut Criterion, string: &str) {
         iterate(b, string, &mut set);
     });
 
-    let mut set = GxHashSet::<String>::default();
+    let mut set: HashSet::<String, GxBuildHasher> = GxHashSet::<String>::default();
     group.bench_function("GxHash", |b| {
         iterate(b, string, &mut set);
     });

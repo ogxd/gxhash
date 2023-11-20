@@ -1,18 +1,75 @@
 # GxHash
 
-GxHash is a **blazingly fast<sup>1</sup>** and **robust<sup>2</sup>** non-cryptographic hashing algorithm.
-
-<sup>1</sup>*Up to this date, GxHash is the fastest non-cryptographic hashing algorithm of its class, for all input sizes.*
+GxHash is a [**blazingly fast**](#performance) and [**robust**](#robustness) non-cryptographic hashing algorithm.
 
 ## Usage
+```
+cargo add gxhash
+```
+GxHash used in HashMap/HashSet:
+```rust
+// Type alias for HashSet::<String, GxBuildHasher>
+let mut hashset = gxhash::GxHashSet::default();
+hashset.insert("hello world");
+```
+GxHash used directly:
+```rust
+let bytes: &[u8] = "hello world".as_bytes();
+let seed = 1234;
+println!(" 32-bit hash: {:x}", gxhash::gxhash32(&bytes, seed));
+println!(" 64-bit hash: {:x}", gxhash::gxhash64(&bytes, seed));
+println!("128-bit hash: {:x}", gxhash::gxhash128(&bytes, seed));
+```
+
 ## Features
+
 ### Performance
-What makes it fast. Some raw numbers.
+Up to this date, GxHash is the fastest non-cryptographic hashing algorithm of its class, for all input sizes.  
+See [benchmarks](#benchmarks).
+
+<details>
+<summary><h4>Tips for collapsed sections</h4></summary>
+
+You can add text within a collapsed section. 
+
+You can add an image or a code block, too.
+
+```mermaid
+---
+config:
+    xyChart:
+        width: 900
+        height: 600
+    themeVariables:
+        xyChart:
+            titleColor: "#ff0000"
+---
+xychart-beta
+    title "Sales Revenue"
+    x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]
+    y-axis "Revenue (in $)" 4000 --> 11000
+    bar [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
+    line [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
+```
+
+</details>
+
 ### Robustness
-SMHasher
+
+GxHash passes all SMHasher tests.
+
 ### Security
 
+#### DOS Resistance
+GxHash is a seeded hashing algorithm, meaning that depending on the seed used, it will generate completely different hashes. The default `HasherBuilder` (`GxHasherBuilder::default()`) uses seed randomization, making any `HashMap`/`HashSet` more DOS resistant, as it will make it much more difficult for attackers to be able to predict which hashes may collide without knowing the seed used. This does not mean however that it is completely DOS resistant. This has to be analyzed further.
+#### Multicollisions Resistance
+GxHash uses a 128-bit internal state (and even 256-bit with the `avx2` feature). This makes GxHash [a widepipe construction](https://en.wikipedia.org/wiki/Merkle%E2%80%93Damg%C3%A5rd_construction#Wide_pipe_construction) when generating hashes of size 64-bit or smaller, which had amongst other properties to be inherently more resistant to multicollision attacks. See [this paper](https://www.iacr.org/archive/crypto2004/31520306/multicollisions.pdf) for more details.
+#### Cryptographic Properties ❌
+GxHash is a non-cryptographic hashing algorithm, thus it is not recommended to use it as a cryptographic algorithm (it is not a replacement for SHA). It has not been assessed if GxHash is preimage resistant and how likely it is to be reversed.
+
 ## Benchmarks
+
+
 ## Contributing
 
 
@@ -56,12 +113,6 @@ hashset.insert("hello world");
 > Other platforms are currently not supported (there is no fallback)
 
 ## Security
-### DOS Resistance
-GxHash is a seeded hashing algorithm, meaning that depending on the seed used, it will generate completely different hashes. The default `HasherBuilder` (`GxHasherBuilder::default()`) uses seed randomization, making any `HashMap`/`HashSet` more DOS resistant, as it will make it much more difficult for attackers to be able to predict which hashes may collide without knowing the seed used. This does not mean however that it is completely DOS resistant. This has to be analyzed further.
-### Multicollisions Resistance
-GxHash uses a 128-bit internal state (and even 256-bit with the `avx2` feature). This makes GxHash [a widepipe construction](https://en.wikipedia.org/wiki/Merkle%E2%80%93Damg%C3%A5rd_construction#Wide_pipe_construction) when generating hashes of size 64-bit or smaller, which had amongst other properties to be inherently more resistant to multicollision attacks. See [this paper](https://www.iacr.org/archive/crypto2004/31520306/multicollisions.pdf) for more details.
-### Cryptographic Properties ❌
-GxHash is a non-cryptographic hashing algorithm, thus it is not recommended to use it as a cryptographic algorithm (it is not a replacement for SHA). It has not been assessed if GxHash is preimage resistant and how likely it is to be reversed.
 
 ## Benchmarks
 Displayed numbers are throughput in Mibibytes of data hashed per second. Higher is better.  
