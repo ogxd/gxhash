@@ -51,6 +51,8 @@ To run the benchmarks: `cargo bench --bench throughput`.
 
 ### Intel Ice Lake (x86 64-bit) (GCP n2-standard-2)
 
+https://github.com/ogxd/gxhash/blob/af980cb313f3d16efc6e63956eb9ca4ddd70ee30/src/lib.rs#L4C1-L8C1
+
 | Method      |    4 |    16 |    64 |   256 |  1024 |   4096 |  16384 |
 |-------------|-----:|------:|------:|------:|------:|-------:|-------:|
 | gxhash-avx2 | 4189 | 16734 | 46142 | 72679 | 96109 | 102202 | 100845 |

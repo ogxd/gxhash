@@ -2,18 +2,18 @@ mod result_processor;
 
 use result_processor::*;
 
+use std::hash::Hasher;
 use std::hint::black_box;
 use std::time::{Instant, Duration};
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
-use std::hash::Hasher;
 
 use rand::Rng;
 
 use gxhash::*;
 
 const ITERATIONS: u32 = 1000;
-const MAX_RUN_DURATION: Duration = Duration::from_millis(1000);
+const MAX_RUN_DURATION: Duration = Duration::from_millis(100);
 const FORCE_NO_INLINING: bool = false;
 
 fn main() {
@@ -30,10 +30,16 @@ fn main() {
     let mut processor = ResultProcessor::default();
 
     // GxHash
-    let algo_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
-    benchmark(&mut processor, slice, algo_name, |data: &[u8], seed: i64| -> u64 {
+    benchmark(&mut processor, slice, "gxhash", |data: &[u8], seed: i64| -> u64 {
         gxhash64(data, seed)
     });
+
+    // GxHash-AVX2
+    if cfg!(feature = "avx2") {
+        benchmark(&mut processor, slice, "gxhash-avx2", |data: &[u8], seed: i64| -> u64 {
+            gxhash64(data, seed)
+        });
+    }
 
     // XxHash (twox-hash)
     benchmark(&mut processor, slice, "xxhash", |data: &[u8], seed: u64| -> u64 {
@@ -75,6 +81,8 @@ fn main() {
         fnv_hasher.write(data);
         fnv_hasher.finish()
     });
+
+    processor.finish();
 
     // Free benchmark data
     unsafe { dealloc(ptr, layout) };
@@ -122,6 +130,8 @@ fn time<F>(iterations: u32, delegate: &F) -> Duration
     where F: Fn() -> u64
 {
     let now = Instant::now();
+    // Bench the same way to what is done in criterion.rs
+    // https://github.com/bheisler/criterion.rs/blob/e1a8c9ab2104fbf2d15f700d0038b2675054a2c8/src/bencher.rs#L87
     for _ in 0..iterations {  
         if FORCE_NO_INLINING {
             black_box(execute_noinlining(delegate));
@@ -132,6 +142,8 @@ fn time<F>(iterations: u32, delegate: &F) -> Duration
     now.elapsed()
 }
 
+// Some algorithm are more likely to be inlined than others.
+// This puts then all at the same level. But is it fair?
 #[inline(never)]
 fn execute_noinlining<F>(delegate: &F) -> u64
     where F: Fn() -> u64
