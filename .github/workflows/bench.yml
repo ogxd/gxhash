@@ -1,0 +1,59 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark-x86:
+    name: Benchmark X86
+    runs-on: buildjet-2vcpu-ubuntu-2204
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Benchmark
+      run: cargo bench --bench throughput
+
+    - name: Commit & Push Plots
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: Update Benchmark Plots
+        file_pattern: '*.svg'
+        commit_user_name: Benchmark Bot
+        commit_user_email: benchmark-bot@noreply.com
+        commit_author: Author <actions@github.com>
+
+  benchmark-arm:
+    name: Benchmark ARM
+    needs: benchmark-x86
+    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Benchmark
+      run: cargo bench --bench throughput
+
+    - name: Commit & Push Plots
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: Update Benchmark Plots
+        commit_options: '--amend --no-edit'
+        push_options: '--force'
+        skip_fetch: true
+        file_pattern: '*.svg'
+        commit_user_name: Benchmark Bot
+        commit_user_email: benchmark-bot@noreply.com
+        commit_author: Author <actions@github.com>
+      

@@ -8,20 +8,16 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-C target-cpu=native"
 
 jobs:
-  build:
+  build_test:
 
+    name: Build & Test
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
-    - name: Switch to nightly
-      run: rustup default nightly
     - name: Build
       run: cargo build --release
-    - name: Run tests
+    - name: Test
       run: cargo test --release
-    - name: Benchmark
-      run: cargo bench --bench throughput
