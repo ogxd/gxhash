@@ -18,10 +18,10 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Benchmark
-      run: cargo bench --bench throughput --features bench-plot
+      run: cargo bench --bench throughput --features 'bench-plot'
 
     - name: Benchmark (AVX2)
-      run: cargo bench --bench throughput --features bench-plot avx2
+      run: cargo bench --bench throughput --features 'bench-plot avx2'
 
     - name: Commit & Push Plots
       uses: stefanzweifel/git-auto-commit-action@v5
@@ -46,7 +46,7 @@ jobs:
         fetch-depth: 2
 
     - name: Benchmark
-      run: cargo bench --bench throughput --features bench-plot
+      run: cargo bench --bench throughput --features 'bench-plot'
 
     - name: Commit & Push Plots
       uses: stefanzweifel/git-auto-commit-action@v5
