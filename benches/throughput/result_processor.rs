@@ -68,11 +68,11 @@ impl ResultProcessor {
     }
 }
 
-#[cfg(all(not(feature = "bench-csv"),not(feature = "bench-md")))]
+#[cfg(all(not(feature = "bench-csv"), not(feature = "bench-md")))]
 #[derive(Default)]
 pub struct ResultProcessor;
 
-#[cfg(all(not(feature = "bench-csv"),not(feature = "bench-md")))]
+#[cfg(all(not(feature = "bench-csv"), not(feature = "bench-md")))]
 impl ResultProcessor {
     pub fn on_start(&mut self, name: &str) {
         println!("{}", name);
