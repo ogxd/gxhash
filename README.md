@@ -30,27 +30,8 @@ See [benchmarks](#benchmarks).
 <details>
 <summary><h4>Tips for collapsed sections</h4></summary>
 
-You can add text within a collapsed section. 
-
-You can add an image or a code block, too.
-
-```mermaid
----
-config:
-    xyChart:
-        width: 900
-        height: 600
-    themeVariables:
-        xyChart:
-            titleColor: "#ff0000"
----
-xychart-beta
-    title "Sales Revenue"
-    x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]
-    y-axis "Revenue (in $)" 4000 --> 11000
-    bar [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
-    line [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
-```
+![aarch64](./benches/throughput/aarch64.svg)
+![x86_64](./benches/throughput/x86_64.svg)
 
 </details>
 
