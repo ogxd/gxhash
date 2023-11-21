@@ -38,16 +38,10 @@ fn main() {
     };
 
     // GxHash
-    benchmark(processor.as_mut(), slice, "gxhash", |data: &[u8], seed: i64| -> u64 {
+    let gxhash_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
+    benchmark(processor.as_mut(), slice, gxhash_name, |data: &[u8], seed: i64| -> u64 {
         gxhash64(data, seed)
     });
-
-    // GxHash-AVX2
-    if cfg!(feature = "avx2") {
-        benchmark(processor.as_mut(), slice, "gxhash-avx2", |data: &[u8], seed: i64| -> u64 {
-            gxhash64(data, seed)
-        });
-    }
 
     // XxHash (twox-hash)
     benchmark(processor.as_mut(), slice, "xxhash", |data: &[u8], seed: u64| -> u64 {
