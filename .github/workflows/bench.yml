@@ -1,0 +1,28 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark:
+
+    name: Benchmark
+    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Benchmark
+      run: cargo bench --bench throughput
+
+    - name: Commit & Push Plots
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: Update Benchmark Plots
+        file_pattern: '*.svg'
+        commit_user_name: Benchmark Github Runner
+        push_options: '--force'
+      
