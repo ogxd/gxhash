@@ -20,6 +20,7 @@ avx2 = []
 # Only relevant for throughput benchmarks
 bench-csv = []
 bench-md = []
+bench-plot = []
 
 [dependencies]
 rand = "0.8"
@@ -29,7 +30,6 @@ rstest = "0.18.2"
 lazy_static = { version = "1.3" }
 # Benchmarks
 criterion = { version = "0.5.1" }
-plotters = "0.3.5"
 # Other hash algorithms, for comparison.
 ahash = "0.8.3"
 t1ha = "0.1.0"
@@ -38,6 +38,11 @@ highway = "1.1.0"
 seahash = "4.1.0"
 metrohash = "1.0.6"
 fnv = "1.0.3"
+
+[dev-dependencies.plotters]
+version = "0.3.5"
+default-features = false
+features = ["plotters-svg", "line_series"]
 
 [[bench]]
 name = "throughput"

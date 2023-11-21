@@ -27,56 +27,64 @@ fn main() {
     // Fill with random bytes
     rng.fill(slice);
 
-    let mut processor = ResultProcessor::default();
+    let mut processor: Box<dyn ResultProcessor> = if cfg!(feature = "bench-csv") {
+        Box::new(OutputCsv::default())
+    } else if cfg!(feature = "bench-md") {
+        Box::new(OutputMd::default())
+    } else if cfg!(feature = "bench-plot") {
+        Box::new(OutputPlot::default())
+    } else {
+        Box::new(OutputSimple::default())
+    };
 
     // GxHash
-    benchmark(&mut processor, slice, "gxhash", |data: &[u8], seed: i64| -> u64 {
+    benchmark(processor.as_mut(), slice, "gxhash", |data: &[u8], seed: i64| -> u64 {
         gxhash64(data, seed)
     });
 
     // GxHash-AVX2
     if cfg!(feature = "avx2") {
-        benchmark(&mut processor, slice, "gxhash-avx2", |data: &[u8], seed: i64| -> u64 {
+        benchmark(processor.as_mut(), slice, "gxhash-avx2", |data: &[u8], seed: i64| -> u64 {
             gxhash64(data, seed)
         });
     }
 
     // XxHash (twox-hash)
-    benchmark(&mut processor, slice, "xxhash", |data: &[u8], seed: u64| -> u64 {
+    benchmark(processor.as_mut(), slice, "xxhash", |data: &[u8], seed: u64| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed)
     });
     
     // AHash
     let ahash_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
-    benchmark(&mut processor, slice, "ahash", |data: &[u8], _: i32| -> u64 {
+    benchmark(processor.as_mut(), slice, "ahash", |data: &[u8], _: i32| -> u64 {
         ahash_hasher.hash_one(data)
     });
 
     // T1ha0
-    benchmark(&mut processor, slice, "t1ha0", |data: &[u8], seed: u64| -> u64 {
+    benchmark(processor.as_mut(), slice, "t1ha0", |data: &[u8], seed: u64| -> u64 {
         t1ha::t1ha0(data, seed)
     });
 
     // SeaHash
-    benchmark(&mut processor, slice, "seahash", |data: &[u8], seed: u64| -> u64 {
+    benchmark(processor.as_mut(), slice, "seahash", |data: &[u8], seed: u64| -> u64 {
         seahash::hash_seeded(data, seed, 0, 0, 0)
     });
 
     // MetroHash
-    benchmark(&mut processor, slice, "metrohash", |data: &[u8], seed: i32| -> u64 {
+    benchmark(processor.as_mut(), slice, "metrohash", |data: &[u8], seed: i32| -> u64 {
         let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
         metrohash_hasher.write(data);
         metrohash_hasher.finish()
     });
 
     // HighwayHash
-    benchmark(&mut processor, slice, "highwayhash", |data: &[u8], _: i32| -> u64 {
+    benchmark(processor.as_mut(), slice, "highwayhash", |data: &[u8], _: i32| -> u64 {
         use highway::{HighwayHasher, HighwayHash};
         HighwayHasher::default().hash64(data)
     });
 
     // FNV-1a
-    benchmark(&mut processor, slice, "fnv-1a", |data: &[u8], seed: u64| -> u64 {
+    benchmark(processor.as_mut(), slice, "fnv-1a", |data: &[u8], seed: u64| -> u64 {
         let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
         fnv_hasher.write(data);
         fnv_hasher.finish()
@@ -88,7 +96,7 @@ fn main() {
     unsafe { dealloc(ptr, layout) };
 }
 
-fn benchmark<F, S>(processor: &mut ResultProcessor, data: &[u8], name: &str, delegate: F)
+fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str, delegate: F)
     where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize>
 {
     processor.on_start(name);
