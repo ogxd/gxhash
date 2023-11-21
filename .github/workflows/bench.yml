@@ -20,6 +20,9 @@ jobs:
     - name: Benchmark
       run: cargo bench --bench throughput --features bench-plot
 
+    - name: Benchmark (AVX2)
+      run: cargo bench --bench throughput --features bench-plot avx2
+
     - name: Commit & Push Plots
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
