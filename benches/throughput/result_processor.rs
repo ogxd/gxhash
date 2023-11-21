@@ -1,31 +1,35 @@
-use gxhash::GxHashMap;
 use plotters::prelude::*;
 
-#[cfg(feature = "bench-csv")]
+pub trait ResultProcessor {
+    fn on_start(&mut self, name: &str);
+    fn on_result(&mut self, input_size: usize, throughput: f64);
+    fn on_end(&mut self);
+    fn finish(&self);
+}
+
 #[derive(Default)]
-pub struct ResultProcessor {
+pub struct OutputCsv {
     header_written: bool,
     row_data: Vec<String>,
     header_data: Vec<String>,
 }
 
-#[cfg(feature = "bench-csv")]
-impl ResultProcessor {
-    pub fn on_start(&mut self, name: &str) {
+impl ResultProcessor for OutputCsv {
+    fn on_start(&mut self, name: &str) {
         self.row_data.push(name.to_string());
         if !self.header_written {
             self.header_data.push("Throughput (MiB/s)".to_string());
         }
     }
 
-    pub fn on_result(&mut self, input_size: usize, throughput: f64) {
+    fn on_result(&mut self, input_size: usize, throughput: f64) {
         self.row_data.push(format!("{:.2}", throughput));
         if !self.header_written {
             self.header_data.push(input_size.to_string());
         }
     }
 
-    pub fn on_end(&mut self) {
+    fn on_end(&mut self) {
         if !self.header_written {
             println!("{}", self.header_data.join(", "));
             self.header_written = true;
@@ -33,33 +37,33 @@ impl ResultProcessor {
         println!("{}", self.row_data.join(", "));
         self.row_data.clear();
     }
+
+    fn finish(&self) {}
 }
 
-#[cfg(feature = "bench-md")]
 #[derive(Default)]
-pub struct ResultProcessor {
+pub struct OutputMd {
     header_written: bool,
     row_data: Vec<String>,
     header_data: Vec<String>,
 }
 
-#[cfg(feature = "bench-md")]
-impl ResultProcessor {
-    pub fn on_start(&mut self, name: &str) {
+impl ResultProcessor for OutputMd {
+    fn on_start(&mut self, name: &str) {
         self.row_data.push(name.to_string());
         if !self.header_written {
             self.header_data.push("Throughput (MiB/s)".to_string());
         }
     }
 
-    pub fn on_result(&mut self, input_size: usize, throughput: f64) {
+    fn on_result(&mut self, input_size: usize, throughput: f64) {
         self.row_data.push(format!("{:.2}", throughput));
         if !self.header_written {
             self.header_data.push(input_size.to_string());
         }
     }
 
-    pub fn on_end(&mut self) {
+    fn on_end(&mut self) {
         if !self.header_written {
             println!("| {} |", self.header_data.join(" | "));
             let separator: Vec<String> = self.header_data.iter().map(|_| "---".to_string()).collect();
@@ -69,53 +73,52 @@ impl ResultProcessor {
         println!("| {} |", self.row_data.join(" | "));
         self.row_data.clear();
     }
+
+    fn finish(&self) {}
 }
 
-// #[cfg(all(not(feature = "bench-csv"), not(feature = "bench-md")))]
-// #[derive(Default)]
-// pub struct ResultProcessor;
-
-// #[cfg(all(not(feature = "bench-csv"), not(feature = "bench-md")))]
-// impl ResultProcessor {
-//     pub fn on_start(&mut self, name: &str) {
-//         println!("{}", name);
-//     }
-
-//     pub fn on_result(&mut self, input_size: usize, throughput: f64) {
-//         println!("  | {} > {:.2}", input_size, throughput);
-//     }
-
-//     pub fn on_end(&mut self) {
-//         println!();
-//     }
-// }
-
-//#[cfg(feature = "bench-plot")]
 #[derive(Default)]
-pub struct ResultProcessor {
+pub struct OutputSimple;
+
+impl ResultProcessor for OutputSimple {
+    fn on_start(&mut self, name: &str) {
+        println!("{}", name);
+    }
+
+    fn on_result(&mut self, input_size: usize, throughput: f64) {
+        println!("  | {} > {:.2}", input_size, throughput);
+    }
+
+    fn on_end(&mut self) {
+        println!();
+    }
+
+    fn finish(&self) {
+        println!("Finished");
+    }
+}
+
+#[derive(Default)]
+pub struct OutputPlot {
     series: Vec<(String, Vec<(usize, f64)>)>
 }
 
-//#[cfg(feature = "bench-plot")]
-impl ResultProcessor {
-
-    pub fn on_start(&mut self, name: &str) {
+impl ResultProcessor for OutputPlot {
+    fn on_start(&mut self, name: &str) {
         println!("Started '{}'...", name);
         self.series.push((name.to_string(), Vec::new()));
     }
 
-    pub fn on_result(&mut self, input_size: usize, throughput: f64) {
+    fn on_result(&mut self, input_size: usize, throughput: f64) {
         let len = self.series.len();
         let serie = self.series.get_mut(len - 1).unwrap();
         
         serie.1.push((input_size, throughput));
     }
 
-    pub fn on_end(&mut self) {
+    fn on_end(&mut self) {}
 
-    }
-
-    pub fn finish(&self) {
+    fn finish(&self) {
         let arch = std::env::consts::ARCH;
         let file_name = format!("benches/throughput/{}.svg", arch);
 
