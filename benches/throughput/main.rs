@@ -13,7 +13,7 @@ use rand::Rng;
 use gxhash::*;
 
 const ITERATIONS: u32 = 1000;
-const MAX_RUN_DURATION: Duration = Duration::from_millis(100);
+const MAX_RUN_DURATION: Duration = Duration::from_millis(1000);
 const FORCE_NO_INLINING: bool = false;
 
 fn main() {
