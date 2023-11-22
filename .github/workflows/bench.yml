@@ -11,9 +11,6 @@ jobs:
     name: Benchmark X86
     runs-on: buildjet-2vcpu-ubuntu-2204
 
-    permissions:
-      contents: write
-
     steps:
     - uses: actions/checkout@v4
 
@@ -23,43 +20,51 @@ jobs:
     - name: Switch to nightly rust
       run: rustup default nightly
 
-    - name: Benchmark (AVX2)
+    - name: Benchmark AVX2 (nightly)
       run: cargo bench --bench throughput --features 'bench-plot avx2'
 
-    - name: Commit & Push Plots
-      uses: stefanzweifel/git-auto-commit-action@v5
+    - uses: actions/upload-artifact@v3
       with:
-        commit_message: Update Benchmark Plots
-        file_pattern: '*.svg'
-        commit_user_name: Benchmark Bot
-        commit_user_email: benchmark-bot@noreply.com
-        commit_author: Author <actions@github.com>
+        name: benches
+        path: benches/throughput/*.svg
 
   benchmark-arm:
     name: Benchmark ARM
-    needs: benchmark-x86
     runs-on: buildjet-2vcpu-ubuntu-2204-arm
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Benchmark
+      run: cargo bench --bench throughput --features 'bench-plot'
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: benches
+        path: benches/throughput/*.svg
+
+  commit:
+    name: Commit & Push
+    runs-on: ubuntu-latest
+    needs: [benchmark-x86, benchmark-arm]
 
     permissions:
       contents: write
 
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 2
 
-    - name: Benchmark
-      run: cargo bench --bench throughput --features 'bench-plot'
+    - name: Download Benchmark Results
+      uses: actions/download-artifact@v3
+      with:
+        name: benches
 
     - name: Commit & Push Plots
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: Update Benchmark Plots
-        commit_options: '--amend --no-edit'
-        push_options: '--force'
-        skip_fetch: true
         file_pattern: '*.svg'
         commit_user_name: Benchmark Bot
         commit_user_email: benchmark-bot@noreply.com
-        commit_author: Author <actions@github.com>
+        commit_author: Benchmark Bot <benchmark-bot@noreply.com>
       
