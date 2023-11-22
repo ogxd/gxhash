@@ -64,7 +64,7 @@ cargo bench --bench throughput --features bench-plot
 GxHash is continuously benchmarked on X86 and ARM Github runners.  
 [![Benchmark](https://github.com/ogxd/gxhash/actions/workflows/bench.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/bench.yml)
 
-**Lastest Benchmark Results:**
+**Lastest Benchmark Results:**    
 ![aarch64](./benches/throughput/aarch64.svg)
 ![x86_64](./benches/throughput/x86_64.svg)
 ![x86_64-avx2](./benches/throughput/x86_64-avx2.svg)
@@ -84,6 +84,10 @@ GxHash is a non-cryptographic hashing algorithm, thus it is not recommended to u
 
 - Feel free to submit PRs
 - Repository is entirely usable via `cargo` commands
+- Versioning is the following
+  - Major for stability breaking changes (output hashes for a same input are different after changes)
+  - Minor for API changes/removal
+  - Patch for new APIs, bug fixes and performance improvements
 
 > ℹ️ [cargo-asm](https://github.com/gnzlbg/cargo-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash64`) (method `#[inline]` should be removed otherwise it won't be seen by the tool)  
 > ℹ️ [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on time spent per instruction.
