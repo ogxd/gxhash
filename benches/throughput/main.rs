@@ -20,7 +20,7 @@ fn main() {
     let mut rng = rand::thread_rng();
 
     // Allocate 32-bytes-aligned
-    let layout = Layout::from_size_align(300_000, 32).unwrap();
+    let layout = Layout::from_size_align(40_000, 32).unwrap();
     let ptr = unsafe { alloc(layout) };
     let slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(ptr, layout.size()) };
 
