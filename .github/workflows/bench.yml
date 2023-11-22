@@ -20,6 +20,9 @@ jobs:
     - name: Benchmark
       run: cargo bench --bench throughput --features 'bench-plot'
 
+    - name: Switch to nightly rust
+      run: rustup default nightly
+
     - name: Benchmark (AVX2)
       run: cargo bench --bench throughput --features 'bench-plot avx2'
 
