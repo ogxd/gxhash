@@ -58,6 +58,7 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: benches
+        path: benches/throughput
 
     - name: Commit & Push Plots
       uses: stefanzweifel/git-auto-commit-action@v5
