@@ -63,15 +63,10 @@ jobs:
         key: benches-${{ github.sha }}
         path: benches/throughput
 
-    - name: LS
-      run: ls -l -R
-
-    - name: Git Diff
-      run: git diff
-
     - name: Commit & Push Benchmark Results
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
+        file_pattern: '*.svg'
         commit_message: Update Benchmark Results
         commit_user_name: Benchmark Bot
         commit_user_email: benchmark-bot@noreply.com
