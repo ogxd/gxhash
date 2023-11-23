@@ -45,7 +45,7 @@ jobs:
 
   commit:
     name: Commit & Push
-    runs-on: ubuntu-latest
+    runs-on: buildjet-2vcpu-ubuntu-2204
     needs: [benchmark-x86, benchmark-arm]
 
     permissions:
@@ -53,18 +53,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Download Benchmark Results
       uses: actions/download-artifact@v3
       with:
         name: benches
         path: benches/throughput
 
-    - name: Commit & Push Plots
+    - name: Commit & Push Benchmark Results
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: Update Benchmark Plots
         file_pattern: '*.svg'
+        commit_message: Update Benchmark Results
         commit_user_name: Benchmark Bot
         commit_user_email: benchmark-bot@noreply.com
         commit_author: Benchmark Bot <benchmark-bot@noreply.com>
