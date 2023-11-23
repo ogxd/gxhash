@@ -4,7 +4,7 @@
 GxHash is a [**blazingly fast**](#performance) and [**robust**](#robustness) non-cryptographic hashing algorithm.
 
 ## Usage
-```
+```bash
 cargo add gxhash
 ```
 Used directly as a hash function:
@@ -41,8 +41,7 @@ GxHash is compatible with:
 - X86 processors with `AES-NI` intrinsics
 - ARM processors with `NEON` intrinsics
 > **Warning**
-> Other platforms are currently not supported (there is no fallback)
-For other platforms, the behavior is currently undefined.
+> Other platforms are currently not supported (there is no fallback). The behavior on these platforms is undefined.
 
 ### Hashes Stability
 All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms. An exception to this is the AVX2 version of GxHash (nightly).
@@ -50,7 +49,7 @@ All generated hashes for a given version of GxHash are stable, meaning that for 
 ## Benchmarks
 
 To run the benchmarks locally use one of the following:
-```sh
+```bash
 # Benchmark throughput
 cargo bench --bench throughput
 # Benchmark performance of GxHash's Hasher when used in a HashSet
