@@ -55,7 +55,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Delete Previous Benchmark Results
-      run: rm benches/throughput/*.svg
+      run: rm -v benches/throughput/*.svg
 
     - name: Download Benchmark Results
       uses: actions/download-artifact@v3
