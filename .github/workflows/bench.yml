@@ -25,7 +25,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: benches-x86
+        name: benches
         path: benches/throughput/*.svg
 
   benchmark-arm:
@@ -40,7 +40,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: benches-arm
+        name: benches
         path: benches/throughput/*.svg
 
   commit:
@@ -54,17 +54,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Download ARM Benchmark Results
+    - name: Download Benchmark Results
       uses: actions/download-artifact@v3
       with:
-        name: benches-arm
+        name: benches
         path: benches/throughput
 
-    - name: Download X86 Benchmark Results
-      uses: actions/download-artifact@v3
-      with:
-        name: benches-x86
-        path: benches/throughput
+    - name: LS
+      run: ls -R
 
     - name: Commit & Push Plots
       uses: stefanzweifel/git-auto-commit-action@v5
