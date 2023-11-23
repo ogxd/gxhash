@@ -53,6 +53,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Delete Previous Benchmark Results
+      run: rm benches/throughput/*.svg
 
     - name: Download Benchmark Results
       uses: actions/download-artifact@v3
@@ -63,10 +66,10 @@ jobs:
     - name: LS
       run: ls -R
 
-    - name: Commit & Push Plots
+    - name: Commit & Push Benchmark Results
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: Update Benchmark Plots
+        commit_message: Update Benchmark Results
         file_pattern: '*.svg'
         commit_user_name: Benchmark Bot
         commit_user_email: benchmark-bot@noreply.com
