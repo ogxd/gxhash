@@ -63,6 +63,9 @@ jobs:
         name: benches
         path: benches/throughput
 
+    - name: LS
+      run: ls -l -R
+
     - name: Git Diff
       run: git diff
 
