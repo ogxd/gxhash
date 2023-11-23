@@ -13,14 +13,14 @@ use rand::Rng;
 use gxhash::*;
 
 const ITERATIONS: u32 = 1000;
-const MAX_RUN_DURATION: Duration = Duration::from_millis(100);
+const MAX_RUN_DURATION: Duration = Duration::from_millis(1000);
 const FORCE_NO_INLINING: bool = false;
 
 fn main() {
     let mut rng = rand::thread_rng();
 
     // Allocate 32-bytes-aligned
-    let layout = Layout::from_size_align(300_000, 32).unwrap();
+    let layout = Layout::from_size_align(40_000, 32).unwrap();
     let ptr = unsafe { alloc(layout) };
     let slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(ptr, layout.size()) };
 
@@ -103,12 +103,11 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
         // Warmup
         black_box(time(ITERATIONS, &|| delegate(&data[..len], S::default()))); 
 
-        let mut total_duration: Duration = Duration::ZERO;
-        let mut runs: usize = 0;
+        let mut durations_s = vec![];
         let now = Instant::now();
         while now.elapsed() < MAX_RUN_DURATION {
             // Make seed unpredictable to prevent optimizations
-            let seed = S::try_from(total_duration.as_nanos())
+            let seed = S::try_from(now.elapsed().as_nanos())
                 .unwrap_or_else(|_| panic!("Something went horribly wrong!"));
             // Offset slice by an unpredictable amount to prevent optimization (pre caching)
             // and make the benchmark use both aligned and unaligned data
@@ -117,10 +116,11 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
             let end = start + len;
             let slice = &data[start..end];
             // Execute method for a new iterations
-            total_duration += time(ITERATIONS, &|| delegate(slice, S::default()));
-            runs += 1;
+            let duration = time(ITERATIONS, &|| delegate(slice, S::default()));
+            durations_s.push(duration.as_secs_f64());
         }
-        let throughput = (len as f64) / (1024f64 * 1024f64 * (total_duration.as_secs_f64() / runs as f64 / ITERATIONS as f64));
+        let average_duration_s = calculate_average_without_outliers(&mut durations_s);
+        let throughput = (len as f64) / (1024f64 * 1024f64 * (average_duration_s / ITERATIONS as f64));
 
         processor.on_result(len, throughput);
     }
@@ -151,4 +151,33 @@ fn execute_noinlining<F>(delegate: &F) -> u64
     where F: Fn() -> u64
 {
     delegate()
+}
+
+// Outliers are inevitable, especially on a low number of iterations
+// To avoid computing a huge number of iterations we can use the interquartile range
+fn calculate_average_without_outliers(timings: &mut Vec<f64>) -> f64 {
+    timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let q1 = percentile(timings, 25.0);
+    let q3 = percentile(timings, 75.0);
+    let iqr = q3 - q1;
+
+    let lower_bound = q1 - 1.5 * iqr;
+    let upper_bound = q3 + 1.5 * iqr;
+
+    let filtered_timings: Vec<f64> = timings
+        .iter()
+        .filter(|&&x| x >= lower_bound && x <= upper_bound)
+        .cloned()
+        .collect();
+
+    let sum: f64 = filtered_timings.iter().sum();
+    let count = filtered_timings.len();
+
+    sum / count as f64
+}
+
+fn percentile(sorted_data: &Vec<f64>, percentile: f64) -> f64 {
+    let idx = (percentile / 100.0 * (sorted_data.len() - 1) as f64).round() as usize;
+    sorted_data[idx]
 }
