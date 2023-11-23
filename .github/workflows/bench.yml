@@ -23,9 +23,9 @@ jobs:
     - name: Benchmark AVX2 (nightly)
       run: cargo bench --bench throughput --features 'bench-plot avx2'
 
-    - uses: actions/upload-artifact@v3
+    - uses: buildjet/cache@v3
       with:
-        name: benches
+        key: benches-${{ github.sha }}
         path: benches/throughput/*.svg
 
   benchmark-arm:
@@ -38,9 +38,9 @@ jobs:
     - name: Benchmark
       run: cargo bench --bench throughput --features 'bench-plot'
 
-    - uses: actions/upload-artifact@v3
+    - uses: buildjet/cache@v3
       with:
-        name: benches
+        key: benches-${{ github.sha }}
         path: benches/throughput/*.svg
 
   commit:
@@ -58,9 +58,9 @@ jobs:
       run: rm -v benches/throughput/*.svg
 
     - name: Download Benchmark Results
-      uses: actions/download-artifact@v3
+      uses: buildjet/cache@v3
       with:
-        name: benches
+        key: benches-${{ github.sha }}
         path: benches/throughput
 
     - name: LS
