@@ -138,12 +138,12 @@ impl ResultProcessor for OutputPlot {
             .caption(format!("Throughput ({})", arch), ("sans-serif", (5).percent_height()))
             .set_label_area_size(LabelAreaPosition::Left, (14).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (10).percent())
-            .margin((1).percent())
+            .margin_right((5).percent())
             .build_cartesian_2d(
                 (x_min..x_max)
                     .log_scale()
                     .with_key_points(self.series.iter().next().unwrap().1.iter().map(|(x, _)| *x as u32).collect::<Vec<u32>>()),
-                    (y_min..y_max)
+                    y_min..y_max
                     //.log_scale(),
             ).unwrap();
 
@@ -170,7 +170,7 @@ impl ResultProcessor for OutputPlot {
         chart
             .configure_series_labels()
             .border_style(BLACK)
-            .background_style(RGBColor(255, 255, 255))
+            .background_style(RGBAColor(255, 255, 255, 0.7f64))
             .draw().unwrap();
 
         // To avoid the IO failure being ignored silently, we manually call the present function
