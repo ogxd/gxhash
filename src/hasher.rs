@@ -1,11 +1,11 @@
-use std::hash::{Hasher, BuildHasher};
-use std::collections::{HashMap, HashSet};
-use std::mem::MaybeUninit;
+use crate::gxhash::{platform::*, *};
 
 use rand::RngCore;
-
-use crate::gxhash::*;
-use crate::gxhash::platform::*;
+use std::{
+    collections::{HashMap, HashSet},
+    hash::{BuildHasher, Hasher},
+    mem::MaybeUninit,
+};
 
 /// A `Hasher` for hashing an arbitrary stream of bytes.
 /// # Features
@@ -16,7 +16,7 @@ use crate::gxhash::platform::*;
 /// *<sup>1</sup>There might me faster alternatives, such as `fxhash` for very small input sizes, but that usually have low quality properties.*
 #[derive(Clone, Debug)]
 pub struct GxHasher {
-    state: State
+    state: State,
 }
 
 impl GxHasher {
