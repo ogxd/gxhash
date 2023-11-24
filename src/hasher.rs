@@ -22,7 +22,7 @@ pub struct GxHasher {
 impl GxHasher {
     #[inline]
     fn with_state(state: State) -> GxHasher {
-        GxHasher { state: state }
+        GxHasher { state }
     }
 }
 
