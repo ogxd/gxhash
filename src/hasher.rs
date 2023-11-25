@@ -14,6 +14,7 @@ use crate::gxhash::*;
 /// - DOS resistance thanks to seed randomization when using [`GxHasher::default()`]
 ///
 /// *<sup>1</sup>There might me faster alternatives, such as `fxhash` for very small input sizes, but that usually have low quality properties.*
+#[derive(Clone, Debug)]
 pub struct GxHasher {
     state: State,
 }
@@ -21,7 +22,7 @@ pub struct GxHasher {
 impl GxHasher {
     #[inline]
     fn with_state(state: State) -> GxHasher {
-        GxHasher { state: state }
+        GxHasher { state }
     }
 }
 
@@ -29,7 +30,7 @@ impl Default for GxHasher {
     /// Creates a new hasher with a empty seed.
     ///
     /// # Warning ⚠️
-    /// Not using a seed may make your [`Hasher`] vulnerable to DOS attacks.  
+    /// Not using a seed may make your [`Hasher`] vulnerable to DOS attacks.
     /// It is recommended to use [`GxBuildHasher::default()`] for improved DOS resistance.
     ///
     /// # Example
@@ -56,7 +57,7 @@ impl GxHasher {
     /// Creates a new hasher using the provided seed.
     ///
     /// # Warning ⚠️
-    /// Hardcoding a seed may make your [`Hasher`] vulnerable to DOS attacks.  
+    /// Hardcoding a seed may make your [`Hasher`] vulnerable to DOS attacks.
     /// It is recommended to use [`GxBuildHasher::default()`] for improved DOS resistance.
     ///
     /// # Example
@@ -109,6 +110,7 @@ impl Hasher for GxHasher {
 }
 
 /// A builder for building GxHasher with randomized seeds by default, for improved DOS resistance.
+#[derive(Clone, Debug)]
 pub struct GxBuildHasher(State);
 
 impl Default for GxBuildHasher {

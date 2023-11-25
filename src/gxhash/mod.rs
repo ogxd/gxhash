@@ -79,7 +79,7 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         // Thus we need this safe method that checks if it can safely read beyond or must copy
         return get_partial(ptr, len);
     }
-    
+
     let remaining_bytes = len % VECTOR_SIZE;
 
     // The input does not fit on a single SIMD vector
@@ -92,7 +92,7 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         // it means we'll need to read a partial vector. We can start with the partial vector first,
         // so that we can safely read beyond since we expect the following bytes to still be part of
         // the input
-        hash_vector = get_partial_unsafe(ptr,remaining_bytes as usize);
+        hash_vector = get_partial_unsafe(ptr, remaining_bytes);
         ptr = ptr.cast::<u8>().add(remaining_bytes).cast();
     }
 
@@ -142,7 +142,6 @@ unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_byt
     let remaining_bytes = remaining_bytes - unrollable_blocks_count * VECTOR_SIZE;
     let end_address = ptr.add(remaining_bytes / VECTOR_SIZE) as usize;
 
-    let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
         load_unaligned!(ptr, v0);
         hash_vector = compress(hash_vector, v0);
