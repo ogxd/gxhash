@@ -4,7 +4,6 @@ use std::mem::MaybeUninit;
 
 use rand::RngCore;
 
-use crate::gxhash::platform::*;
 use crate::gxhash::*;
 
 /// A `Hasher` for hashing an arbitrary stream of bytes.
@@ -16,12 +15,12 @@ use crate::gxhash::*;
 /// *<sup>1</sup>There might me faster alternatives, such as `fxhash` for very small input sizes, but that usually have low quality properties.*
 #[derive(Clone, Debug)]
 pub struct GxHasher {
-    state: State,
+    state: <auto::AdapterWidest as Adapter>::State,
 }
 
 impl GxHasher {
     #[inline]
-    fn with_state(state: State) -> GxHasher {
+    fn with_state(state: <auto::AdapterWidest as Adapter>::State) -> GxHasher {
         GxHasher { state }
     }
 }
@@ -49,7 +48,7 @@ impl Default for GxHasher {
     /// ```
     #[inline]
     fn default() -> GxHasher {
-        GxHasher::with_state(unsafe { GxPlatformArm::create_empty() })
+        GxHasher::with_state(unsafe { auto::AdapterWidest::create_empty() })
     }
 }
 
@@ -77,17 +76,17 @@ impl GxHasher {
     #[inline]
     pub fn with_seed(seed: i64) -> GxHasher {
         // Use gxhash64 to generate an initial state from a seed
-        GxHasher::with_state(unsafe { GxPlatformArm::create_seed(seed) })
+        GxHasher::with_state(unsafe { auto::AdapterWidest::create_seed(seed) })
     }
 
     /// Finish this hasher and return the hashed value as a 128 bit
     /// unsigned integer.
     #[inline]
     pub fn finish_u128(&self) -> u128 {
-        debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
+        debug_assert!(auto::AdapterWidest::VECTOR_SIZE >= std::mem::size_of::<u128>());
 
         unsafe {
-            let p = &GxPlatformArm::finalize(self.state) as *const State as *const u128;
+            let p = &auto::AdapterWidest::finalize(self.state) as *const <auto::AdapterWidest as Adapter>::State as *const u128;
             *p
         }
     }
@@ -97,7 +96,7 @@ impl Hasher for GxHasher {
     #[inline]
     fn finish(&self) -> u64 {
         unsafe {
-            let p = &GxPlatformArm::finalize(self.state) as *const State as *const u64;
+            let p = &auto::AdapterWidest::finalize(self.state) as *const <auto::AdapterWidest as Adapter>::State as *const u64;
             *p
         }
     }
@@ -105,22 +104,22 @@ impl Hasher for GxHasher {
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
         // Improvement: only compress at this stage and finalize in finish
-        self.state = unsafe { GxPlatformArm::compress_fast(compress_all::<GxPlatformArm>(bytes), self.state) };
+        self.state = unsafe { auto::AdapterWidest::compress_fast(compress_all::<auto::AdapterWidest>(bytes), self.state) };
     }
 }
 
 /// A builder for building GxHasher with randomized seeds by default, for improved DOS resistance.
 #[derive(Clone, Debug)]
-pub struct GxBuildHasher(State);
+pub struct GxBuildHasher(<auto::AdapterWidest as Adapter>::State);
 
 impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
-        let mut uninit: MaybeUninit<State> = MaybeUninit::uninit();
+        let mut uninit: MaybeUninit<<auto::AdapterWidest as Adapter>::State> = MaybeUninit::uninit();
         let mut rng = rand::thread_rng();
         unsafe {
             let ptr = uninit.as_mut_ptr() as *mut u8;
-            let slice = std::slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
+            let slice = std::slice::from_raw_parts_mut(ptr, auto::AdapterWidest::VECTOR_SIZE);
             rng.fill_bytes(slice);
             GxBuildHasher(uninit.assume_init())
         }

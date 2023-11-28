@@ -1,6 +1,5 @@
 mod result_processor;
 
-use gxhash::platform::GxPlatformArm;
 use result_processor::*;
 
 use std::hash::Hasher;
@@ -39,9 +38,9 @@ fn main() {
     };
 
     // GxHash
-    let gxhash_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
+    let gxhash_name = if cfg!(feature = "s256") { "gxhash-avx2" } else { "gxhash" };
     benchmark(processor.as_mut(), slice, gxhash_name, |data: &[u8], seed: i64| -> u64 {
-        gxhash64::<GxPlatformArm>(data, seed)
+        s128::gxhash64(data, seed)
     });
 
     // XxHash (twox-hash)

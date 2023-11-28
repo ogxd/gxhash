@@ -16,7 +16,7 @@ exclude = ["article/*"]
 # The 256-bit state GxHash is faster for large inputs than the default 128-bit state implementation, but faster on smaller hashes.
 # Please not however that the 256-bit GxHash and the 128-bit GxHash don't generate the same hashes for a same input.
 # Requires AVX2 and VAES (X86).
-avx2 = []
+s256 = []
 # Only relevant for throughput benchmarks
 bench-csv = []
 bench-md = []

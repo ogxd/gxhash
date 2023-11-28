@@ -120,8 +120,8 @@ impl ResultProcessor for OutputPlot {
 
     fn finish(&self) {
         let mut arch = std::env::consts::ARCH.to_string();
-        if cfg!(feature = "avx2") {
-            arch += "-avx2";
+        if cfg!(feature = "s256") {
+            arch += "-s256";
         }
         let file_name = format!("benches/throughput/{}.svg", arch);
 

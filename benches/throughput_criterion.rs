@@ -5,7 +5,6 @@ use std::hash::Hasher;
 
 use criterion::measurement::WallTime;
 use criterion::{criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup, BenchmarkId};
-use gxhash::platform::GxPlatformArm;
 use rand::Rng;
 
 use gxhash::*;
@@ -45,9 +44,9 @@ fn benchmark_all(c: &mut Criterion) {
     group.plot_config(plot_config);
 
     // GxHash
-    let algo_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
+    let algo_name = if cfg!(feature = "s256") { "gxhash-avx2" } else { "gxhash" };
     benchmark(&mut group, slice, algo_name, |data: &[u8], _: i32| -> u64 {
-        gxhash64::<GxPlatformArm>(data, 0)
+        s128::gxhash64(data, 0)
     });
     
     // AHash

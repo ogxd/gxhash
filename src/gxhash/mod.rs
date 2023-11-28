@@ -1,6 +1,65 @@
-pub mod platform;
+pub mod s128;
 
-use platform::*;
+use std::mem::size_of;
+
+use s128::*;
+//use s256::*;
+
+// 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
+const PAGE_SIZE: usize = 0x1000;
+
+pub trait Adapter {
+    type State;
+
+    const VECTOR_SIZE: usize = size_of::<State>();
+
+    unsafe fn create_empty() -> State;
+    unsafe fn create_seed(seed: i64) -> State;
+    unsafe fn load_unaligned(p: *const State) -> State;
+    unsafe fn get_partial_safe(data: *const State, len: usize) -> State;
+    unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State;
+    unsafe fn compress(a: State, b: State) -> State;
+    unsafe fn compress_fast(a: State, b: State) -> State;
+    unsafe fn finalize(hash: State) -> State;
+
+    #[inline(always)]
+    unsafe fn get_partial(p: *const State, len: usize) -> State {
+        if Self::check_same_page(p) {
+            Self::get_partial_unsafe(p, len)
+        } else {
+            Self::get_partial_safe(p, len)
+        }
+    }
+
+    #[inline(always)]
+    unsafe fn check_same_page(ptr: *const State) -> bool {
+        let address = ptr as usize;
+        // Mask to keep only the last 12 bits
+        let offset_within_page = address & (PAGE_SIZE - 1);
+        // Check if the 16nd byte from the current offset exceeds the page boundary
+        offset_within_page < PAGE_SIZE - Self::VECTOR_SIZE
+    }
+}
+
+pub mod auto {
+
+    #[cfg(not(feature = "s256"))]
+    pub type AdapterWidest = crate::s128::Adapter128;
+    #[cfg(feature = "s256")]
+    pub type AdapterWidest = crate::s256::Adapter256;
+
+    pub fn gxhash32(input: &[u8], seed: i64) -> u32 {
+        super::gxhash32::<AdapterWidest>(input, seed)
+    }
+
+    pub fn gxhash64(input: &[u8], seed: i64) -> u64 {
+        super::gxhash64::<AdapterWidest>(input, seed)
+    }
+
+    pub fn gxhash128(input: &[u8], seed: i64) -> u128 {
+        super::gxhash128::<AdapterWidest>(input, seed)
+    }
+}
 
 /// Hashes an arbitrary stream of bytes to an u32.
 ///
@@ -12,10 +71,10 @@ use platform::*;
 /// println!("Hash is {:x}!", gxhash::gxhash32(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash32<T>(input: &[u8], seed: i64) -> u32
-    where T: GxPlatform {
+pub(crate) fn gxhash32<T>(input: &[u8], seed: i64) -> u32
+    where T: Adapter {
     unsafe {
-        let p = &gxhash::<GxPlatformArm>(input, T::create_seed(seed)) as *const State as *const u32;
+        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const State as *const u32;
         *p
     }
 }
@@ -31,9 +90,9 @@ pub fn gxhash32<T>(input: &[u8], seed: i64) -> u32
 /// ```
 #[inline(always)]
 pub fn gxhash64<T>(input: &[u8], seed: i64) -> u64
-    where T: GxPlatform {
+    where T: Adapter {
     unsafe {
-        let p = &gxhash::<GxPlatformArm>(input, T::create_seed(seed)) as *const State as *const u64;
+        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const State as *const u64;
         *p
     }
 }
@@ -49,9 +108,9 @@ pub fn gxhash64<T>(input: &[u8], seed: i64) -> u64
 /// ```
 #[inline(always)]
 pub fn gxhash128<T>(input: &[u8], seed: i64) -> u128
-    where T: GxPlatform {
+    where T: Adapter {
     unsafe {
-        let p = &gxhash::<GxPlatformArm>(input, T::create_seed(seed)) as *const State as *const u128;
+        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const State as *const u128;
         *p
     }
 }
@@ -68,24 +127,24 @@ macro_rules! load_unaligned {
 
 #[inline(always)]
 pub(crate) unsafe fn gxhash<T>(input: &[u8], seed: State) -> State
-    where T: GxPlatform {
+    where T: Adapter {
     T::finalize(T::compress_fast(compress_all::<T>(input), seed))
 }
 
 #[inline(always)]
 pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> State
-    where T: GxPlatform {
+    where T: Adapter {
 
     let len = input.len();
     let mut ptr = input.as_ptr() as *const State;
 
-    if len <= VECTOR_SIZE {
+    if len <= T::VECTOR_SIZE {
         // Input fits on a single SIMD vector, however we might read beyond the input message
         // Thus we need this safe method that checks if it can safely read beyond or must copy
         return T::get_partial(ptr, len);
     }
 
-    let remaining_bytes = len % VECTOR_SIZE;
+    let remaining_bytes = len % T::VECTOR_SIZE;
 
     // The input does not fit on a single SIMD vector
     let hash_vector: State;
@@ -102,15 +161,15 @@ pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> State
     }
 
     #[allow(unused_assignments)]
-    if len <= VECTOR_SIZE * 2 {
+    if len <= T::VECTOR_SIZE * 2 {
         // Fast path when input length > 16 and <= 32
         load_unaligned!(ptr, v0);
         T::compress(hash_vector, v0)
-    } else if len <= VECTOR_SIZE * 3 {
+    } else if len <= T::VECTOR_SIZE * 3 {
         // Fast path when input length > 32 and <= 48
         load_unaligned!(ptr, v0, v1);
         T::compress(hash_vector, T::compress(v0, v1))
-    } else if len <= VECTOR_SIZE * 4 {
+    } else if len <= T::VECTOR_SIZE * 4 {
         // Fast path when input length > 48 and <= 64
         load_unaligned!(ptr, v0, v1, v2);
         T::compress(hash_vector, T::compress(T::compress(v0, v1), v2))
@@ -122,11 +181,11 @@ pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> State
 
 #[inline(always)]
 unsafe fn compress_many<T>(mut ptr: *const State, hash_vector: State, remaining_bytes: usize) -> State
-    where T: GxPlatform {
+    where T: Adapter {
 
     const UNROLL_FACTOR: usize = 8;
 
-    let unrollable_blocks_count: usize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
+    let unrollable_blocks_count: usize = remaining_bytes / (T::VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
     let end_address = ptr.add(unrollable_blocks_count) as usize;
     let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
@@ -145,8 +204,8 @@ unsafe fn compress_many<T>(mut ptr: *const State, hash_vector: State, remaining_
         hash_vector = T::compress(hash_vector, tmp);
     }
 
-    let remaining_bytes = remaining_bytes - unrollable_blocks_count * VECTOR_SIZE;
-    let end_address = ptr.add(remaining_bytes / VECTOR_SIZE) as usize;
+    let remaining_bytes = remaining_bytes - unrollable_blocks_count * T::VECTOR_SIZE;
+    let end_address = ptr.add(remaining_bytes / T::VECTOR_SIZE) as usize;
 
     while (ptr as usize) < end_address {
         load_unaligned!(ptr, v0);
@@ -167,12 +226,12 @@ mod tests {
     fn all_blocks_are_consumed() {
         for s in 1..1200 {
             let mut bytes = vec![42u8; s];
-            let ref_hash = gxhash32::<GxPlatformArm>(&bytes, 0);
+            let ref_hash = gxhash32::<Adapter128>(&bytes, 0);
     
             for i in 0..bytes.len() {
                 let swap = bytes[i];
                 bytes[i] = 82;
-                let new_hash = gxhash32::<GxPlatformArm>(&bytes, 0);
+                let new_hash = gxhash32::<Adapter128>(&bytes, 0);
                 bytes[i] = swap;
     
                 assert_ne!(ref_hash, new_hash, "byte {i} not processed for input of size {s}");
@@ -190,7 +249,7 @@ mod tests {
         let mut ref_hash = 0;
 
         for i in 32..100 {
-            let new_hash = gxhash32::<GxPlatformArm>(&mut bytes[..i], 0);
+            let new_hash = gxhash32::<Adapter128>(&mut bytes[..i], 0);
             assert_ne!(ref_hash, new_hash, "Same hash at size {i} ({new_hash})");
             ref_hash = new_hash;
         }
@@ -231,7 +290,7 @@ mod tests {
             }
 
             i += 1;
-            set.insert(gxhash64::<GxPlatformArm>(&bytes, 0));
+            set.insert(gxhash64::<Adapter128>(&bytes, 0));
 
             // Reset bits
             for d in digits.iter() {
@@ -267,18 +326,18 @@ mod tests {
 
     #[test]
     fn hash_of_zero_is_not_zero() {
-        assert_ne!(0, gxhash32::<GxPlatformArm>(&[0u8; 0], 0));
-        assert_ne!(0, gxhash32::<GxPlatformArm>(&[0u8; 1], 0));
-        assert_ne!(0, gxhash32::<GxPlatformArm>(&[0u8; 1200], 0));
+        assert_ne!(0, gxhash32::<Adapter128>(&[0u8; 0], 0));
+        assert_ne!(0, gxhash32::<Adapter128>(&[0u8; 1], 0));
+        assert_ne!(0, gxhash32::<Adapter128>(&[0u8; 1200], 0));
     }
 
     // GxHash with a 128-bit state must be stable despite the different endianesses / CPU instrinsics
-    #[cfg(not(feature = "avx2"))]
+    #[cfg(not(feature = "s256"))]
     #[test]
     fn is_stable() {
-        assert_eq!(456576800, gxhash32::<GxPlatformArm>(&[0u8; 0], 0));
-        assert_eq!(978957914, gxhash32::<GxPlatformArm>(&[0u8; 1], 0));
-        assert_eq!(3325885698, gxhash32::<GxPlatformArm>(&[0u8; 1000], 0));
-        assert_eq!(3805815999, gxhash32::<GxPlatformArm>(&[42u8; 4242], 42));
+        assert_eq!(456576800, gxhash32::<Adapter128>(&[0u8; 0], 0));
+        assert_eq!(978957914, gxhash32::<Adapter128>(&[0u8; 1], 0));
+        assert_eq!(3325885698, gxhash32::<Adapter128>(&[0u8; 1000], 0));
+        assert_eq!(3805815999, gxhash32::<Adapter128>(&[42u8; 4242], 42));
     }
 }
