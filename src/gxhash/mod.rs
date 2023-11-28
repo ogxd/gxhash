@@ -11,19 +11,19 @@ const PAGE_SIZE: usize = 0x1000;
 pub trait Adapter {
     type State;
 
-    const VECTOR_SIZE: usize = size_of::<State>();
+    const VECTOR_SIZE: usize = size_of::<Self::State>();
 
-    unsafe fn create_empty() -> State;
-    unsafe fn create_seed(seed: i64) -> State;
-    unsafe fn load_unaligned(p: *const State) -> State;
-    unsafe fn get_partial_safe(data: *const State, len: usize) -> State;
-    unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State;
-    unsafe fn compress(a: State, b: State) -> State;
-    unsafe fn compress_fast(a: State, b: State) -> State;
-    unsafe fn finalize(hash: State) -> State;
+    unsafe fn create_empty() -> Self::State;
+    unsafe fn create_seed(seed: i64) -> Self::State;
+    unsafe fn load_unaligned(p: *const Self::State) -> Self::State;
+    unsafe fn get_partial_safe(data: *const Self::State, len: usize) -> Self::State;
+    unsafe fn get_partial_unsafe(data: *const Self::State, len: usize) -> Self::State;
+    unsafe fn compress(a: Self::State, b: Self::State) -> Self::State;
+    unsafe fn compress_fast(a: Self::State, b: Self::State) -> Self::State;
+    unsafe fn finalize(hash: Self::State) -> Self::State;
 
     #[inline(always)]
-    unsafe fn get_partial(p: *const State, len: usize) -> State {
+    unsafe fn get_partial(p: *const Self::State, len: usize) -> Self::State {
         if Self::check_same_page(p) {
             Self::get_partial_unsafe(p, len)
         } else {
@@ -32,7 +32,7 @@ pub trait Adapter {
     }
 
     #[inline(always)]
-    unsafe fn check_same_page(ptr: *const State) -> bool {
+    unsafe fn check_same_page(ptr: *const Self::State) -> bool {
         let address = ptr as usize;
         // Mask to keep only the last 12 bits
         let offset_within_page = address & (PAGE_SIZE - 1);
@@ -74,7 +74,7 @@ pub mod auto {
 pub(crate) fn gxhash32<T>(input: &[u8], seed: i64) -> u32
     where T: Adapter {
     unsafe {
-        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const State as *const u32;
+        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const T::State as *const u32;
         *p
     }
 }
@@ -92,7 +92,7 @@ pub(crate) fn gxhash32<T>(input: &[u8], seed: i64) -> u32
 pub fn gxhash64<T>(input: &[u8], seed: i64) -> u64
     where T: Adapter {
     unsafe {
-        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const State as *const u64;
+        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const T::State as *const u64;
         *p
     }
 }
@@ -110,7 +110,7 @@ pub fn gxhash64<T>(input: &[u8], seed: i64) -> u64
 pub fn gxhash128<T>(input: &[u8], seed: i64) -> u128
     where T: Adapter {
     unsafe {
-        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const State as *const u128;
+        let p = &gxhash::<T>(input, T::create_seed(seed)) as *const T::State as *const u128;
         *p
     }
 }
@@ -126,17 +126,17 @@ macro_rules! load_unaligned {
 }
 
 #[inline(always)]
-pub(crate) unsafe fn gxhash<T>(input: &[u8], seed: State) -> State
+pub(crate) unsafe fn gxhash<T>(input: &[u8], seed: T::State) -> T::State
     where T: Adapter {
     T::finalize(T::compress_fast(compress_all::<T>(input), seed))
 }
 
 #[inline(always)]
-pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> State
+pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> T::State
     where T: Adapter {
 
     let len = input.len();
-    let mut ptr = input.as_ptr() as *const State;
+    let mut ptr = input.as_ptr() as *const T::State;
 
     if len <= T::VECTOR_SIZE {
         // Input fits on a single SIMD vector, however we might read beyond the input message
@@ -147,7 +147,7 @@ pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> State
     let remaining_bytes = len % T::VECTOR_SIZE;
 
     // The input does not fit on a single SIMD vector
-    let hash_vector: State;
+    let hash_vector: T::State;
     if remaining_bytes == 0 {
         load_unaligned!(ptr, v0);
         hash_vector = v0;
@@ -180,7 +180,7 @@ pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> State
 }
 
 #[inline(always)]
-unsafe fn compress_many<T>(mut ptr: *const State, hash_vector: State, remaining_bytes: usize) -> State
+unsafe fn compress_many<T>(mut ptr: *const T::State, hash_vector: T::State, remaining_bytes: usize) -> T::State
     where T: Adapter {
 
     const UNROLL_FACTOR: usize = 8;
@@ -192,7 +192,7 @@ unsafe fn compress_many<T>(mut ptr: *const State, hash_vector: State, remaining_
 
         load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
 
-        let mut tmp: State;
+        let mut tmp: T::State;
         tmp = T::compress_fast(v0, v1);
         tmp = T::compress_fast(tmp, v2);
         tmp = T::compress_fast(tmp, v3);
