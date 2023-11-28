@@ -26,3 +26,17 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
     // Check if the 16nd byte from the current offset exceeds the page boundary
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
 }
+
+pub trait GxPlatform {
+    type State;
+
+    unsafe fn create_empty() -> State;
+    unsafe fn create_seed(seed: i64) -> State;
+    unsafe fn load_unaligned(p: *const State) -> State;
+    unsafe fn get_partial(p: *const State, len: usize) -> State;
+    unsafe fn get_partial_safe(data: *const State, len: usize) -> State;
+    unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State;
+    unsafe fn compress(a: State, b: State) -> State;
+    unsafe fn compress_fast(a: State, b: State) -> State;
+    unsafe fn finalize(hash: State) -> State;
+}

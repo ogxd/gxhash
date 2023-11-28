@@ -49,7 +49,7 @@ impl Default for GxHasher {
     /// ```
     #[inline]
     fn default() -> GxHasher {
-        GxHasher::with_state(unsafe { create_empty() })
+        GxHasher::with_state(unsafe { GxPlatformArm::create_empty() })
     }
 }
 
@@ -77,7 +77,7 @@ impl GxHasher {
     #[inline]
     pub fn with_seed(seed: i64) -> GxHasher {
         // Use gxhash64 to generate an initial state from a seed
-        GxHasher::with_state(unsafe { create_seed(seed) })
+        GxHasher::with_state(unsafe { GxPlatformArm::create_seed(seed) })
     }
 
     /// Finish this hasher and return the hashed value as a 128 bit
@@ -87,7 +87,7 @@ impl GxHasher {
         debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
 
         unsafe {
-            let p = &finalize(self.state) as *const State as *const u128;
+            let p = &GxPlatformArm::finalize(self.state) as *const State as *const u128;
             *p
         }
     }
@@ -97,7 +97,7 @@ impl Hasher for GxHasher {
     #[inline]
     fn finish(&self) -> u64 {
         unsafe {
-            let p = &finalize(self.state) as *const State as *const u64;
+            let p = &GxPlatformArm::finalize(self.state) as *const State as *const u64;
             *p
         }
     }
@@ -105,7 +105,7 @@ impl Hasher for GxHasher {
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
         // Improvement: only compress at this stage and finalize in finish
-        self.state = unsafe { compress_fast(compress_all(bytes), self.state) };
+        self.state = unsafe { GxPlatformArm::compress_fast(compress_all::<GxPlatformArm>(bytes), self.state) };
     }
 }
 

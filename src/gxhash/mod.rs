@@ -1,4 +1,4 @@
-pub(crate) mod platform;
+pub mod platform;
 
 use platform::*;
 
@@ -12,9 +12,10 @@ use platform::*;
 /// println!("Hash is {:x}!", gxhash::gxhash32(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash32(input: &[u8], seed: i64) -> u32 {
+pub fn gxhash32<T>(input: &[u8], seed: i64) -> u32
+    where T: GxPlatform {
     unsafe {
-        let p = &gxhash(input, create_seed(seed)) as *const State as *const u32;
+        let p = &gxhash::<GxPlatformArm>(input, T::create_seed(seed)) as *const State as *const u32;
         *p
     }
 }
@@ -29,9 +30,10 @@ pub fn gxhash32(input: &[u8], seed: i64) -> u32 {
 /// println!("Hash is {:x}!", gxhash::gxhash64(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash64(input: &[u8], seed: i64) -> u64 {
+pub fn gxhash64<T>(input: &[u8], seed: i64) -> u64
+    where T: GxPlatform {
     unsafe {
-        let p = &gxhash(input, create_seed(seed)) as *const State as *const u64;
+        let p = &gxhash::<GxPlatformArm>(input, T::create_seed(seed)) as *const State as *const u64;
         *p
     }
 }
@@ -46,9 +48,10 @@ pub fn gxhash64(input: &[u8], seed: i64) -> u64 {
 /// println!("Hash is {:x}!", gxhash::gxhash128(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash128(input: &[u8], seed: i64) -> u128 {
+pub fn gxhash128<T>(input: &[u8], seed: i64) -> u128
+    where T: GxPlatform {
     unsafe {
-        let p = &gxhash(input, create_seed(seed)) as *const State as *const u128;
+        let p = &gxhash::<GxPlatformArm>(input, T::create_seed(seed)) as *const State as *const u128;
         *p
     }
 }
@@ -57,19 +60,21 @@ macro_rules! load_unaligned {
     ($ptr:ident, $($var:ident),+) => {
         $(
             #[allow(unused_mut)]
-            let mut $var = load_unaligned($ptr);
+            let mut $var = T::load_unaligned($ptr);
             $ptr = ($ptr).offset(1);
         )+
     };
 }
 
 #[inline(always)]
-pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
-    finalize(compress_fast(compress_all(input), seed))
+pub(crate) unsafe fn gxhash<T>(input: &[u8], seed: State) -> State
+    where T: GxPlatform {
+    T::finalize(T::compress_fast(compress_all::<T>(input), seed))
 }
 
 #[inline(always)]
-pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
+pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> State
+    where T: GxPlatform {
 
     let len = input.len();
     let mut ptr = input.as_ptr() as *const State;
@@ -77,7 +82,7 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
     if len <= VECTOR_SIZE {
         // Input fits on a single SIMD vector, however we might read beyond the input message
         // Thus we need this safe method that checks if it can safely read beyond or must copy
-        return get_partial(ptr, len);
+        return T::get_partial(ptr, len);
     }
 
     let remaining_bytes = len % VECTOR_SIZE;
@@ -92,7 +97,7 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         // it means we'll need to read a partial vector. We can start with the partial vector first,
         // so that we can safely read beyond since we expect the following bytes to still be part of
         // the input
-        hash_vector = get_partial_unsafe(ptr, remaining_bytes);
+        hash_vector = T::get_partial_unsafe(ptr, remaining_bytes);
         ptr = ptr.cast::<u8>().add(remaining_bytes).cast();
     }
 
@@ -100,23 +105,24 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
     if len <= VECTOR_SIZE * 2 {
         // Fast path when input length > 16 and <= 32
         load_unaligned!(ptr, v0);
-        compress(hash_vector, v0)
+        T::compress(hash_vector, v0)
     } else if len <= VECTOR_SIZE * 3 {
         // Fast path when input length > 32 and <= 48
         load_unaligned!(ptr, v0, v1);
-        compress(hash_vector, compress(v0, v1))
+        T::compress(hash_vector, T::compress(v0, v1))
     } else if len <= VECTOR_SIZE * 4 {
         // Fast path when input length > 48 and <= 64
         load_unaligned!(ptr, v0, v1, v2);
-        compress(hash_vector, compress(compress(v0, v1), v2))
+        T::compress(hash_vector, T::compress(T::compress(v0, v1), v2))
     } else {
         // Input message is large and we can use the high ILP loop
-        compress_many(ptr, hash_vector, len)
+        compress_many::<T>(ptr, hash_vector, len)
     }
 }
 
 #[inline(always)]
-unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_bytes: usize) -> State {
+unsafe fn compress_many<T>(mut ptr: *const State, hash_vector: State, remaining_bytes: usize) -> State
+    where T: GxPlatform {
 
     const UNROLL_FACTOR: usize = 8;
 
@@ -128,15 +134,15 @@ unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_byt
         load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
 
         let mut tmp: State;
-        tmp = compress_fast(v0, v1);
-        tmp = compress_fast(tmp, v2);
-        tmp = compress_fast(tmp, v3);
-        tmp = compress_fast(tmp, v4);
-        tmp = compress_fast(tmp, v5);
-        tmp = compress_fast(tmp, v6);
-        tmp = compress_fast(tmp, v7);
+        tmp = T::compress_fast(v0, v1);
+        tmp = T::compress_fast(tmp, v2);
+        tmp = T::compress_fast(tmp, v3);
+        tmp = T::compress_fast(tmp, v4);
+        tmp = T::compress_fast(tmp, v5);
+        tmp = T::compress_fast(tmp, v6);
+        tmp = T::compress_fast(tmp, v7);
 
-        hash_vector = compress(hash_vector, tmp);
+        hash_vector = T::compress(hash_vector, tmp);
     }
 
     let remaining_bytes = remaining_bytes - unrollable_blocks_count * VECTOR_SIZE;
@@ -144,7 +150,7 @@ unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_byt
 
     while (ptr as usize) < end_address {
         load_unaligned!(ptr, v0);
-        hash_vector = compress(hash_vector, v0);
+        hash_vector = T::compress(hash_vector, v0);
     }
 
     hash_vector
@@ -161,12 +167,12 @@ mod tests {
     fn all_blocks_are_consumed() {
         for s in 1..1200 {
             let mut bytes = vec![42u8; s];
-            let ref_hash = gxhash32(&bytes, 0);
+            let ref_hash = gxhash32::<GxPlatformArm>(&bytes, 0);
     
             for i in 0..bytes.len() {
                 let swap = bytes[i];
                 bytes[i] = 82;
-                let new_hash = gxhash32(&bytes, 0);
+                let new_hash = gxhash32::<GxPlatformArm>(&bytes, 0);
                 bytes[i] = swap;
     
                 assert_ne!(ref_hash, new_hash, "byte {i} not processed for input of size {s}");
@@ -184,7 +190,7 @@ mod tests {
         let mut ref_hash = 0;
 
         for i in 32..100 {
-            let new_hash = gxhash32(&mut bytes[..i], 0);
+            let new_hash = gxhash32::<GxPlatformArm>(&mut bytes[..i], 0);
             assert_ne!(ref_hash, new_hash, "Same hash at size {i} ({new_hash})");
             ref_hash = new_hash;
         }
@@ -225,7 +231,7 @@ mod tests {
             }
 
             i += 1;
-            set.insert(gxhash64(&bytes, 0));
+            set.insert(gxhash64::<GxPlatformArm>(&bytes, 0));
 
             // Reset bits
             for d in digits.iter() {
@@ -261,18 +267,18 @@ mod tests {
 
     #[test]
     fn hash_of_zero_is_not_zero() {
-        assert_ne!(0, gxhash32(&[0u8; 0], 0));
-        assert_ne!(0, gxhash32(&[0u8; 1], 0));
-        assert_ne!(0, gxhash32(&[0u8; 1200], 0));
+        assert_ne!(0, gxhash32::<GxPlatformArm>(&[0u8; 0], 0));
+        assert_ne!(0, gxhash32::<GxPlatformArm>(&[0u8; 1], 0));
+        assert_ne!(0, gxhash32::<GxPlatformArm>(&[0u8; 1200], 0));
     }
 
     // GxHash with a 128-bit state must be stable despite the different endianesses / CPU instrinsics
     #[cfg(not(feature = "avx2"))]
     #[test]
     fn is_stable() {
-        assert_eq!(456576800, gxhash32(&[0u8; 0], 0));
-        assert_eq!(978957914, gxhash32(&[0u8; 1], 0));
-        assert_eq!(3325885698, gxhash32(&[0u8; 1000], 0));
-        assert_eq!(3805815999, gxhash32(&[42u8; 4242], 42));
+        assert_eq!(456576800, gxhash32::<GxPlatformArm>(&[0u8; 0], 0));
+        assert_eq!(978957914, gxhash32::<GxPlatformArm>(&[0u8; 1], 0));
+        assert_eq!(3325885698, gxhash32::<GxPlatformArm>(&[0u8; 1000], 0));
+        assert_eq!(3805815999, gxhash32::<GxPlatformArm>(&[42u8; 4242], 42));
     }
 }
