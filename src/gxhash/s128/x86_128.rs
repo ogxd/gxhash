@@ -25,7 +25,7 @@ impl Adapter for Adapter128 {
     #[inline(always)]
     unsafe fn get_partial_safe(data: *const __m128i, len: usize) -> __m128i {
         // Temporary buffer filled with zeros
-        let mut buffer = [0i8; VECTOR_SIZE];
+        let mut buffer = [0i8; Self::VECTOR_SIZE];
         // Copy data into the buffer
         std::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
         // Load the buffer into a __m256i vector
