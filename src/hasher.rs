@@ -1,11 +1,11 @@
-use crate::gxhash::{platform::*, *};
+use std::collections::{HashMap, HashSet};
+use std::hash::{BuildHasher, Hasher};
+use std::mem::MaybeUninit;
 
 use rand::RngCore;
-use std::{
-    collections::{HashMap, HashSet},
-    hash::{BuildHasher, Hasher},
-    mem::MaybeUninit,
-};
+
+use crate::gxhash::platform::*;
+use crate::gxhash::*;
 
 /// A `Hasher` for hashing an arbitrary stream of bytes.
 /// # Features
