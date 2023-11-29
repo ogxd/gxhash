@@ -82,7 +82,7 @@ pub unsafe fn finalize(hash: State) -> State {
     hash
 }
 
-#[cfg(not(target_feature = "avx2"))]
+#[cfg(not(all(target_feature = "avx2", feature = "nightly")))]
 #[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
     let mut h1 = create_empty();
@@ -106,7 +106,7 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     compress(hash_vector, compress(h1, h2))
 }
 
-#[cfg(target_feature = "avx2")]
+#[cfg(all(target_feature = "avx2", feature = "nightly"))]
 #[inline(always)]
 #[allow(overflowing_literals)]
 pub unsafe fn compress_x2(a: __m256i, b: __m256i) -> __m256i {
@@ -119,14 +119,14 @@ pub unsafe fn compress_x2(a: __m256i, b: __m256i) -> __m256i {
     return _mm256_aesenclast_epi128(a, b);
 }
 
-#[cfg(target_feature = "avx2")]
+#[cfg(all(target_feature = "avx2", feature = "nightly"))]
 #[inline(always)]
 #[allow(overflowing_literals)]
 pub unsafe fn compress_fast_x2(a: __m256i, b: __m256i) -> __m256i {
     return _mm256_aesenc_epi128(a, b);
 }
 
-#[cfg(target_feature = "avx2")]
+#[cfg(all(target_feature = "avx2", feature = "nightly"))]
 #[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
     macro_rules! load_unaligned_x2 {

@@ -1,5 +1,5 @@
-// Feature 'avx2' currently requires unstable 'stdsimd'
-//#![cfg_attr(all(target_arch = "x86_64"), feature(stdsimd))]
+// AVX2 currently requires unstable 'stdsimd'
+#![cfg_attr(all(target_arch = "x86_64", target_feature = "avx2", feature = "nightly"), feature(stdsimd))]
 
 #[rustfmt::skip]
 mod gxhash;

@@ -14,6 +14,21 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Benchmark
+      run: cargo bench --bench throughput --features bench-plot
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: benches
+        path: benches/throughput/x86_64.svg
+
+  benchmark-x86-avx2:
+    name: Benchmark X86 AVX2
+    runs-on: buildjet-2vcpu-ubuntu-2204
+
+    steps:
+    - uses: actions/checkout@v4
+
     - name: Switch to nightly rust
       run: rustup default nightly
 
@@ -23,7 +38,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: benches
-        path: benches/throughput/x86_64.svg
+        path: benches/throughput/x86_64-avx2.svg
 
   benchmark-arm:
     name: Benchmark ARM
@@ -43,7 +58,7 @@ jobs:
   commit:
     name: Commit & Push
     runs-on: buildjet-2vcpu-ubuntu-2204
-    needs: [benchmark-x86, benchmark-arm]
+    needs: [benchmark-x86, benchmark-x86-avx2, benchmark-arm]
 
     permissions:
       contents: write
