@@ -201,27 +201,27 @@ mod tests {
 
     #[test]
     fn contructors_work() {
-        let mut map = GxHashMap::new();
+        let mut map = HashMap::new();
         map.insert("foo", 42);
 
-        let mut map = GxHashMap::with_capacity(3);
+        let mut map = HashMap::with_capacity(3);
         map.insert("friday", 13);
 
-        let mut set = GxHashSet::new();
+        let mut set = HashSet::new();
         set.insert(42);
 
-        let mut map = GxHashSet::with_capacity(3);
+        let mut map = HashSet::with_capacity(3);
         map.insert(13);
     }
 
     #[test]
     fn hasher_produces_stable_hashes() {
-        let mut hashset = GxHashSet::default();
+        let mut hashset = HashSet::default();
         assert!(hashset.insert(1234));
         assert!(!hashset.insert(1234));
         assert!(hashset.insert(42));
 
-        let mut hashset = GxHashSet::default();
+        let mut hashset = HashSet::default();
         assert!(hashset.insert("hello"));
         assert!(hashset.insert("world"));
         assert!(!hashset.insert("hello"));
@@ -231,8 +231,8 @@ mod tests {
     // This is important for DOS resistance
     #[test]
     fn gxhashset_uses_default_gxhasherbuilder() {
-        let hashset_1 = GxHashSet::<u32>::default();
-        let hashset_2 = GxHashSet::<u32>::default();
+        let hashset_1 = HashSet::<u32>::default();
+        let hashset_2 = HashSet::<u32>::default();
 
         let mut hasher_1 = hashset_1.hasher().build_hasher();
         let mut hasher_2 = hashset_2.hasher().build_hasher();

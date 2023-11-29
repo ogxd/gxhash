@@ -9,6 +9,8 @@
 //! Directly as a hash function:
 //!
 //! ```
+//! use gxhash::{gxhash32, gxhash64, gxhash128};
+//!
 //! let bytes: &[u8] = "hello world".as_bytes();
 //! let seed = 1234;
 //!
@@ -18,13 +20,12 @@
 //! ```
 //!
 //! GxHash provides an implementation of the [`Hasher`](core::hash::Hasher) trait.
-//! To construct a `HashMap` using [`GxHasher`](crate::GxHasher) as its hasher:
+//! For convenience and interop with crates which require a `std::collection::HashMap`, the type aliases `HashMap`, `HashSet` are provided:
 //!
 //! ```
-//! use gxhash::{GxHasher, RandomState};
-//! use std::collections::HashMap;
+//! use gxhash::{HashMap, HashMapExt};
 //!
-//! let mut map: HashMap<&str, i32, RandomState> = HashMap::default();
+//! let mut map: HashMap<&str, i32> = HashMap::new();
 //! map.insert("answer", 42);
 //! ```
 //!
@@ -56,28 +57,14 @@
 //!
 //! Check out the [paper](https://github.com/ogxd/gxhash/blob/main/article/article.pdf) for more technical details.
 //!
-//! ## Convenience Aliases
-//!
-//! For interop with existing crates which require a `std::collection::HashMap` , the type aliases [`HashMap`](crate::HashMap), [`HashSet`](crate::HashSet) are
-//! provided.
-//!
-//! ```
-//! use gxhash::{HashMap, HashMapExt};
-//!
-//! let mut map: HashMap<&str, i32> = HashMap::new();
-//! map.insert("answer", 42);
-//! ```
-//!
-//! Note the import of [`HashMapExt`](crate::HashMapExt). This is needed for the constructor.
-//!
 //! ## Portability
 //!
 //! ### Supported Architectures
 //!
 //! GxHash is compatible with:
 //!
-//! * X86 processors with `AES-NI` intrinsics
-//! * ARM processors with `NEON` intrinsics
+//! * x86 processors with `AES-NI` intrinsics.
+//! * ARM processors with `NEON` intrinsics.
 //!
 //! > **⚠️ Warning**
 //! >

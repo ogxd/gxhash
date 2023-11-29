@@ -7,7 +7,6 @@
 * [Features](#features)
   * [Blazingly Fast 🚀](#blazingly-fast-)
   * [Highly Robust 🗿](#highly-robust-)
-* [Convenience Aliases](#convenience-aliases)
 * [Portability](#portability)
   * [Supported Architectures](#supported-architectures)
   * [Stability of Hashes](#stability-of-hashes)
@@ -28,6 +27,8 @@ A [blazingly fast](#blazingly-fast-) and [robust](#highly-robust-) non-cryptogra
 Directly as a hash function:
 
 ```rust
+use gxhash::{gxhash32, gxhash64, gxhash128};
+
 let bytes: &[u8] = "hello world".as_bytes();
 let seed = 1234;
 
@@ -37,13 +38,12 @@ println!("128-bit hash: {:x}", gxhash::gxhash128(&bytes, seed));
 ```
 
 GxHash provides an implementation of the [`Hasher`](core::hash::Hasher) trait.
-To construct a `HashMap` using `GxHasher` as its hasher:
+For convenience and interop with crates which require a `std::collection::HashMap`, the type aliases `HashMap`, `HashSet` are provided:
 
 ```rust
-use gxhash::{GxHasher, RandomState};
-use std::collections::HashMap;
+use gxhash::{HashMap, HashMapExt};
 
-let mut map: HashMap<&str, i32, RandomState> = HashMap::default();
+let mut map: HashMap<&str, i32> = HashMap::new();
 map.insert("answer", 42);
 ```
 
@@ -75,28 +75,14 @@ functions, gathering most of the existing algorithms. GxHash has low collisions,
 
 Check out the [paper](https://github.com/ogxd/gxhash/blob/main/article/article.pdf) for more technical details.
 
-## Convenience Aliases
-
-For interop with existing crates which require a `std::collection::HashMap` , the type aliases `HashMap`, `HashSet` are
-provided.
-
-```rust
-use gxhash::{HashMap, HashMapExt};
-
-let mut map: HashMap<&str, i32> = HashMap::new();
-map.insert("answer", 42);
-```
-
-Note the import of `HashMapExt`. This is needed for the constructor.
-
 ## Portability
 
 ### Supported Architectures
 
 GxHash is compatible with:
 
-* X86 processors with `AES-NI` intrinsics
-* ARM processors with `NEON` intrinsics
+* x86 processors with `AES-NI` intrinsics.
+* ARM processors with `NEON` intrinsics.
 
 > **⚠️ Warning**
 >
@@ -165,10 +151,14 @@ GxHash is continuously benchmarked on X86 and ARM Github runners.
   * Minor for API changes/removal
   * Patch for new APIs, bug fixes and performance improvements
 
-> **🛈** [`cargo-asm`](https://github.com/gnzlbg/cargo-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash64`).
+> **🛈 Note**
+>
+> [`cargo-asm`](https://github.com/gnzlbg/cargo-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash64`).
 > *Note that `#[inline]` should be removed; otherwise the resp. method won't be seen by the tool.*
 
-> **🛈** [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on per-instruction time spent.
+> **🛈 Note**
+>
+> [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on per-instruction time spent.
 
 ## Publication
 
