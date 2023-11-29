@@ -20,8 +20,8 @@ jobs:
     - name: Switch to nightly rust
       run: rustup default nightly
 
-    - name: Benchmark AVX2 (nightly)
-      run: cargo bench --bench throughput --features 'bench-plot avx2'
+    - name: Benchmark s256 (nightly)
+      run: cargo bench --bench throughput --features 'bench-plot s256'
 
     - uses: actions/upload-artifact@v3
       with:

@@ -37,11 +37,17 @@ fn main() {
         Box::new(OutputSimple::default())
     };
 
-    // GxHash
-    let gxhash_name = if cfg!(feature = "s256") { "gxhash-avx2" } else { "gxhash" };
-    benchmark(processor.as_mut(), slice, gxhash_name, |data: &[u8], seed: i64| -> u64 {
+    // GxHash s128
+    benchmark(processor.as_mut(), slice, "gxhash-s128", |data: &[u8], seed: i64| -> u64 {
         s128::gxhash64(data, seed)
     });
+
+    // GxHash s256
+    if cfg!(feature = "s256") { 
+        benchmark(processor.as_mut(), slice, "gxhash-s256", |data: &[u8], seed: i64| -> u64 {
+            auto::gxhash64(data, seed)
+        });
+    }
 
     // XxHash (twox-hash)
     benchmark(processor.as_mut(), slice, "xxhash", |data: &[u8], seed: u64| -> u64 {
