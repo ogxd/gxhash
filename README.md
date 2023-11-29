@@ -3,6 +3,7 @@
 [![Build & Test](https://github.com/ogxd/gxhash/actions/workflows/build_test.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/build_test.yml)
 
 * [Usage](#usage)
+* [Cargo Features](#cargo-features)
 * [Features](#features)
   * [Blazingly Fast 🚀](#blazingly-fast-)
   * [Highly Robust 🗿](#highly-robust-)
@@ -46,6 +47,17 @@ let mut map: HashMap<&str, i32, RandomState> = HashMap::default();
 map.insert("answer", 42);
 ```
 
+## Cargo Features
+
+* `avx2` -- Enables AVX2 support for the `gxhash128` and `gxhash64` functions.
+* `std` -- Enables the `HashMap`/`HashSet` container convenience type aliases. This is on by default. Disable to make the crate `no_std`:
+
+  ```toml
+  [dependencies.gxhash]
+  ...
+  default-features = false
+  ```
+
 ## Features
 
 ### Blazingly Fast 🚀
@@ -65,8 +77,8 @@ Check out the [paper](https://github.com/ogxd/gxhash/blob/main/article/article.p
 
 ## Convenience Aliases
 
-For interop with existing crates which require a `std::collection::HashMap` ,
-the type aliases `HashMap`, `HashSet` are provided.
+For interop with existing crates which require a `std::collection::HashMap` , the type aliases `HashMap`, `HashSet` are
+provided.
 
 ```rust
 use gxhash::{HashMap, HashMapExt};

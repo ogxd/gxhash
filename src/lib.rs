@@ -28,6 +28,17 @@
 //! map.insert("answer", 42);
 //! ```
 //!
+//! ## Cargo Features
+//!
+//! * `avx2` -- Enables AVX2 support for the `gxhash128` and `gxhash64` functions.
+//! * `std` -- Enables the `HashMap`/`HashSet` container convenience type aliases. This is on by default. Disable to make the crate `no_std`:
+//!
+//!   ```toml
+//!   [dependencies.gxhash]
+//!   ...
+//!   default-features = false
+//!   ```
+//!
 //! ## Features
 //!
 //! ### Blazingly Fast 🚀
@@ -47,8 +58,8 @@
 //!
 //! ## Convenience Aliases
 //!
-//! For interop with existing crates which require a `std::collection::HashMap` ,
-//! the type aliases [`HashMap`](crate::HashMap), [`HashSet`](crate::HashSet) are provided.
+//! For interop with existing crates which require a `std::collection::HashMap` , the type aliases [`HashMap`](crate::HashMap), [`HashSet`](crate::HashSet) are
+//! provided.
 //!
 //! ```
 //! use gxhash::{HashMap, HashMapExt};
