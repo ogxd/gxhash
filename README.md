@@ -104,3 +104,21 @@ Publication:
 
 Cite this publication / algorithm:  
 [![DOI](https://zenodo.org/badge/690754256.svg)](https://zenodo.org/badge/latestdoi/690754256)
+
+ARM:
+- compress 128 arm
+- compress_fast 128 arm
+- compress_8 128
+
+X86 128:
+- compress 128 x86
+- compress_fast 128 x86
+- compress_8 128
+
+X86 256:
+- compress 256 x86
+- compress_fast 256 x86
+- compress_8 256
+
+128 ou 256
+compress_8 128 / compress_8 256

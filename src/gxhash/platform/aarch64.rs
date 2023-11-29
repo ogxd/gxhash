@@ -108,3 +108,26 @@ pub unsafe fn finalize(hash: State) -> State {
 
     ReinterpretUnion { uint8: hash }.int8
 }
+
+#[inline(always)]
+pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
+    let mut h1 = create_empty();
+    let mut h2 = create_empty();
+    while (ptr as usize) < end_address {
+
+        crate::gxhash::load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
+
+        let mut tmp1: State;
+        tmp1 = compress_fast(v0, v2);
+        tmp1 = compress_fast(tmp1, v4);
+        tmp1 = compress_fast(tmp1, v6);
+        h1 = compress(h1, tmp1);
+
+        let mut tmp2: State;
+        tmp2 = compress_fast(v1, v3);
+        tmp2 = compress_fast(tmp2, v5);
+        tmp2 = compress_fast(tmp2, v7);
+        h2 = compress(h2, tmp2);
+    }
+    compress(hash_vector, compress(h1, h2))
+}

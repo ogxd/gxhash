@@ -63,6 +63,8 @@ macro_rules! load_unaligned {
     };
 }
 
+pub(crate) use load_unaligned;
+
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
     finalize(compress_fast(compress_all(input), seed))
@@ -121,33 +123,18 @@ unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_byt
     const UNROLL_FACTOR: usize = 8;
 
     let unrollable_blocks_count: usize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
-    let end_address = ptr.add(unrollable_blocks_count) as usize;
-    let mut hash_vector = hash_vector;
-    while (ptr as usize) < end_address {
-
-        load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
-
-        let mut tmp: State;
-        tmp = compress_fast(v0, v1);
-        tmp = compress_fast(tmp, v2);
-        tmp = compress_fast(tmp, v3);
-        tmp = compress_fast(tmp, v4);
-        tmp = compress_fast(tmp, v5);
-        tmp = compress_fast(tmp, v6);
-        tmp = compress_fast(tmp, v7);
-
-        hash_vector = compress(hash_vector, tmp);
-    }
 
     let remaining_bytes = remaining_bytes - unrollable_blocks_count * VECTOR_SIZE;
     let end_address = ptr.add(remaining_bytes / VECTOR_SIZE) as usize;
 
+    let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
         load_unaligned!(ptr, v0);
         hash_vector = compress(hash_vector, v0);
     }
 
-    hash_vector
+    let end_address = ptr.add(unrollable_blocks_count) as usize;
+    compress_8(ptr, end_address, hash_vector)
 }
 
 #[cfg(test)]
@@ -272,7 +259,7 @@ mod tests {
     fn is_stable() {
         assert_eq!(456576800, gxhash32(&[0u8; 0], 0));
         assert_eq!(978957914, gxhash32(&[0u8; 1], 0));
-        assert_eq!(3325885698, gxhash32(&[0u8; 1000], 0));
-        assert_eq!(3805815999, gxhash32(&[42u8; 4242], 42));
+        assert_eq!(2784833902, gxhash32(&[0u8; 1000], 0));
+        assert_eq!(846365486, gxhash32(&[42u8; 4242], 42));
     }
 }
