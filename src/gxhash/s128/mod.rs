@@ -2,7 +2,7 @@
 #[path = "arm_128.rs"]
 mod s128;
 
-#[cfg(all(not(feature = "s256"), target_arch = "x86_64"))]
+#[cfg(target_arch = "x86_64")]
 #[path = "x86_128.rs"]
 mod s128;
 

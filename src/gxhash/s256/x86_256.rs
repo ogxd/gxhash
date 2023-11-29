@@ -29,7 +29,7 @@ impl Adapter for Adapter256 {
         // Copy data into the buffer
         std::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
         // Load the buffer into a __m256i vector
-        let partial_vector = _mm256_loadu_si256(buffer.as_ptr() as *const State);
+        let partial_vector = _mm256_loadu_si256(buffer.as_ptr() as *const __m256i);
         _mm256_add_epi8(partial_vector, _mm256_set1_epi8(len as i8))
     }
 
@@ -55,7 +55,7 @@ impl Adapter for Adapter256 {
 
     #[inline(always)]
     #[allow(overflowing_literals)]
-    unsafe fn compress_fast(a: __m256i, b: __m256i) -> St__m256iate {
+    unsafe fn compress_fast(a: __m256i, b: __m256i) -> __m256i {
         return _mm256_aesenc_epi128(a, b);
     }
 

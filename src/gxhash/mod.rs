@@ -1,9 +1,9 @@
 pub mod s128;
 
-use std::mem::size_of;
+#[cfg(feature = "s256")]
+pub mod s256;
 
-use s128::*;
-//use s256::*;
+use std::mem::size_of;
 
 // 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
 const PAGE_SIZE: usize = 0x1000;
@@ -217,6 +217,8 @@ unsafe fn compress_many<T>(mut ptr: *const T::State, hash_vector: T::State, rema
 
 #[cfg(test)]
 mod tests {
+
+    use crate::s128::Adapter128;
 
     use super::*;
     use rand::Rng;
