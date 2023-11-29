@@ -120,7 +120,7 @@ impl ResultProcessor for OutputPlot {
 
     fn finish(&self) {
         let mut arch = std::env::consts::ARCH.to_string();
-        if cfg!(all(target_arch = "x86_64", target_feature = "avx2", feature = "nightly")) {
+        if cfg!(all(target_arch = "x86_64", target_feature = "avx2", feature = "unstable")) {
             arch += "-avx2";
         }
         let file_name = format!("benches/throughput/{}.svg", arch);
@@ -176,6 +176,6 @@ impl ResultProcessor for OutputPlot {
         // To avoid the IO failure being ignored silently, we manually call the present function
         canvas.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
 
-        println!("Finished");
+        println!("Finished: '{}'", file_name);
     }
 }
