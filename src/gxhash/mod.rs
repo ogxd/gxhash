@@ -5,8 +5,15 @@ pub mod s256;
 
 use std::mem::size_of;
 
+use self::s128::Adapter128;
+
 // 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
 const PAGE_SIZE: usize = 0x1000;
+
+pub trait BlockProcessor {
+    type State;
+    unsafe fn compress_8(ptr: *const Self::State, unrollable_blocks_count: usize, hash_vector: Self::State) -> Self::State;
+}
 
 pub trait Adapter {
     type State;
@@ -116,63 +123,65 @@ pub fn gxhash128<T>(input: &[u8], seed: i64) -> u128
 }
 
 macro_rules! load_unaligned {
-    ($ptr:ident, $($var:ident),+) => {
+    ($name:ty, $ptr:ident, $($var:ident),+) => {
         $(
             #[allow(unused_mut)]
-            let mut $var = T::load_unaligned($ptr);
+            let mut $var = <$name>::load_unaligned($ptr);
             $ptr = ($ptr).offset(1);
         )+
     };
 }
 
+type State128 = <Adapter128 as Adapter>::State;
+
 #[inline(always)]
-pub(crate) unsafe fn gxhash<T>(input: &[u8], seed: T::State) -> T::State
+pub(crate) unsafe fn gxhash<T>(input: &[u8], seed: State128) -> State128
     where T: Adapter {
     T::finalize(T::compress_fast(compress_all::<T>(input), seed))
 }
 
 #[inline(always)]
-pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> T::State
+pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> State128
     where T: Adapter {
 
     let len = input.len();
-    let mut ptr = input.as_ptr() as *const T::State;
+    let mut ptr = input.as_ptr() as *const State128;
 
-    if len <= T::VECTOR_SIZE {
+    if len <= Adapter128::VECTOR_SIZE {
         // Input fits on a single SIMD vector, however we might read beyond the input message
         // Thus we need this safe method that checks if it can safely read beyond or must copy
-        return T::get_partial(ptr, len);
+        return Adapter128::get_partial(ptr, len);
     }
 
-    let remaining_bytes = len % T::VECTOR_SIZE;
+    let remaining_bytes = len % Adapter128::VECTOR_SIZE;
 
     // The input does not fit on a single SIMD vector
-    let hash_vector: T::State;
+    let hash_vector: State128;
     if remaining_bytes == 0 {
-        load_unaligned!(ptr, v0);
+        load_unaligned!(Adapter128, ptr, v0);
         hash_vector = v0;
     } else {
         // If the input length does not match the length of a whole number of SIMD vectors,
         // it means we'll need to read a partial vector. We can start with the partial vector first,
         // so that we can safely read beyond since we expect the following bytes to still be part of
         // the input
-        hash_vector = T::get_partial_unsafe(ptr, remaining_bytes);
+        hash_vector = Adapter128::get_partial_unsafe(ptr, remaining_bytes);
         ptr = ptr.cast::<u8>().add(remaining_bytes).cast();
     }
 
     #[allow(unused_assignments)]
-    if len <= T::VECTOR_SIZE * 2 {
+    if len <= Adapter128::VECTOR_SIZE * 2 {
         // Fast path when input length > 16 and <= 32
-        load_unaligned!(ptr, v0);
-        T::compress(hash_vector, v0)
+        load_unaligned!(Adapter128, ptr, v0);
+        Adapter128::compress(hash_vector, v0)
     } else if len <= T::VECTOR_SIZE * 3 {
         // Fast path when input length > 32 and <= 48
-        load_unaligned!(ptr, v0, v1);
-        T::compress(hash_vector, T::compress(v0, v1))
+        load_unaligned!(Adapter128, ptr, v0, v1);
+        Adapter128::compress(hash_vector, Adapter128::compress(v0, v1))
     } else if len <= T::VECTOR_SIZE * 4 {
         // Fast path when input length > 48 and <= 64
-        load_unaligned!(ptr, v0, v1, v2);
-        T::compress(hash_vector, T::compress(T::compress(v0, v1), v2))
+        load_unaligned!(Adapter128, ptr, v0, v1, v2);
+        Adapter128::compress(hash_vector, Adapter128::compress(Adapter128::compress(v0, v1), v2))
     } else {
         // Input message is large and we can use the high ILP loop
         compress_many::<T>(ptr, hash_vector, len)
@@ -180,8 +189,8 @@ pub(crate) unsafe fn compress_all<T>(input: &[u8]) -> T::State
 }
 
 #[inline(always)]
-unsafe fn compress_many<T>(mut ptr: *const T::State, hash_vector: T::State, remaining_bytes: usize) -> T::State
-    where T: Adapter {
+unsafe fn compress_many<T>(mut ptr: *const State128, hash_vector: State128, remaining_bytes: usize) -> State128
+    where T: Adapter+BlockProcessor<State = <T as Adapter>::State> {
 
     const UNROLL_FACTOR: usize = 8;
 
@@ -192,31 +201,11 @@ unsafe fn compress_many<T>(mut ptr: *const T::State, hash_vector: T::State, rema
 
     let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
-        load_unaligned!(ptr, v0);
-        hash_vector = T::compress(hash_vector, v0);
+        load_unaligned!(Adapter128, ptr, v0);
+        hash_vector = Adapter128::compress(hash_vector, v0);
     }
 
-    let end_address = ptr.add(unrollable_blocks_count) as usize;
-    let mut h1 = hash_vector;
-    let mut h2 = T::create_empty();
-    while (ptr as usize) < end_address {
-
-        load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
-
-        let mut tmp1: T::State;
-        tmp1 = T::compress_fast(v0, v2);
-        tmp1= T::compress_fast(tmp1, v4);
-        tmp1 = T::compress_fast(tmp1, v6);
-        h1 = T::compress(h1, tmp1);
-
-        let mut tmp2: T::State;
-        tmp2 = T::compress_fast(v1, v3);
-        tmp2 = T::compress_fast(tmp2, v5);
-        tmp2 = T::compress_fast(tmp2, v7);
-        h2 = T::compress(h2, tmp2);
-    }
-
-    T::compress(h1, h2)
+    T::compress_8(ptr, unrollable_blocks_count, hash_vector)
 }
 
 #[cfg(test)]
