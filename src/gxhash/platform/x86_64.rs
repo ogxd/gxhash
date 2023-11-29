@@ -129,17 +129,27 @@ pub unsafe fn compress_fast_x2(a: __m256i, b: __m256i) -> __m256i {
 #[cfg(target_feature = "avx2")]
 #[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
+    macro_rules! load_unaligned_x2 {
+        ($ptr:ident, $($var:ident),+) => {
+            $(
+                #[allow(unused_mut)]
+                let mut $var = _mm256_loadu_si256($ptr);
+                $ptr = ($ptr).offset(1);
+            )+
+        };
+    }
+    
     let mut ptr = ptr as *const __m256i;
     let mut h = _mm256_setzero_si256();
     while (ptr as usize) < end_address {
 
-        crate::gxhash::load_unaligned!(ptr, v0, v1, v2, v3);
+        load_unaligned_x2!(ptr, v0, v1, v2, v3);
 
         let mut tmp: __m256i;
-        tmp = compress_fast(v0, v1);
-        tmp = compress_fast(tmp, v2);
-        tmp = compress_fast(tmp, v3);
-        h = compress(h, tmp);
+        tmp = compress_fast_x2(v0, v1);
+        tmp = compress_fast_x2(tmp, v2);
+        tmp = compress_fast_x2(tmp, v3);
+        h = compress_x2(h, tmp);
     }
     
     // Extract the two 128-bit lanes
