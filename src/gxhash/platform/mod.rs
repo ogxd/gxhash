@@ -1,18 +1,14 @@
 #[cfg(target_arch = "aarch64")]
-#[path = "arm_128.rs"]
+#[path = "aarch64.rs"]
 mod platform;
 
-#[cfg(all(feature = "avx2", target_arch = "x86_64", target_feature = "avx2"))]
-#[path = "x86_256.rs"]
+#[cfg(target_arch = "x86_64")]
+#[path = "x86_64.rs"]
 mod platform;
-
-#[cfg(all(not(feature = "avx2"), target_arch = "x86_64"))]
-#[path = "x86_128.rs"]
-mod platform;
-
-use std::mem::size_of;
 
 pub use platform::*;
+
+use std::mem::size_of;
 
 pub(crate) const VECTOR_SIZE: usize = size_of::<State>();
 // 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
@@ -26,3 +22,5 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
     // Check if the 16nd byte from the current offset exceeds the page boundary
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
 }
+
+pub const KEYS: [u32; 8] = [0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E, 0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39132BD9];

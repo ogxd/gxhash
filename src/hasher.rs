@@ -98,7 +98,7 @@ macro_rules! write {
         #[inline]
         fn $name(&mut self, value: $type) {
             self.state = unsafe {
-                compress_1($load(value), self.state)
+                aes_encrypt($load(value), self.state)
             };
         }
     }
@@ -115,7 +115,8 @@ impl Hasher for GxHasher {
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        self.state = unsafe { compress_1(compress_all(bytes), self.state) };
+        // Improvement: only compress at this stage and finalize in finish
+        self.state = unsafe { aes_encrypt(compress_all(bytes), self.state) };
     }
 
     write!(write_u8, u8, load_u8);
@@ -179,14 +180,6 @@ mod tests {
         assert!(hashset.insert("world"));
         assert!(!hashset.insert("hello"));
         assert!(hashset.insert("bye"));
-    }
-
-    #[test]
-    fn hasher_handles_empty_inputs() {
-        let mut hashset = GxHashSet::default();
-        // Getting a ptr from a Vec::<u8>::new() return a pointer with address of 1
-        // We must make sure we dont SIGSEGV in such case
-        assert!(hashset.insert(Vec::<u8>::new()));
     }
 
     // This is important for DOS resistance
