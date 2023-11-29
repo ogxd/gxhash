@@ -1,5 +1,5 @@
-// AVX2 currently requires unstable 'stdsimd'
-#![cfg_attr(all(target_arch = "x86_64", target_feature = "avx2", feature = "unstable"), feature(stdsimd))]
+// Hybrid SIMD width usage currently requires unstable 'stdsimd'
+#![cfg_attr(hybrid, feature(stdsimd))]
 
 #[rustfmt::skip]
 mod gxhash;

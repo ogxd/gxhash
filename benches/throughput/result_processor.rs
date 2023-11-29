@@ -120,8 +120,8 @@ impl ResultProcessor for OutputPlot {
 
     fn finish(&self) {
         let mut arch = std::env::consts::ARCH.to_string();
-        if cfg!(all(target_arch = "x86_64", target_feature = "avx2", feature = "unstable")) {
-            arch += "-avx2";
+        if cfg!(hybrid) {
+            arch += "-hybrid";
         }
         let file_name = format!("benches/throughput/{}.svg", arch);
 
