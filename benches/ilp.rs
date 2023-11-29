@@ -14,7 +14,7 @@ fn baseline(input: &[u64]) -> u64 {
     while i < input.len() {
         h = hash(h, input[i]);
 
-        i = i + 1;
+        i += 1;
     }
     h
 }
@@ -29,7 +29,7 @@ fn unrolled(input: &[u64]) -> u64 {
         h = hash(h, input[i + 3]);
         h = hash(h, input[i + 4]);
 
-        i = i + 5;
+        i += 5;
     }
     h
 }
@@ -46,7 +46,7 @@ fn temp(input: &[u64]) -> u64 {
 
         h = hash(h, tmp);
 
-        i = i + 5;
+        i += 5;
     }
     h
 }
@@ -56,7 +56,7 @@ fn laned(input: &[u64]) -> u64 {
     let mut h2: u64 = OFFSET;
     let mut h3: u64 = OFFSET;
     let mut h4: u64 = OFFSET;
-    let mut h5: u64 = OFFSET; 
+    let mut h5: u64 = OFFSET;
     let mut i: usize = 0;
     while i < input.len() {
         h1 = hash(h1, input[i]);
@@ -65,7 +65,7 @@ fn laned(input: &[u64]) -> u64 {
         h4 = hash(h4, input[i + 3]);
         h5 = hash(h5, input[i + 4]);
 
-        i = i + 5;
+        i += 5;
     }
     hash(hash(hash(hash(h1, h2), h3), h4), h5)
 }

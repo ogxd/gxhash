@@ -2,11 +2,11 @@ mod result_processor;
 
 use result_processor::*;
 
+use std::alloc::{alloc, dealloc, Layout};
 use std::hash::Hasher;
 use std::hint::black_box;
-use std::time::{Instant, Duration};
-use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
+use std::time::{Duration, Instant};
 
 use rand::Rng;
 
@@ -28,36 +28,30 @@ fn main() {
     rng.fill(slice);
 
     let mut processor: Box<dyn ResultProcessor> = if cfg!(feature = "bench-csv") {
-        Box::new(OutputCsv::default())
+        Box::<OutputCsv>::default()
     } else if cfg!(feature = "bench-md") {
-        Box::new(OutputMd::default())
+        Box::<OutputMd>::default()
     } else if cfg!(feature = "bench-plot") {
-        Box::new(OutputPlot::default())
+        Box::<OutputPlot>::default()
     } else {
-        Box::new(OutputSimple::default())
+        Box::new(OutputSimple)
     };
 
     // GxHash
     let gxhash_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
-    benchmark(processor.as_mut(), slice, gxhash_name, |data: &[u8], seed: i64| -> u64 {
-        gxhash64(data, seed)
-    });
+    benchmark(processor.as_mut(), slice, gxhash_name, |data: &[u8], seed: i64| -> u64 { gxhash64(data, seed) });
 
     // XxHash (twox-hash)
     benchmark(processor.as_mut(), slice, "xxhash", |data: &[u8], seed: u64| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed)
     });
-    
+
     // AHash
     let ahash_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
-    benchmark(processor.as_mut(), slice, "ahash", |data: &[u8], _: i32| -> u64 {
-        ahash_hasher.hash_one(data)
-    });
+    benchmark(processor.as_mut(), slice, "ahash", |data: &[u8], _: i32| -> u64 { ahash_hasher.hash_one(data) });
 
     // T1ha0
-    benchmark(processor.as_mut(), slice, "t1ha0", |data: &[u8], seed: u64| -> u64 {
-        t1ha::t1ha0(data, seed)
-    });
+    benchmark(processor.as_mut(), slice, "t1ha0", |data: &[u8], seed: u64| -> u64 { t1ha::t1ha0(data, seed) });
 
     // SeaHash
     benchmark(processor.as_mut(), slice, "seahash", |data: &[u8], seed: u64| -> u64 {
@@ -73,7 +67,7 @@ fn main() {
 
     // HighwayHash
     benchmark(processor.as_mut(), slice, "highwayhash", |data: &[u8], _: i32| -> u64 {
-        use highway::{HighwayHasher, HighwayHash};
+        use highway::{HighwayHash, HighwayHasher};
         HighwayHasher::default().hash64(data)
     });
 
@@ -91,7 +85,9 @@ fn main() {
 }
 
 fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str, delegate: F)
-    where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize>
+where
+    F: Fn(&[u8], S) -> u64,
+    S: Default + TryFrom<u128> + TryInto<usize>,
 {
     processor.on_start(name);
     for i in 2.. {
@@ -101,18 +97,16 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
         }
 
         // Warmup
-        black_box(time(ITERATIONS, &|| delegate(&data[..len], S::default()))); 
+        black_box(time(ITERATIONS, &|| delegate(&data[..len], S::default())));
 
         let mut durations_s = vec![];
         let now = Instant::now();
         while now.elapsed() < MAX_RUN_DURATION {
             // Make seed unpredictable to prevent optimizations
-            let seed = S::try_from(now.elapsed().as_nanos())
-                .unwrap_or_else(|_| panic!("Something went horribly wrong!"));
+            let seed = S::try_from(now.elapsed().as_nanos()).unwrap_or_else(|_| panic!("Something went horribly wrong!"));
             // Offset slice by an unpredictable amount to prevent optimization (pre caching)
             // and make the benchmark use both aligned and unaligned data
-            let start = S::try_into(seed)
-                .unwrap_or_else(|_| panic!("Something went horribly wrong!")) & 0xFF;
+            let start = S::try_into(seed).unwrap_or_else(|_| panic!("Something went horribly wrong!")) & 0xFF;
             let end = start + len;
             let slice = &data[start..end];
             // Execute method for a new iterations
@@ -129,12 +123,13 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
 
 #[inline(never)]
 fn time<F>(iterations: u32, delegate: &F) -> Duration
-    where F: Fn() -> u64
+where
+    F: Fn() -> u64,
 {
     let now = Instant::now();
     // Bench the same way to what is done in criterion.rs
     // https://github.com/bheisler/criterion.rs/blob/e1a8c9ab2104fbf2d15f700d0038b2675054a2c8/src/bencher.rs#L87
-    for _ in 0..iterations {  
+    for _ in 0..iterations {
         if FORCE_NO_INLINING {
             black_box(execute_noinlining(delegate));
         } else {
@@ -148,7 +143,8 @@ fn time<F>(iterations: u32, delegate: &F) -> Duration
 // This puts then all at the same level. But is it fair?
 #[inline(never)]
 fn execute_noinlining<F>(delegate: &F) -> u64
-    where F: Fn() -> u64
+where
+    F: Fn() -> u64,
 {
     delegate()
 }
@@ -165,11 +161,7 @@ fn calculate_average_without_outliers(timings: &mut Vec<f64>) -> f64 {
     let lower_bound = q1 - 1.5 * iqr;
     let upper_bound = q3 + 1.5 * iqr;
 
-    let filtered_timings: Vec<f64> = timings
-        .iter()
-        .filter(|&&x| x >= lower_bound && x <= upper_bound)
-        .cloned()
-        .collect();
+    let filtered_timings: Vec<f64> = timings.iter().filter(|&&x| x >= lower_bound && x <= upper_bound).cloned().collect();
 
     let sum: f64 = filtered_timings.iter().sum();
     let count = filtered_timings.len();

@@ -100,7 +100,7 @@ impl ResultProcessor for OutputSimple {
 
 #[derive(Default)]
 pub struct OutputPlot {
-    series: Vec<(String, Vec<(usize, f64)>)>
+    series: Vec<(String, Vec<(usize, f64)>)>,
 }
 
 impl ResultProcessor for OutputPlot {
@@ -112,7 +112,7 @@ impl ResultProcessor for OutputPlot {
     fn on_result(&mut self, input_size: usize, throughput: f64) {
         let len = self.series.len();
         let serie = self.series.get_mut(len - 1).unwrap();
-        
+
         serie.1.push((input_size, throughput));
     }
 
@@ -128,11 +128,17 @@ impl ResultProcessor for OutputPlot {
         let canvas = SVGBackend::new(file_name.as_str(), (600, 400)).into_drawing_area();
         canvas.fill(&WHITE).unwrap();
 
-        let x_min = self.series.iter().next().unwrap().1.iter().map(|(x, _)| *x as u32).min().unwrap();
-        let x_max = self.series.iter().next().unwrap().1.iter().map(|(x, _)| *x as u32).max().unwrap();
+        let x_min = self.series.first().unwrap().1.iter().map(|(x, _)| *x as u32).min().unwrap();
+        let x_max = self.series.first().unwrap().1.iter().map(|(x, _)| *x as u32).max().unwrap();
 
         let y_min = 0u32;
-        let y_max = self.series.iter().flat_map(|inner_map| inner_map.1.iter()).map(|(_, y)| (1.05 * *y) as u32).max().unwrap();
+        let y_max = self
+            .series
+            .iter()
+            .flat_map(|inner_map| inner_map.1.iter())
+            .map(|(_, y)| (1.05 * *y) as u32)
+            .max()
+            .unwrap();
 
         let mut chart = ChartBuilder::on(&canvas)
             .caption(format!("Throughput ({})", arch), ("sans-serif", (5).percent_height()))
@@ -142,17 +148,18 @@ impl ResultProcessor for OutputPlot {
             .build_cartesian_2d(
                 (x_min..x_max)
                     .log_scale()
-                    .with_key_points(self.series.iter().next().unwrap().1.iter().map(|(x, _)| *x as u32).collect::<Vec<u32>>()),
-                    y_min..y_max
-                    //.log_scale(),
-            ).unwrap();
+                    .with_key_points(self.series.first().unwrap().1.iter().map(|(x, _)| *x as u32).collect::<Vec<u32>>()),
+                y_min..y_max, //.log_scale(),
+            )
+            .unwrap();
 
         chart
             .configure_mesh()
             .max_light_lines(1)
             .x_desc("Input Size (bytes)")
             .y_desc("Throughput (MiB/s)")
-            .draw().unwrap();
+            .draw()
+            .unwrap();
 
         let mut color_idx = 0;
         for (name, values) in self.series.iter() {
@@ -160,9 +167,8 @@ impl ResultProcessor for OutputPlot {
             color_idx += 1;
             let data: Vec<_> = values.iter().map(|(x, y)| (*x as u32, *y as u32)).collect();
             chart
-                .draw_series(LineSeries::new(data,
-                    color.stroke_width(2),
-                )).unwrap()
+                .draw_series(LineSeries::new(data, color.stroke_width(2)))
+                .unwrap()
                 .label(name)
                 .legend(move |(x, y)| Rectangle::new([(x, y - 5), (x + 10, y + 5)], color.filled()));
         }
@@ -171,10 +177,13 @@ impl ResultProcessor for OutputPlot {
             .configure_series_labels()
             .border_style(BLACK)
             .background_style(RGBAColor(255, 255, 255, 0.7f64))
-            .draw().unwrap();
+            .draw()
+            .unwrap();
 
         // To avoid the IO failure being ignored silently, we manually call the present function
-        canvas.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
+        canvas
+            .present()
+            .expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
 
         println!("Finished");
     }

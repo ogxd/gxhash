@@ -2,12 +2,11 @@ use ahash::AHashSet;
 use criterion::{criterion_group, criterion_main, Criterion};
 use fnv::FnvHashSet;
 use gxhash::*;
-use twox_hash::xxh3;
 use std::collections::HashSet;
-use std::hash::{BuildHasherDefault, BuildHasher};
+use std::hash::{BuildHasher, BuildHasherDefault};
+use twox_hash::xxh3;
 
 fn hashmap_insertion(c: &mut Criterion) {
-
     // Short keys
     benchmark_for_string(c, "gxhash");
 
@@ -29,7 +28,7 @@ fn benchmark_for_string(c: &mut Criterion, string: &str) {
         iterate(b, string, &mut set);
     });
 
-    let mut set: HashSet::<String, GxBuildHasher> = GxHashSet::<String>::default();
+    let mut set: HashSet<String, GxBuildHasher> = GxHashSet::<String>::default();
     group.bench_function("GxHash", |b| {
         iterate(b, string, &mut set);
     });
@@ -54,7 +53,8 @@ fn benchmark_for_string(c: &mut Criterion, string: &str) {
 
 #[inline(never)]
 fn iterate<T>(b: &mut criterion::Bencher<'_>, string: &str, set: &mut HashSet<String, T>)
-    where T: BuildHasher
+where
+    T: BuildHasher,
 {
     // If hashmap is empty, it may skip hashing the key and simply return false
     // So we add a single value to prevent this optimization
