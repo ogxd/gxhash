@@ -14,14 +14,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Benchmark
-      run: cargo bench --bench throughput --features 'bench-plot'
-
     - name: Switch to nightly rust
       run: rustup default nightly
 
     - name: Benchmark AVX2 (nightly)
-      run: cargo bench --bench throughput --features 'bench-plot avx2'
+      run: cargo bench --bench throughput --features 'bench-plot'
 
     - uses: actions/upload-artifact@v3
       with:
