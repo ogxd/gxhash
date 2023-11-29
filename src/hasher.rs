@@ -1,11 +1,10 @@
-use std::collections::{HashMap, HashSet};
-use std::hash::{BuildHasher, Hasher};
-use std::mem::MaybeUninit;
-
-use rand::RngCore;
-
 use crate::gxhash::platform::*;
 use crate::gxhash::*;
+
+use core::hash::{BuildHasher, Hasher};
+use core::mem::{size_of, MaybeUninit};
+use core::slice;
+use rand::RngCore;
 
 /// A `Hasher` for hashing an arbitrary stream of bytes.
 /// # Features
@@ -30,6 +29,7 @@ impl Default for GxHasher {
     /// Creates a new hasher with a empty seed.
     ///
     /// # Warning ⚠️
+    ///
     /// Not using a seed may make your [`Hasher`] vulnerable to DOS attacks.
     /// It is recommended to use [`GxBuildHasher::default()`] for improved DOS resistance.
     ///
@@ -57,6 +57,7 @@ impl GxHasher {
     /// Creates a new hasher using the provided seed.
     ///
     /// # Warning ⚠️
+    ///
     /// Hardcoding a seed may make your [`Hasher`] vulnerable to DOS attacks.
     /// It is recommended to use [`GxBuildHasher::default()`] for improved DOS resistance.
     ///
@@ -84,7 +85,7 @@ impl GxHasher {
     /// unsigned integer.
     #[inline]
     pub fn finish_u128(&self) -> u128 {
-        debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
+        debug_assert!(size_of::<State>() >= size_of::<u128>());
 
         unsafe {
             let p = &finalize(self.state) as *const State as *const u128;
@@ -120,7 +121,7 @@ impl Default for GxBuildHasher {
         let mut rng = rand::thread_rng();
         unsafe {
             let ptr = uninit.as_mut_ptr() as *mut u8;
-            let slice = std::slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
+            let slice = slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
             rng.fill_bytes(slice);
             GxBuildHasher(uninit.assume_init())
         }
@@ -136,15 +137,82 @@ impl BuildHasher for GxBuildHasher {
 }
 
 /// A `HashMap` using a (DOS-resistant) [`GxBuildHasher`].
-pub type GxHashMap<K, V> = HashMap<K, V, GxBuildHasher>;
+#[cfg(feature = "std")]
+pub type HashMap<K, V> = std::collections::HashMap<K, V, GxBuildHasher>;
+
+/// A convenience trait that can be used together with the type aliases defined
+/// to get access to the `new()` and `with_capacity()` methods for the
+/// [`HashMap`] type alias.
+#[cfg(feature = "std")]
+pub trait HashMapExt {
+    /// Constructs a new HashMap.
+    fn new() -> Self;
+    /// Constructs a new HashMap with a given initial capacity.
+    fn with_capacity(capacity: usize) -> Self;
+}
+
+#[cfg(feature = "std")]
+impl<K, V, S> HashMapExt for std::collections::HashMap<K, V, S>
+where
+    S: BuildHasher + Default,
+{
+    fn new() -> Self {
+        std::collections::HashMap::with_hasher(S::default())
+    }
+
+    fn with_capacity(capacity: usize) -> Self {
+        std::collections::HashMap::with_capacity_and_hasher(capacity, S::default())
+    }
+}
 
 /// A `HashSet` using a (DOS-resistant) [`GxBuildHasher`].
-pub type GxHashSet<T> = HashSet<T, GxBuildHasher>;
+#[cfg(feature = "std")]
+pub type HashSet<T> = std::collections::HashSet<T, GxBuildHasher>;
+
+/// A convenience trait that can be used together with the type aliases defined
+/// to get access to the `new()` and `with_capacity()` methods for the
+/// [`HashSet`] type alias.
+#[cfg(feature = "std")]
+pub trait HashSetExt {
+    /// Constructs a new HashMap.
+    fn new() -> Self;
+    /// Constructs a new HashMap with a given initial capacity.
+    fn with_capacity(capacity: usize) -> Self;
+}
+
+#[cfg(feature = "std")]
+impl<K, S> HashSetExt for std::collections::HashSet<K, S>
+where
+    S: BuildHasher + Default,
+{
+    fn new() -> Self {
+        std::collections::HashSet::with_hasher(S::default())
+    }
+
+    fn with_capacity(capacity: usize) -> Self {
+        std::collections::HashSet::with_capacity_and_hasher(capacity, S::default())
+    }
+}
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
+
+    #[test]
+    fn contructors_work() {
+        let mut map = GxHashMap::new();
+        map.insert("foo", 42);
+
+        let mut map = GxHashMap::with_capacity(3);
+        map.insert("friday", 13);
+
+        let mut set = GxHashSet::new();
+        set.insert(42);
+
+        let mut map = GxHashSet::with_capacity(3);
+        map.insert(13);
+    }
 
     #[test]
     fn hasher_produces_stable_hashes() {

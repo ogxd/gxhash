@@ -13,6 +13,7 @@ categories = ["algorithms", "data-structures", "no-std"]
 exclude = ["article/*"]
 
 [features]
+default = ["std"]
 # The 256-bit state GxHash is faster for large inputs than the default 128-bit state implementation, but faster on smaller hashes.
 # Please not however that the 256-bit GxHash and the 128-bit GxHash don't generate the same hashes for a same input.
 # Requires AVX2 and VAES (X86).
@@ -21,23 +22,24 @@ avx2 = []
 bench-csv = []
 bench-md = []
 bench-plot = []
+std = []
 
 [dependencies]
 rand = "0.8"
 
 [dev-dependencies]
-rstest = "0.18.2"
-lazy_static = { version = "1.4" }
-# Benchmarks
-criterion = { version = "0.5.1" }
 # Other hash algorithms, for comparison.
 ahash = "0.8.6"
+# Benchmarks
+criterion = { version = "0.5.1" }
+fnv = "1.0.3"
+highway = "1.1.0"
+lazy_static = { version = "1.4" }
+metrohash = "1.0.6"
+rstest = "0.18.2"
+seahash = "4.1.0"
 t1ha = "0.1.0"
 twox-hash = "1.6.3"
-highway = "1.1.0"
-seahash = "4.1.0"
-metrohash = "1.0.6"
-fnv = "1.0.3"
 
 [dev-dependencies.plotters]
 version = "0.3.5"
