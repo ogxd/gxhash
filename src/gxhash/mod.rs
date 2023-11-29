@@ -185,34 +185,38 @@ unsafe fn compress_many<T>(mut ptr: *const T::State, hash_vector: T::State, rema
 
     const UNROLL_FACTOR: usize = 8;
 
-    let unrollable_blocks_count: usize = remaining_bytes / (T::VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
-    let end_address = ptr.add(unrollable_blocks_count) as usize;
-    let mut hash_vector = hash_vector;
-    while (ptr as usize) < end_address {
-
-        load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
-
-        let mut tmp: T::State;
-        tmp = T::compress_fast(v0, v1);
-        tmp = T::compress_fast(tmp, v2);
-        tmp = T::compress_fast(tmp, v3);
-        tmp = T::compress_fast(tmp, v4);
-        tmp = T::compress_fast(tmp, v5);
-        tmp = T::compress_fast(tmp, v6);
-        tmp = T::compress_fast(tmp, v7);
-
-        hash_vector = T::compress(hash_vector, tmp);
-    }
+    let unrollable_blocks_count: usize = remaining_bytes / (T::VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR;
 
     let remaining_bytes = remaining_bytes - unrollable_blocks_count * T::VECTOR_SIZE;
     let end_address = ptr.add(remaining_bytes / T::VECTOR_SIZE) as usize;
 
+    let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
         load_unaligned!(ptr, v0);
         hash_vector = T::compress(hash_vector, v0);
     }
 
-    hash_vector
+    let end_address = ptr.add(unrollable_blocks_count) as usize;
+    let mut h1 = hash_vector;
+    let mut h2 = T::create_empty();
+    while (ptr as usize) < end_address {
+
+        load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
+
+        let mut tmp1: T::State;
+        tmp1 = T::compress_fast(v0, v2);
+        tmp1= T::compress_fast(tmp1, v4);
+        tmp1 = T::compress_fast(tmp1, v6);
+        h1 = T::compress(h1, tmp1);
+
+        let mut tmp2: T::State;
+        tmp2 = T::compress_fast(v1, v3);
+        tmp2 = T::compress_fast(tmp2, v5);
+        tmp2 = T::compress_fast(tmp2, v7);
+        h2 = T::compress(h2, tmp2);
+    }
+
+    T::compress(h1, h2)
 }
 
 #[cfg(test)]
