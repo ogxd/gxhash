@@ -4,15 +4,6 @@ use super::*;
 
 pub type State = int8x16_t;
 
-#[repr(C)]
-union ReinterpretUnion {
-    int64: int64x2_t,
-    int32: int32x4_t,
-    uint32: uint32x4_t,
-    int8: int8x16_t,
-    uint8: uint8x16_t,
-}
-
 #[inline(always)]
 pub unsafe fn create_empty() -> State {
     vdupq_n_s8(0)
@@ -52,7 +43,7 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
 pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
     let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
-    let partial_vector = vandq_s8(load_unaligned(data), ReinterpretUnion { uint8: mask }.int8);
+    let partial_vector = vandq_s8(load_unaligned(data), vreinterpretq_s8_u8(mask));
     vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
 }
 
@@ -61,36 +52,36 @@ pub unsafe fn compress(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     let keys_1 = vld1q_u32([0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542].as_ptr());
     let keys_2 = vld1q_u32([0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39136BD9].as_ptr());
 
-    let mut bs = vreinterpretq_u8_s8(b);
-    bs = aes_encrypt(bs, vreinterpretq_u8_u32(keys_1));
-    bs = aes_encrypt(bs, vreinterpretq_u8_u32(keys_2));
+    let mut bs = b;
+    bs = aes_encrypt(bs, vreinterpretq_s8_u32(keys_1));
+    bs = aes_encrypt(bs, vreinterpretq_s8_u32(keys_2));
 
-    vreinterpretq_s8_u8(aes_encrypt_last(vreinterpretq_u8_s8(a), bs))
+    aes_encrypt_last(a, bs)
 }
 
 #[inline(always)]
 pub unsafe fn compress_fast(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    vreinterpretq_s8_u8(aes_encrypt(vreinterpretq_u8_s8(a), vreinterpretq_u8_s8(b)))
+    aes_encrypt(a, b)
 }
 
 #[inline(always)]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
-unsafe fn aes_encrypt(data: uint8x16_t, keys: uint8x16_t) -> uint8x16_t {
+pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     // Encrypt
-    let encrypted = vaeseq_u8(data, vdupq_n_u8(0));
+    let encrypted = vaeseq_u8(vreinterpretq_u8_s8(data), vdupq_n_u8(0));
     // Mix columns
     let mixed = vaesmcq_u8(encrypted);
     // Xor keys
-    veorq_u8(mixed, keys)
+    vreinterpretq_s8_u8(veorq_u8(mixed, vreinterpretq_u8_s8(keys)))
 }
 
 #[inline(always)]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
-unsafe fn aes_encrypt_last(data: uint8x16_t, keys: uint8x16_t) -> uint8x16_t {
+pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     // Encrypt
-    let encrypted = vaeseq_u8(data, vdupq_n_u8(0));
+    let encrypted = vaeseq_u8(vreinterpretq_u8_s8(data), vdupq_n_u8(0));
     // Xor keys
-    veorq_u8(encrypted, keys)
+    vreinterpretq_s8_u8(veorq_u8(encrypted, vreinterpretq_u8_s8(keys)))
 }
 
 #[inline(always)]
@@ -101,12 +92,12 @@ pub unsafe fn finalize(hash: State) -> State {
     let keys_3 = vld1q_u32([0xC78B122B, 0x5544B1B7, 0x689D2B7D, 0xD0012E32].as_ptr());
 
     // 3 rounds of AES
-    let mut hash = ReinterpretUnion { int8: hash }.uint8;
-    hash = aes_encrypt(hash, ReinterpretUnion { uint32: keys_1 }.uint8);
-    hash = aes_encrypt(hash, ReinterpretUnion { uint32: keys_2 }.uint8);
-    hash = aes_encrypt_last(hash, ReinterpretUnion { uint32: keys_3 }.uint8);
+    let mut hash = hash;
+    hash = aes_encrypt(hash, vreinterpretq_s8_u32(keys_1));
+    hash = aes_encrypt(hash, vreinterpretq_s8_u32(keys_2));
+    hash = aes_encrypt_last(hash, vreinterpretq_s8_u32(keys_3));
 
-    ReinterpretUnion { uint8: hash }.int8
+    hash
 }
 
 #[inline(always)]
