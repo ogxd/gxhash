@@ -23,6 +23,7 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
 }
 
+#[cfg(not(hybrid))]
 #[inline(always)]
 unsafe fn compress_8_128(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
     let mut lane1 = create_empty();

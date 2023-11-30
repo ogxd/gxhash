@@ -84,7 +84,7 @@ pub unsafe fn finalize(hash: State) -> State {
 
 #[cfg(not(hybrid))]
 #[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
+pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State) -> State {
     compress_8_128(ptr, end_address, hash_vector)
 }
 
@@ -94,8 +94,6 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
 pub unsafe fn compress_x2(a: __m256i, b: __m256i) -> __m256i {
     let keys_1 = _mm256_set_epi32(0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E, 0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E);
     let keys_2 = _mm256_set_epi32(0x39136BD9, 0xB361DC58, 0xCB6B2E9B, 0x03FCE279, 0x39136BD9, 0xB361DC58, 0xCB6B2E9B, 0x03FCE279);
-
-    use std::arch::asm;
 
     // 2+1 rounds of AES for compression
     let mut b = _mm256_aesenc_epi128(b, keys_1);
@@ -107,18 +105,20 @@ pub unsafe fn compress_x2(a: __m256i, b: __m256i) -> __m256i {
 #[inline(always)]
 #[allow(overflowing_literals)]
 pub unsafe fn compress_fast_x2(a: __m256i, b: __m256i) -> __m256i {
-    std::arch::asm!(
-        "vaesenc {0}, {0}, {1}",
-        inout(ymm_reg) a => _,
-        in(ymm_reg) b
-    );
-    return a;
-    //return _mm256_aesenc_epi128(a, b)
+    // let mut a = a;
+    // std::arch::asm!(
+    //     //       in   out  key
+    //     "vaesenc {1}, {1}, {0}",
+    //     in(ymm_reg) b,
+    //     inout(ymm_reg) a
+    // );
+    // return a;
+    _mm256_aesenc_epi128(a, b)
 }
 
 #[cfg(hybrid)]
 #[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
+pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State) -> State {
     macro_rules! load_unaligned_x2 {
         ($ptr:ident, $($var:ident),+) => {
             $(
@@ -135,11 +135,18 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
 
         load_unaligned_x2!(ptr, v0, v1, v2, v3);
 
-        let mut tmp: __m256i;
-        tmp = compress_fast_x2(v0, v1);
-        tmp = compress_fast_x2(tmp, v2);
-        tmp = compress_fast_x2(tmp, v3);
-        lane = compress_x2(lane, tmp);
+        v0 = compress_fast_x2(v0, v1);
+        v0 = compress_fast_x2(v0, v2);
+        v0 = compress_fast_x2(v0, v3);
+        lane = compress_x2(lane, v0);
+
+        //let mut v0 = _mm256_loadu_si256(ptr);
+        // std::arch::asm!(
+        //     "vaesenc 32({v0}), {v0}, {v0}",
+        //     "vaesenc 64({v0}), {v0}, {v0}",
+        //     "vaesenc 96({v0}), {v0}, {v0}",
+        //     v0 = inout(ymm_reg) v0
+        // );
     }
     
     // Extract the two 128-bit lanes
