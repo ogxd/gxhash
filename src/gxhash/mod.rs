@@ -262,7 +262,7 @@ mod tests {
     fn is_stable() {
         assert_eq!(456576800, gxhash32(&[0u8; 0], 0));
         assert_eq!(978957914, gxhash32(&[0u8; 1], 0));
-        assert_eq!(2784833902, gxhash32(&[0u8; 1000], 0));
-        assert_eq!(846365486, gxhash32(&[42u8; 4242], 42));
+        assert_eq!(3174569895, gxhash32(&[0u8; 1000], 0));
+        assert_eq!(3539668188, gxhash32(&[42u8; 4242], 42));
     }
 }

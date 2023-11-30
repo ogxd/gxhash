@@ -107,12 +107,13 @@ pub unsafe fn compress_x2(a: __m256i, b: __m256i) -> __m256i {
 #[inline(always)]
 #[allow(overflowing_literals)]
 pub unsafe fn compress_fast_x2(a: __m256i, b: __m256i) -> __m256i {
-    std::arch::asm!(
-        "vaesenc {0}, {1}, {0}",
-        inout(ymm_reg) a => _,
-        in(ymm_reg) b
-    );
-    return a;
+    // std::arch::asm!(
+    //     "vaesenc {0}, {1}, {0}",
+    //     inout(ymm_reg) a => _,
+    //     in(ymm_reg) b
+    // );
+    // return a;
+    _mm256_aesenc_epi128(a, b)
 }
 
 #[cfg(hybrid)]
