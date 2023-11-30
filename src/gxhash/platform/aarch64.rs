@@ -110,44 +110,6 @@ pub unsafe fn finalize(hash: State) -> State {
 }
 
 #[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
-    let mut h1 = create_empty();
-    let mut h2 = create_empty();
-    while (ptr as usize) < end_address {
-
-        crate::gxhash::load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
-
-        let mut tmp1: State;
-        tmp1 = compress_fast(v0, v2);
-        tmp1 = compress_fast(tmp1, v4);
-        tmp1 = compress_fast(tmp1, v6);
-        h1 = compress(h1, tmp1);
-
-        let mut tmp2: State;
-        tmp2 = compress_fast(v1, v3);
-        tmp2 = compress_fast(tmp2, v5);
-        tmp2 = compress_fast(tmp2, v7);
-        h2 = compress(h2, tmp2);
-    }
-    compress(hash_vector, compress_fast(h1, h2))
-
-    // crate::gxhash::load_unaligned!(ptr, l0, l1, l2, l3);
-    // while (ptr as usize) < end_address {
-
-    //     crate::gxhash::load_unaligned!(ptr, v0, v1, v2, v3);
-
-    //     l0 = compress_fast(l0, v0);
-    //     l1 = compress_fast(l1, v1);
-    //     l2 = compress_fast(l2, v2);
-    //     l3 = compress_fast(l3, v3);
-    // }
-    // let l01 = compress_fast(l0, l1);
-    // let l23 = compress_fast(l2, l3);
-    // let l45 = compress_fast(l4, l5);
-    // let l67 = compress_fast(l6, l7);
-
-    // let l0123 = compress_fast(l01, l23);
-    // let l4567 = compress_fast(l45, l67);
-
-    // compress(hash_vector, compress_fast(l0123, l4567))
+pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State) -> State {
+    compress_8_128(ptr, end_address, hash_vector)
 }

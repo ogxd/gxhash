@@ -23,4 +23,28 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
 }
 
-// compress_8 128 bit if x86
+#[inline(always)]
+unsafe fn compress_8_128(mut ptr: *const State, end_address: usize, hash_vector: State) -> State {
+    let mut lane1 = create_empty();
+    let mut lane2 = create_empty();
+    while (ptr as usize) < end_address {
+
+        crate::gxhash::load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
+
+        let mut tmp1: State;
+        let mut tmp2: State;
+
+        tmp1 = compress_fast(v0, v2);
+        tmp2 = compress_fast(v1, v3);
+
+        tmp1 = compress_fast(tmp1, v4);
+        tmp2 = compress_fast(tmp2, v5);
+
+        tmp1 = compress_fast(tmp1, v6);
+        tmp2 = compress_fast(tmp2, v7);
+
+        lane1 = compress(lane1, tmp1);
+        lane2 = compress(lane2, tmp2);
+    }
+    compress(hash_vector, compress_fast(lane1, lane2))
+}

@@ -127,12 +127,15 @@ unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_byt
     let remaining_bytes = remaining_bytes - unrollable_blocks_count * VECTOR_SIZE;
     let end_address = ptr.add(remaining_bytes / VECTOR_SIZE) as usize;
 
+    // Process first individual blocks until we have an whole number of 8 blocks
     let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
         load_unaligned!(ptr, v0);
         hash_vector = compress(hash_vector, v0);
     }
 
+    // Process the remaining n * 8 blocks
+    // This part may use 128-bit or 256-bit
     let end_address = ptr.add(unrollable_blocks_count) as usize;
     compress_8(ptr, end_address, hash_vector)
 }
