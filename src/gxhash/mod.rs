@@ -80,20 +80,23 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         return get_partial(ptr, len);
     }
 
-    let remaining_bytes = len % VECTOR_SIZE;
+    let extra_bytes_count = len % VECTOR_SIZE;
+    let remaining_bytes: usize;
 
     // The input does not fit on a single SIMD vector
     let hash_vector: State;
-    if remaining_bytes == 0 {
+    if extra_bytes_count == 0 {
         load_unaligned!(ptr, v0);
         hash_vector = v0;
+        remaining_bytes = len - VECTOR_SIZE;
     } else {
         // If the input length does not match the length of a whole number of SIMD vectors,
         // it means we'll need to read a partial vector. We can start with the partial vector first,
         // so that we can safely read beyond since we expect the following bytes to still be part of
         // the input
-        hash_vector = get_partial_unsafe(ptr, remaining_bytes);
-        ptr = ptr.cast::<u8>().add(remaining_bytes).cast();
+        hash_vector = get_partial_unsafe(ptr, extra_bytes_count);
+        ptr = ptr.cast::<u8>().add(extra_bytes_count).cast();
+        remaining_bytes = len - extra_bytes_count;
     }
 
     #[allow(unused_assignments)]
@@ -111,7 +114,7 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         compress(hash_vector, compress(compress(v0, v1), v2))
     } else {
         // Input message is large and we can use the high ILP loop
-        compress_many(ptr, hash_vector, len)
+        compress_many(ptr, hash_vector, remaining_bytes)
     }
 }
 
@@ -187,6 +190,24 @@ mod tests {
             let new_hash = gxhash32(&mut bytes[..i], 0);
             assert_ne!(ref_hash, new_hash, "Same hash at size {i} ({new_hash})");
             ref_hash = new_hash;
+        }
+    }
+
+    #[test]
+    fn does_not_hash_outside_of_bounds() {
+        let mut bytes = [0u8; 1200];
+        const OFFSET: usize = 100;
+
+        let mut rng = rand::thread_rng();
+        rng.fill(bytes.as_mut_slice());
+
+        for i in 1..1000 {
+            let hash = gxhash32(&bytes[OFFSET..i+OFFSET], 42);
+            // We change the bytes right before and after the input slice. It shouldn't alter the hash.
+            rng.fill(&mut bytes[..OFFSET]);
+            rng.fill(&mut bytes[i+OFFSET..]);
+            let new_hash = gxhash32(&bytes[OFFSET..i+OFFSET], 42);
+            assert_eq!(new_hash, hash, "Hashed changed for input size {i} ({new_hash} != {hash})");
         }
     }
 
