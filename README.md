@@ -121,6 +121,8 @@ It has not been assessed if GxHash is preimage resistant and how difficult it is
 
 ## Benchmarks
 
+[![Benchmark](https://github.com/ogxd/gxhash/actions/workflows/bench.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/bench.yml)
+
 To run the benchmarks locally do one of the following:
 
 ```bash
@@ -135,9 +137,9 @@ cargo bench --bench throughput --features bench-plot
 ```
 
 GxHash is continuously benchmarked on X86 and ARM Github runners.
-[![Benchmark](https://github.com/ogxd/gxhash/actions/workflows/bench.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/bench.yml)
 
 **Lastest Benchmark Results:**
+
 ![aarch64](./benches/throughput/aarch64.svg)
 ![x86_64](./benches/throughput/x86_64.svg)
 ![x86_64-avx2](./benches/throughput/x86_64-avx2.svg)
