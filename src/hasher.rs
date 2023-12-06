@@ -107,6 +107,13 @@ impl Hasher for GxHasher {
         // Improvement: only compress at this stage and finalize in finish
         self.state = unsafe { compress_fast(compress_all(bytes), self.state) };
     }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.state = unsafe {
+            compress_fast(std::arch::aarch64::vreinterpretq_s8_u32(std::arch::aarch64::vdupq_n_u32(i)), self.state)
+        };
+    }
 }
 
 /// A builder for building GxHasher with randomized seeds by default, for improved DOS resistance.
