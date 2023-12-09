@@ -100,7 +100,7 @@ pub unsafe fn load_u32(x: u32) -> State {
 
 #[inline(always)]
 pub unsafe fn load_u64(x: u64) -> State {
-    _mm256_set1_epi64(x as i64)
+    _mm256_set1_epi64x(x as i64)
 }
 
 #[inline(always)]
@@ -127,7 +127,7 @@ pub unsafe fn load_i32(x: i32) -> State {
 
 #[inline(always)]
 pub unsafe fn load_i64(x: i64) -> State {
-    _mm256_set1_epi64(x)
+    _mm256_set1_epi64x(x)
 }
 
 #[inline(always)]
