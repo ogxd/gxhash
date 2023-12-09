@@ -107,7 +107,7 @@ pub unsafe fn load_u64(x: u64) -> State {
 pub unsafe fn load_u128(x: u128) -> State {
     let ptr = &x as *const u128 as *const __m128i;
     let s128 = _mm_loadu_si128(ptr);
-    _mm256_set_m128(s128, s128)
+    _mm256_set_m128i(s128, s128)
 }
 
 #[inline(always)]
@@ -134,5 +134,5 @@ pub unsafe fn load_i64(x: i64) -> State {
 pub unsafe fn load_i128(x: i128) -> State {
     let ptr = &x as *const i128 as *const __m128i;
     let s128 = _mm_loadu_si128(ptr);
-    _mm256_set_m128(s128, s128)
+    _mm256_set_m128i(s128, s128)
 }
