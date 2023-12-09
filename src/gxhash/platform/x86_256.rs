@@ -82,3 +82,57 @@ pub unsafe fn finalize(hash: State) -> State {
     let permuted = _mm256_permute2x128_si256(hash, hash, 0x21);
     _mm256_xor_si256(hash, permuted)
 }
+
+#[inline(always)]
+pub unsafe fn load_u8(x: u8) -> State {
+    _mm256_set1_epi8(x as i8)
+}
+
+#[inline(always)]
+pub unsafe fn load_u16(x: u16) -> State {
+    _mm256_set1_epi16(x as i16)
+}
+
+#[inline(always)]
+pub unsafe fn load_u32(x: u32) -> State {
+    _mm256_set1_epi32(x as i32)
+}
+
+#[inline(always)]
+pub unsafe fn load_u64(x: u64) -> State {
+    _mm256_set1_epi64(x as i64)
+}
+
+#[inline(always)]
+pub unsafe fn load_u128(x: u128) -> State {
+    let ptr = &x as *const u128 as *const __m128i;
+    let s128 = _mm_loadu_si128(ptr);
+    _mm256_set_m128(s128, s128)
+}
+
+#[inline(always)]
+pub unsafe fn load_i8(x: i8) -> State {
+    _mm256_set1_epi8(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i16(x: i16) -> State {
+    _mm256_set1_epi16(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i32(x: i32) -> State {
+    _mm256_set1_epi32(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i64(x: i64) -> State {
+    _mm256_set1_epi64(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i128(x: i128) -> State {
+    let ptr = &x as *const i128 as *const __m128i;
+    let s128 = _mm_loadu_si128(ptr);
+    _mm256_set_m128(s128, s128)
+}

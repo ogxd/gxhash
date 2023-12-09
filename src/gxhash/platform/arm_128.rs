@@ -108,3 +108,55 @@ pub unsafe fn finalize(hash: State) -> State {
 
     ReinterpretUnion { uint8: hash }.int8
 }
+
+#[inline(always)]
+pub unsafe fn load_u8(x: u8) -> State {
+    vreinterpretq_s8_u8(vdupq_n_u8(x))
+}
+
+#[inline(always)]
+pub unsafe fn load_u16(x: u16) -> State {
+    vreinterpretq_s8_u16(vdupq_n_u16(x))
+}
+
+#[inline(always)]
+pub unsafe fn load_u32(x: u32) -> State {
+    vreinterpretq_s8_u32(vdupq_n_u32(x))
+}
+
+#[inline(always)]
+pub unsafe fn load_u64(x: u64) -> State {
+    vreinterpretq_s8_u64(vdupq_n_u64(x))
+}
+
+#[inline(always)]
+pub unsafe fn load_u128(x: u128) -> State {
+    let ptr = &x as *const u128 as *const i8;
+    vld1q_s8(ptr)
+}
+
+#[inline(always)]
+pub unsafe fn load_i8(x: i8) -> State {
+    vdupq_n_s8(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i16(x: i16) -> State {
+    vreinterpretq_s8_s16(vdupq_n_s16(x))
+}
+
+#[inline(always)]
+pub unsafe fn load_i32(x: i32) -> State {
+    vreinterpretq_s8_s32(vdupq_n_s32(x))
+}
+
+#[inline(always)]
+pub unsafe fn load_i64(x: i64) -> State {
+    vreinterpretq_s8_s64(vdupq_n_s64(x))
+}
+
+#[inline(always)]
+pub unsafe fn load_i128(x: i128) -> State {
+    let ptr = &x as *const i128 as *const i8;
+    vld1q_s8(ptr)
+}

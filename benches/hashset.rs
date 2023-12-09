@@ -20,7 +20,7 @@ fn hashset_contains(c: &mut Criterion) {
 fn benchmark<T>(c: &mut Criterion, name: &str, value: T)
     where T: Eq+PartialEq+Hash+Default
 {
-    let mut group = c.benchmark_group(format!("HashSet<{}>/{}", std::any::type_name::<T>(), name));
+    let mut group = c.benchmark_group(format!("HashSet/{}", name));
 
     let mut set = HashSet::<T>::new();
     group.bench_function("Default Hasher", |b| {

@@ -93,6 +93,17 @@ impl GxHasher {
     }
 }
 
+macro_rules! write {
+    ($name:ident, $type:ty, $load:expr) => {
+        #[inline]
+        fn $name(&mut self, value: $type) {
+            self.state = unsafe {
+                compress_fast($load(value), self.state)
+            };
+        }
+    }
+}
+
 impl Hasher for GxHasher {
     #[inline]
     fn finish(&self) -> u64 {
@@ -108,19 +119,16 @@ impl Hasher for GxHasher {
         self.state = unsafe { compress_fast(compress_all(bytes), self.state) };
     }
 
-    // #[inline]
-    // fn write_u32(&mut self, i: u32) {
-    //     self.state = unsafe {
-    //         compress_fast(std::arch::aarch64::vreinterpretq_s8_u32(std::arch::aarch64::vdupq_n_u32(i)), self.state)
-    //     };
-    // }
-
-    // #[inline]
-    // fn write_u64(&mut self, i: u64) {
-    //     self.state = unsafe {
-    //         compress_fast(std::arch::aarch64::vreinterpretq_s8_u64(std::arch::aarch64::vdupq_n_u64(i)), self.state)
-    //     };
-    // }
+    write!(write_u8, u8, load_u8);
+    write!(write_u16, u16, load_u16);
+    write!(write_u32, u32, load_u32);
+    write!(write_u64, u64, load_u64);
+    write!(write_u128, u128, load_u128);
+    write!(write_i8, i8, load_i8);
+    write!(write_i16, i16, load_i16);
+    write!(write_i32, i32, load_i32);
+    write!(write_i64, i64, load_i64);
+    write!(write_i128, i128, load_i128);
 }
 
 /// A builder for building GxHasher with randomized seeds by default, for improved DOS resistance.
