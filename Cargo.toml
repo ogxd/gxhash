@@ -59,7 +59,3 @@ harness = false
 [[bench]]
 name = "hashset"
 harness = false
-
-[[bench]]
-name = "hashset_u32"
-harness = false

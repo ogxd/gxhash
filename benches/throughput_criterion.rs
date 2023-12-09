@@ -23,7 +23,7 @@ fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, deleg
         let slice = &data[0..len]; // Aligned
         // let slice = &data[1..len]; // Unaligned
         c.bench_with_input(BenchmarkId::new(name, len), slice, |bencher, input| {
-            bencher.iter(|| delegate(input, 0))
+            bencher.iter(|| delegate(criterion::black_box(input), criterion::black_box(42)))
         });
     }
 }
@@ -45,13 +45,13 @@ fn benchmark_all(c: &mut Criterion) {
 
     // GxHash
     let algo_name = if cfg!(feature = "avx2") { "gxhash-avx2" } else { "gxhash" };
-    benchmark(&mut group, slice, algo_name, |data: &[u8], _: i32| -> u64 {
-        gxhash64(data, 0)
+    benchmark(&mut group, slice, algo_name, |data: &[u8], seed: i32| -> u64 {
+        gxhash64(data, seed as i64)
     });
     
     // AHash
-    let ahash_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
-    benchmark(&mut group, slice, "ahash", |data: &[u8], _: i32| -> u64 {
+    benchmark(&mut group, slice, "ahash", |data: &[u8], seed: i32| -> u64 {
+        let ahash_hasher = ahash::RandomState::with_seeds(seed as u64, 0, 0, 0);
         ahash_hasher.hash_one(data)
     });
 
