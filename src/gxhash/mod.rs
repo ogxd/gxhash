@@ -72,6 +72,11 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
 
     let len = input.len();
+
+    if len == 0 {
+        return create_empty();
+    }
+
     let mut ptr = input.as_ptr() as *const State;
 
     if len <= VECTOR_SIZE {
@@ -108,10 +113,6 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         // Fast path when input length > 32 and <= 48
         load_unaligned!(ptr, v0, v1);
         compress(hash_vector, compress(v0, v1))
-    } else if len <= VECTOR_SIZE * 4 {
-        // Fast path when input length > 48 and <= 64
-        load_unaligned!(ptr, v0, v1, v2);
-        compress(hash_vector, compress(compress(v0, v1), v2))
     } else {
         // Input message is large and we can use the high ILP loop
         compress_many(ptr, hash_vector, remaining_bytes)
