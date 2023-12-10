@@ -115,7 +115,6 @@ impl Hasher for GxHasher {
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        // Improvement: only compress at this stage and finalize in finish
         self.state = unsafe { compress_fast(compress_all(bytes), self.state) };
     }
 
@@ -180,6 +179,14 @@ mod tests {
         assert!(hashset.insert("world"));
         assert!(!hashset.insert("hello"));
         assert!(hashset.insert("bye"));
+    }
+
+    #[test]
+    fn hasher_handles_empty_inputs() {
+        let mut hashset = GxHashSet::default();
+        // Getting a ptr from a Vec::<u8>::new() return a pointer with address of 1
+        // We must make sure we dont SIGSEGV in such case
+        assert!(hashset.insert(Vec::<u8>::new()));
     }
 
     // This is important for DOS resistance
