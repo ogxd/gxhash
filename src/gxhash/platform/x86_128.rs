@@ -81,3 +81,55 @@ pub unsafe fn finalize(hash: State) -> State {
 
     hash
 }
+
+#[inline(always)]
+pub unsafe fn load_u8(x: u8) -> State {
+    _mm_set1_epi8(x as i8)
+}
+
+#[inline(always)]
+pub unsafe fn load_u16(x: u16) -> State {
+    _mm_set1_epi16(x as i16)
+}
+
+#[inline(always)]
+pub unsafe fn load_u32(x: u32) -> State {
+    _mm_set1_epi32(x as i32)
+}
+
+#[inline(always)]
+pub unsafe fn load_u64(x: u64) -> State {
+    _mm_set1_epi64x(x as i64)
+}
+
+#[inline(always)]
+pub unsafe fn load_u128(x: u128) -> State {
+    let ptr = &x as *const u128 as *const State;
+    _mm_loadu_si128(ptr)
+}
+
+#[inline(always)]
+pub unsafe fn load_i8(x: i8) -> State {
+    _mm_set1_epi8(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i16(x: i16) -> State {
+    _mm_set1_epi16(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i32(x: i32) -> State {
+    _mm_set1_epi32(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i64(x: i64) -> State {
+    _mm_set1_epi64x(x)
+}
+
+#[inline(always)]
+pub unsafe fn load_i128(x: i128) -> State {
+    let ptr = &x as *const i128 as *const State;
+    _mm_loadu_si128(ptr)
+}
