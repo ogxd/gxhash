@@ -26,8 +26,8 @@ bench-plot = []
 rand = "0.8"
 
 [dev-dependencies]
-rstest = "0.18.2"
 lazy_static = { version = "1.4" }
+itertools = "0.12.0"
 # Benchmarks
 criterion = { version = "0.5.1" }
 # Other hash algorithms, for comparison.
@@ -58,4 +58,8 @@ harness = false
 
 [[bench]]
 name = "hashset"
+harness = false
+
+[[bench]]
+name = "quality"
 harness = false
