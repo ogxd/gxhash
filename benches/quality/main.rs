@@ -5,12 +5,13 @@ use criterion::black_box;
 fn main() {
     bench_hasher_quality::<gxhash::GxBuildHasher>("GxHash");
     bench_hasher_quality::<ahash::RandomState>("AHash");
-    bench_hasher_quality::<fnv::FnvBuildHasher>("FNV-1a");
+    bench_hasher_quality::<t1ha::T1haBuildHasher>("T1ha");
     bench_hasher_quality::<twox_hash::xxh3::RandomHashBuilder64>("XxHash3");
     bench_hasher_quality::<std::collections::hash_map::RandomState>("Default");
+    bench_hasher_quality::<fnv::FnvBuildHasher>("FNV-1a");
 }
 
-macro_rules! trace_call {
+macro_rules! check {
     ($func:expr) => {
         let score = $func;
         let name = stringify!($func).replace('\n', "").replace(" ", "");
@@ -28,38 +29,45 @@ fn bench_hasher_quality<B>(name: &str)
 {
     println!("Bench {}", name);
 
-    trace_call!(avalanche::<B, 4>());
-    trace_call!(avalanche::<B, 10>());
+    check!(avalanche::<B, 4>());
+    check!(avalanche::<B, 10>());
+    check!(avalanche::<B, 32>());
+    check!(avalanche::<B, 128>());
+    check!(avalanche::<B, 512>());
 
-    trace_call!(distribution_values::<B, 4>(128 * 128));
-    trace_call!(distribution_values::<B, 16>(128 * 128));
+    check!(distribution_values::<B, 4>(128 * 128));
+    check!(distribution_values::<B, 16>(128 * 128));
+    check!(distribution_values::<B, 128>(128 * 128));
+    check!(distribution_values::<B, 512>(128 * 128));
 
-    trace_call!(distribution_bits::<B, 4>());
-    trace_call!(distribution_bits::<B, 16>());
+    check!(distribution_bits::<B, 4>());
+    check!(distribution_bits::<B, 16>());
+    check!(distribution_bits::<B, 128>());
+    check!(distribution_bits::<B, 512>());
 
-    trace_call!(zeroes::<B>(128 * 128));
+    check!(collisions_padded_zeroes::<B>(128 * 128));
 
-    trace_call!(collisions_bits::<B>(16, 9));
-    trace_call!(collisions_bits::<B>(24, 9));
-    // collisions_bits::<B>(32, 7);
-    // collisions_bits::<B>(40, 6);
-    // collisions_bits::<B>(56, 5);
-    // collisions_bits::<B>(72, 5);
-    // collisions_bits::<B>(96, 4);
-    // collisions_bits::<B>(160, 4);
-    // collisions_bits::<B>(256, 3);
-    // collisions_bits::<B>(512, 3);
-    // collisions_bits::<B>(2048, 2);
+    check!(collisions_flipped_n_bits::<B, 2>(9));
+    check!(collisions_flipped_n_bits::<B, 3>(9));
+    check!(collisions_flipped_n_bits::<B, 4>(7));
+    check!(collisions_flipped_n_bits::<B, 5>(6));
+    check!(collisions_flipped_n_bits::<B, 6>(5));
+    check!(collisions_flipped_n_bits::<B, 7>(5));
+    check!(collisions_flipped_n_bits::<B, 9>(4));
+    check!(collisions_flipped_n_bits::<B, 20>(4));
+    check!(collisions_flipped_n_bits::<B, 32>(3));
+    check!(collisions_flipped_n_bits::<B, 64>(3));
+    check!(collisions_flipped_n_bits::<B, 256>(2));
 
-    //powerset_bytes::<B>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    check!(collisions_powerset_bytes::<B>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
 
-    trace_call!(permutations_values::<B, u8>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
-    // permutations_values::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    check!(collisions_permuted_hasher_values::<B, u8>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
+    check!(collisions_permuted_hasher_values::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
 
-    trace_call!(powerset_values::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]));
+    check!(collisions_powerset_hasher_values::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]));
 }
 
-fn permutations_values<B, D>(data: &[impl Hash]) -> f64
+fn collisions_permuted_hasher_values<B, D>(data: &[impl Hash]) -> f64
     where B : BuildHasher + Default
 {
     use itertools::Itertools;
@@ -82,7 +90,7 @@ fn permutations_values<B, D>(data: &[impl Hash]) -> f64
     (i - set.len()) as f64 / i as f64
 }
 
-fn powerset_values<B, D>(data: &[impl Hash]) -> f64
+fn collisions_powerset_hasher_values<B, D>(data: &[impl Hash]) -> f64
     where B : BuildHasher + Default
 {
     use itertools::Itertools;
@@ -105,7 +113,7 @@ fn powerset_values<B, D>(data: &[impl Hash]) -> f64
     (i - set.len()) as f64 / i as f64
 }
 
-fn powerset_bytes<B>(data: &[u8]) -> f64
+fn collisions_powerset_bytes<B>(data: &[u8]) -> f64
     where B : BuildHasher + Default
 {
     use itertools::Itertools;
@@ -129,7 +137,7 @@ fn powerset_bytes<B>(data: &[u8]) -> f64
     (i - set.len()) as f64 / i as f64
 }
 
-fn zeroes<B>(max_size: usize) -> f64
+fn collisions_padded_zeroes<B>(max_size: usize) -> f64
     where B : BuildHasher + Default
 {
     let build_hasher = B::default();
@@ -153,11 +161,11 @@ fn zeroes<B>(max_size: usize) -> f64
     (i - set.len()) as f64 / i as f64
 }
 
-fn collisions_bits<B>(size_bits: usize, bits_to_set: usize) -> f64
+fn collisions_flipped_n_bits<B, const N: usize>(bits_to_set: usize) -> f64
     where B : BuildHasher + Default
 {
     let build_hasher = B::default();
-    let mut bytes = vec![0u8; size_bits / 8];
+    let mut bytes = vec![0u8; N];
 
     let mut digits: Vec<usize> = vec![0; bits_to_set];
 
@@ -189,7 +197,7 @@ fn collisions_bits<B>(size_bits: usize, bits_to_set: usize) -> f64
         // Increment the rightmost digit
         for i in (0..bits_to_set).rev() {
             digits[i] += 1;
-            if digits[i] == size_bits - bits_to_set + i + 1 {
+            if digits[i] == N * 8 - bits_to_set + i + 1 {
                 if i == 0 {
                     break 'stop;
                 }
@@ -214,11 +222,11 @@ fn collisions_bits<B>(size_bits: usize, bits_to_set: usize) -> f64
     (i - set.len()) as f64 / i as f64
 }
 
-pub fn avalanche<B, const N: usize>() -> f64
+fn avalanche<B, const N: usize>() -> f64
     where B : BuildHasher + Default
 {
     const AVALANCHE_ITERATIONS: usize = 1000;
-    const AVG_ITERATIONS: usize = 100;
+    const AVG_ITERATIONS: usize = 10;
 
     let mut sum: f64 = 0f64;
     for _ in 0..AVG_ITERATIONS {
@@ -239,7 +247,7 @@ pub fn avalanche<B, const N: usize>() -> f64
 // The more iterations, the more precise the computation will be.
 // Precision is up to log10(iterations) decimals.
 // For very small score, results can be rounded up to the precision level.
-pub fn avalanche_iterations<B, const N: usize>(iterations: usize) -> f64
+fn avalanche_iterations<B, const N: usize>(iterations: usize) -> f64
     where B : BuildHasher + Default
 {
     let build_hasher = B::default();
@@ -290,7 +298,7 @@ pub fn avalanche_iterations<B, const N: usize>(iterations: usize) -> f64
     score
 }
 
-pub fn distribution_bits<B, const N: usize>() -> f64
+fn distribution_bits<B, const N: usize>() -> f64
     where B : BuildHasher + Default
 {
     const DISTRIBUTION_ITERATIONS: usize = 10000;
@@ -311,7 +319,7 @@ pub fn distribution_bits<B, const N: usize>() -> f64
     rounded
 }
 
-pub fn distribution_bits_iterations<B, const N: usize>(iterations: usize) -> f64
+fn distribution_bits_iterations<B, const N: usize>(iterations: usize) -> f64
     where B : BuildHasher + Default
 {
     let build_hasher = B::default();
@@ -381,7 +389,7 @@ fn variance_to_mean(data: &[f64], mean: f64) -> f64 {
     variance
 }
 
-pub fn distribution_values<B, const N: usize>(buckets_count: usize) -> f64
+fn distribution_values<B, const N: usize>(buckets_count: usize) -> f64
     where B : BuildHasher + Default
 {
     const DISTRIBUTION_ITERATIONS: usize = 100000;
@@ -402,7 +410,7 @@ pub fn distribution_values<B, const N: usize>(buckets_count: usize) -> f64
     rounded
 }
 
-pub fn distribution_values_iterations<B, const N: usize>(iterations: usize, buckets_count: usize) -> f64
+fn distribution_values_iterations<B, const N: usize>(iterations: usize, buckets_count: usize) -> f64
     where B : BuildHasher + Default
 {
     let build_hasher = B::default();
