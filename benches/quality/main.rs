@@ -1,4 +1,4 @@
-use std::hash::{Hash, Hasher, BuildHasher};
+use std::{hash::{Hash, Hasher, BuildHasher}, iter};
 use rand::Rng;
 use criterion::black_box;
 
@@ -18,7 +18,7 @@ macro_rules! trace_call {
             println!("  ✅ {}", name);
         } else {
             println!("  ❌ {}", name);
-            println!("     Score: {}", score);
+            println!("     | Score: {}. Expected is 0.", score);
         };
     };
 }
@@ -31,9 +31,13 @@ fn bench_hasher_quality<B>(name: &str)
     trace_call!(avalanche::<B, 4>());
     trace_call!(avalanche::<B, 10>());
 
-    trace_call!(distribution_bits::<B, 10>());
+    trace_call!(distribution_values::<B, 4>(128 * 128));
+    trace_call!(distribution_values::<B, 16>(128 * 128));
 
-    trace_call!(zeroes::<B>(0, 200_000));
+    trace_call!(distribution_bits::<B, 4>());
+    trace_call!(distribution_bits::<B, 16>());
+
+    trace_call!(zeroes::<B>(128 * 128));
 
     trace_call!(collisions_bits::<B>(16, 9));
     trace_call!(collisions_bits::<B>(24, 9));
@@ -125,7 +129,7 @@ fn powerset_bytes<B>(data: &[u8]) -> f64
     (i - set.len()) as f64 / i as f64
 }
 
-fn zeroes<B>(min_size: usize, max_size: usize) -> f64
+fn zeroes<B>(max_size: usize) -> f64
     where B : BuildHasher + Default
 {
     let build_hasher = B::default();
@@ -135,7 +139,7 @@ fn zeroes<B>(min_size: usize, max_size: usize) -> f64
 
     let mut i = 0;
 
-    for _ in min_size..max_size {
+    for _ in 0..max_size {
         let slice = &bytes[0..i];
         let mut hasher = build_hasher.build_hasher();
         hasher.write(slice);
@@ -224,7 +228,7 @@ pub fn avalanche<B, const N: usize>() -> f64
     let score = sum / AVG_ITERATIONS as f64;
     // It's important to round to ignore precision biais from avalanche computation
     // It will make an important difference in cases where avalanche is very small
-    let rounded = (score * AVALANCHE_ITERATIONS as f64).round() / AVALANCHE_ITERATIONS as f64;
+    let rounded = round_to_decimal(score, (AVALANCHE_ITERATIONS as f64).log10() as usize);
 
     //println!("Avalanche score for input of size {}: {}", N, rounded);
 
@@ -300,7 +304,7 @@ pub fn distribution_bits<B, const N: usize>() -> f64
     let score = sum / AVG_ITERATIONS as f64;
     // It's important to round to ignore precision biais from distribution computation
     // It will make an important difference in cases where distribution is very small
-    let rounded = (score * 0.1f64 * DISTRIBUTION_ITERATIONS as f64).round() / 0.1f64 / DISTRIBUTION_ITERATIONS as f64;
+    let rounded = round_to_decimal(score, (DISTRIBUTION_ITERATIONS as f64).log10() as usize);
 
     //println!("Distribution of bits score for input of size {}: {}", N, rounded);
 
@@ -338,7 +342,7 @@ pub fn distribution_bits_iterations<B, const N: usize>(iterations: usize) -> f64
     }
 
     bit_buckets = bit_buckets.iter().map(|x| x / iterations as f64).collect();
-    let std = variance(&bit_buckets);
+    let std = variance_to_mean(&bit_buckets, 0.5);
 
     // The worst possible variance for a set of values between 0 and 1 is 0.25
     let worst_variance = 0.25f64;
@@ -362,4 +366,87 @@ fn variance(data: &[f64]) -> f64 {
     }).sum::<f64>() / data.len() as f64;
 
     variance
+}
+
+fn variance_to_mean(data: &[f64], mean: f64) -> f64 {
+    if data.is_empty() {
+        return 0.0;
+    }
+
+    let variance = data.iter().map(|value| {
+        let diff = mean - value;
+        diff * diff
+    }).sum::<f64>() / data.len() as f64;
+
+    variance
+}
+
+pub fn distribution_values<B, const N: usize>(buckets_count: usize) -> f64
+    where B : BuildHasher + Default
+{
+    const DISTRIBUTION_ITERATIONS: usize = 100000;
+    const AVG_ITERATIONS: usize = 100;
+
+    let mut sum: f64 = 0f64;
+    for _ in 0..AVG_ITERATIONS {
+        sum += distribution_values_iterations::<B, N>(DISTRIBUTION_ITERATIONS, buckets_count);
+    }
+
+    let score = sum / AVG_ITERATIONS as f64;
+    // It's important to round to ignore precision biais from distribution computation
+    // It will make an important difference in cases where distribution is very small
+    let rounded = round_to_decimal(score, (DISTRIBUTION_ITERATIONS as f64).log10() as usize);
+
+    //println!("Distribution of values score for input of size {}: {}", N, score);
+
+    rounded
+}
+
+pub fn distribution_values_iterations<B, const N: usize>(iterations: usize, buckets_count: usize) -> f64
+    where B : BuildHasher + Default
+{
+    let build_hasher = B::default();
+
+    const MAX_U64: u64 = u64::MAX;
+
+    let mut buckets = vec![0f64; buckets_count];
+
+    let mut rng = rand::thread_rng();
+
+    let input: &mut [u8] = &mut [0u8; N];
+
+    for _ in 0..iterations {
+
+        // Random input on each iteration
+        rng.fill(input);
+
+        let mut hasher = build_hasher.build_hasher();
+        hasher.write(&input);
+        let hash = hasher.finish();
+
+        let hash_f = hash as f64;
+
+        let bucketed_f = hash_f / MAX_U64 as f64;
+
+        let index = (buckets_count as f64 * bucketed_f).floor() as usize;
+
+        buckets[index] += 1f64;
+    }
+
+    buckets = buckets.iter().map(|x| x / iterations as f64).collect();
+    let std = variance(&buckets);
+
+    // The worst possible variance for these buckets is 1 / buckets_count
+    let worst_variance = 1f64 / buckets_count as f64;
+
+    // Divide by the theoritical worst variance to normalize result from 0 to 1
+    let score = std / worst_variance;
+
+    score
+}
+
+fn round_to_decimal(value: f64, decimals: usize) -> f64
+{
+    let factor = 10f64.powi(decimals as i32 - 1);
+    (value * factor).round() / factor
 }
