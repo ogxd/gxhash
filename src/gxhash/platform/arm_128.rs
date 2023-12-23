@@ -74,6 +74,16 @@ pub unsafe fn compress_fast(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 }
 
 #[inline(always)]
+pub unsafe fn compress_1(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    let keys_1 = vld1q_u32([0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542].as_ptr());
+
+    let mut bs = vreinterpretq_u8_s8(b);
+    bs = aes_encrypt(bs, vreinterpretq_u8_u32(keys_1));
+
+    vreinterpretq_s8_u8(aes_encrypt_last(vreinterpretq_u8_s8(a), bs))
+}
+
+#[inline(always)]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
 unsafe fn aes_encrypt(data: uint8x16_t, keys: uint8x16_t) -> uint8x16_t {
     // Encrypt
