@@ -213,13 +213,11 @@ mod tests {
         assert_ne!(0, gxhash32(&[0u8; 1200], 0));
     }
 
-    // GxHash with a 128-bit state must be stable despite the different endianesses / CPU instrinsics
-    #[cfg(not(feature = "avx2"))]
     #[test]
     fn is_stable() {
-        assert_eq!(456576800, gxhash32(&[0u8; 0], 0));
-        assert_eq!(978957914, gxhash32(&[0u8; 1], 0));
-        assert_eq!(2252110365, gxhash32(&[0u8; 1000], 0));
-        assert_eq!(2426107958, gxhash32(&[42u8; 4242], 42));
+        assert_eq!(2533353535, gxhash32(&[0u8; 0], 0));
+        assert_eq!(4243413987, gxhash32(&[0u8; 1], 0));
+        assert_eq!(2401749549, gxhash32(&[0u8; 1000], 0));
+        assert_eq!(4156851105, gxhash32(&[42u8; 4242], 42));
     }
 }
