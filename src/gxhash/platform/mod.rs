@@ -23,4 +23,7 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
 }
 
-pub const KEYS: [u32; 8] = [0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E, 0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39132BD9];
+pub const KEYS: [u32; 12] = 
+   [0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E,
+    0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39132BD9,
+    0xD0012E32, 0x689D2B7D, 0x5544B1B7, 0xC78B122B];

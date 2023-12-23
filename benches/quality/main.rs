@@ -142,18 +142,6 @@ fn permute<T, F>(arr: &mut [T], start: usize, step: usize, f: &mut F)
     }
 }
 
-fn max_k_for_permutations(n: usize, limit: usize) -> usize {
-    let mut k: usize = 0;
-    let mut p: usize = 1;
-
-    while k < n && p < limit {
-        k += 1;
-        p *= n - k + 1;
-    }
-
-    if p > limit { k - 1 } else { k }
-}
-
 fn hasher_collisions_powerset<B, D>(data: &[impl Hash]) -> f64
     where B : BuildHasher + Default
 {
