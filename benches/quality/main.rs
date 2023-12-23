@@ -1,4 +1,4 @@
-use std::hash::{Hash, Hasher, BuildHasher};
+use std::{hash::{Hash, Hasher, BuildHasher}, collections::HashSet};
 use rand::Rng;
 use criterion::black_box;
 
@@ -47,17 +47,17 @@ fn bench_hasher_quality<B>(name: &str)
 
     check!(collisions_padded_zeroes::<B>(128 * 128));
 
-    check!(collisions_flipped_n_bits::<B, 2>(9));
-    check!(collisions_flipped_n_bits::<B, 3>(9));
-    check!(collisions_flipped_n_bits::<B, 4>(7));
-    check!(collisions_flipped_n_bits::<B, 5>(6));
-    check!(collisions_flipped_n_bits::<B, 6>(5));
-    check!(collisions_flipped_n_bits::<B, 7>(5));
-    check!(collisions_flipped_n_bits::<B, 9>(4));
-    check!(collisions_flipped_n_bits::<B, 20>(4));
-    check!(collisions_flipped_n_bits::<B, 32>(3));
-    check!(collisions_flipped_n_bits::<B, 64>(3));
-    check!(collisions_flipped_n_bits::<B, 256>(2));
+    check!(collisions_flipped_bits::<B, 2>(9));
+    check!(collisions_flipped_bits::<B, 3>(9));
+    check!(collisions_flipped_bits::<B, 4>(7));
+    check!(collisions_flipped_bits::<B, 5>(6));
+    check!(collisions_flipped_bits::<B, 6>(5));
+    check!(collisions_flipped_bits::<B, 7>(5));
+    check!(collisions_flipped_bits::<B, 9>(4));
+    check!(collisions_flipped_bits::<B, 20>(4));
+    check!(collisions_flipped_bits::<B, 32>(3));
+    check!(collisions_flipped_bits::<B, 64>(3));
+    check!(collisions_flipped_bits::<B, 256>(2));
 
     check!(collisions_powerset_bytes::<B>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
     check!(collisions_powerset_bytes::<B>(&[0, 1, 2, 4, 8, 16, 32, 64, 128]));
@@ -164,65 +164,51 @@ fn collisions_padded_zeroes<B>(max_size: usize) -> f64
     (i - set.len()) as f64 / i as f64
 }
 
-fn collisions_flipped_n_bits<B, const N: usize>(bits_to_set: usize) -> f64
+fn collisions_flipped_bits<B, const N: usize>(bits_to_set: usize) -> f64
     where B : BuildHasher + Default
 {
     let build_hasher = B::default();
-    let mut bytes = vec![0u8; N];
+    let mut input = [0u8; N];
+    let mut hashes = Vec::new();
 
-    let mut digits: Vec<usize> = vec![0; bits_to_set];
+    let mut hasher = build_hasher.build_hasher();
+    hasher.write(&input);
+    hashes.push(hasher.finish());
 
-    for i in 0..bits_to_set {
-        digits[i] = i;
-    }
+    flip_n_bits_recurse::<B, N>(&build_hasher, 0, bits_to_set, &mut input, &mut hashes);
 
-    let mut i = 0;
-    let mut set = ahash::AHashSet::new();
+    let hashes_count = hashes.len();
 
-    'stop: loop {
+    let set: HashSet<u64> = HashSet::from_iter(hashes);
 
-        // Set bits
-        for d in digits.iter() {
-            let bit = 1 << (d % 8);
-            bytes[d / 8] |= bit;
-        }
+    //println!("{}-bit keys with 0 to {} bits set. Combinations: {}, Collisions: {}", N * 8, bits_to_set, hashes_count, hashes_count - set.len());
 
-        i += 1;
+    (hashes_count - set.len()) as f64 / hashes_count as f64
+}
+
+fn flip_n_bits_recurse<B, const N: usize>(
+    build_hasher: &B, start: usize, bits_left: usize, input: &mut [u8], hashes: &mut Vec<u64>)
+    where B : BuildHasher + Default
+{
+    let nbits: usize = N * 8;
+
+    for i in start..nbits {
+        // Flip bit
+        let bit = 1 << (i % 8);
+        input[i / 8] ^= bit;
+
         let mut hasher = build_hasher.build_hasher();
-        hasher.write(&bytes);
-        set.insert(hasher.finish());
+        hasher.write(&input);
+        hashes.push(hasher.finish());
 
-        // Reset bits
-        for d in digits.iter() {
-            bytes[d / 8] = 0;
+        if bits_left > 1 {
+            flip_n_bits_recurse::<B, N>(build_hasher, i + 1, bits_left - 1, input, hashes);
         }
 
-        // Increment the rightmost digit
-        for i in (0..bits_to_set).rev() {
-            digits[i] += 1;
-            if digits[i] == N * 8 - bits_to_set + i + 1 {
-                if i == 0 {
-                    break 'stop;
-                }
-                // Reset digit. It will be set to an appropriate value after.
-                digits[i] = 0;
-            } else {
-                break;
-            }
-        }
-
-        // Make sure digits are coherent
-        for i in 1..bits_to_set {
-            if digits[i] < digits[i - 1] {
-                digits[i] = digits[i - 1] + 1;
-            }
-        }
+        // Flip bit
+        let bit = 1 << (i % 8);
+        input[i / 8] ^= bit;
     }
-
-    //println!("{}-bit keys with {} bits set. Combinations: {}, Collisions: {}", size_bits, bits_to_set, i, i - set.len());
-
-    // Collision rate
-    (i - set.len()) as f64 / i as f64
 }
 
 fn avalanche<B, const N: usize>() -> f64
