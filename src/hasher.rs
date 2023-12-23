@@ -98,7 +98,7 @@ macro_rules! write {
         #[inline]
         fn $name(&mut self, value: $type) {
             self.state = unsafe {
-                aes_encrypt($load(value), self.state)
+                aes_encrypt_last($load(value), aes_encrypt(self.state, ld(KEYS.as_ptr())))
             };
         }
     }
@@ -116,7 +116,7 @@ impl Hasher for GxHasher {
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
         // Improvement: only compress at this stage and finalize in finish
-        self.state = unsafe { aes_encrypt(compress_all(bytes), self.state) };
+        self.state = unsafe { aes_encrypt_last(compress_all(bytes), aes_encrypt(self.state, ld(KEYS.as_ptr()))) };
     }
 
     write!(write_u8, u8, load_u8);
@@ -166,6 +166,8 @@ pub type GxHashSet<T> = HashSet<T, GxBuildHasher>;
 #[cfg(test)]
 mod tests {
 
+    use std::hash::Hash;
+
     use super::*;
 
     #[test]
@@ -185,7 +187,7 @@ mod tests {
     // By no mean a quality test, but rather a sanity check
     #[test]
     fn hasher_resists_permutations() {
-        let build_hasher = RandomState::default();
+        let build_hasher = GxBuildHasher::default();
         let mut hasher1 = build_hasher.build_hasher();
         (1, 2).hash(&mut hasher1);
         let mut hasher2 = build_hasher.build_hasher();

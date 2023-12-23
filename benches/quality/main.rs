@@ -77,7 +77,7 @@ fn collisions_permuted_hasher_values<B, D>(data: &[impl Hash]) -> f64
 
     let build_hasher = B::default();
 
-    let mut set = ahash::AHashSet::new();
+    let mut set = HashSet::new();
     let mut i = 0;
 
     for perm in data.iter().permutations(data.len()) {
@@ -100,7 +100,7 @@ fn collisions_powerset_hasher_values<B, D>(data: &[impl Hash]) -> f64
 
     let build_hasher = B::default();
 
-    let mut set = ahash::AHashSet::new();
+    let mut set = HashSet::new();
     let mut i = 0;
 
     for perm in data.iter().powerset() {
