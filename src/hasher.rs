@@ -182,6 +182,17 @@ mod tests {
         assert!(hashset.insert("bye"));
     }
 
+    // By no mean a quality test, but rather a sanity check
+    #[test]
+    fn hasher_resists_permutations() {
+        let build_hasher = RandomState::default();
+        let mut hasher1 = build_hasher.build_hasher();
+        (1, 2).hash(&mut hasher1);
+        let mut hasher2 = build_hasher.build_hasher();
+        (2, 1).hash(&mut hasher2);
+        assert_ne!(hasher1.finish(), hasher2.finish());
+    }
+
     // This is important for DOS resistance
     #[test]
     fn gxhashset_uses_default_gxhasherbuilder() {
