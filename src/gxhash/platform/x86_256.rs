@@ -68,6 +68,15 @@ pub unsafe fn compress_fast(a: State, b: State) -> State {
 
 #[inline(always)]
 #[allow(overflowing_literals)]
+pub unsafe fn compress_1(a: State, b: State) -> State {
+    let keys_1 = _mm256_set_epi32(0xFC3BC28E, 0x89C222E5, 0xB09D3E21, 0xF2784542, 0x4155EE07, 0xC897CCE2, 0x780AF2C3, 0x8A72B781);
+
+    let mut b = _mm256_aesenc_epi128(b, keys_1);
+    return _mm256_aesenclast_epi128(a, b);
+}
+
+#[inline(always)]
+#[allow(overflowing_literals)]
 pub unsafe fn finalize(hash: State) -> State {
     // Hardcoded AES keys
     let keys_1 = _mm256_set_epi32(0x713B01D0, 0x8F2F35DB, 0xAF163956, 0x85459F85, 0xB49D3E21, 0xF2784542, 0x2155EE07, 0xC197CCE2);

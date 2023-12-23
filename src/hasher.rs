@@ -98,7 +98,7 @@ macro_rules! write {
         #[inline]
         fn $name(&mut self, value: $type) {
             self.state = unsafe {
-                compress_fast($load(value), self.state)
+                compress_1($load(value), self.state)
             };
         }
     }
@@ -115,7 +115,7 @@ impl Hasher for GxHasher {
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        self.state = unsafe { compress_fast(compress_all(bytes), self.state) };
+        self.state = unsafe { compress_1(compress_all(bytes), self.state) };
     }
 
     write!(write_u8, u8, load_u8);
