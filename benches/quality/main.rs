@@ -1,4 +1,4 @@
-use std::{hash::{Hash, Hasher, BuildHasher}, collections::HashSet};
+use std::{hash::{Hash, Hasher, BuildHasher}, collections::HashSet, slice};
 use rand::Rng;
 use criterion::black_box;
 
@@ -59,18 +59,26 @@ fn bench_hasher_quality<B>(name: &str)
     check!(collisions_flipped_bits::<B, 64>(3));
     check!(collisions_flipped_bits::<B, 256>(2));
 
+    check!(collisions_permute::<B, u8>(4, &Vec::from_iter(0..16))); // 16 bytes
+    check!(collisions_permute::<B, u8>(42, &Vec::from_iter(0..64)));
+    check!(collisions_permute::<B, u16>(42, &Vec::from_iter(0..64)));
+    check!(collisions_permute::<B, u32>(42, &Vec::from_iter(0..64)));
+    check!(collisions_permute::<B, u64>(42, &Vec::from_iter(0..64)));
+    check!(collisions_permute::<B, u128>(4, &Vec::from_iter(0..16))); // 256 bytes
+    check!(collisions_permute::<B, u128>(42, &Vec::from_iter(0..64))); // 1024 bytes
+
     check!(collisions_powerset_bytes::<B>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
     check!(collisions_powerset_bytes::<B>(&[0, 1, 2, 4, 8, 16, 32, 64, 128]));
 
-    check!(collisions_permuted_hasher_values::<B, u8>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
-    check!(collisions_permuted_hasher_values::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
-    check!(collisions_permuted_hasher_values::<B, u32>(&[0, 1, 2, 4, 8, 16, 32, 64, 128, 256]));
+    check!(hasher_collisions_permute::<B, u8>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
+    check!(hasher_collisions_permute::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
+    check!(hasher_collisions_permute::<B, u32>(&[0, 1, 2, 4, 8, 16, 32, 64, 128, 256]));
 
-    check!(collisions_powerset_hasher_values::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]));
-    check!(collisions_powerset_hasher_values::<B, u32>(&[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]));
+    check!(hasher_collisions_powerset::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]));
+    check!(hasher_collisions_powerset::<B, u32>(&[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]));
 }
 
-fn collisions_permuted_hasher_values<B, D>(data: &[impl Hash]) -> f64
+fn hasher_collisions_permute<B, D>(data: &[impl Hash]) -> f64
     where B : BuildHasher + Default
 {
     use itertools::Itertools;
@@ -93,7 +101,60 @@ fn collisions_permuted_hasher_values<B, D>(data: &[impl Hash]) -> f64
     (i - set.len()) as f64 / i as f64
 }
 
-fn collisions_powerset_hasher_values<B, D>(data: &[impl Hash]) -> f64
+fn collisions_permute<B, D>(step: usize, data: &[D]) -> f64
+    where B : BuildHasher + Default,
+    D : Clone
+{
+    let build_hasher = B::default();
+
+    let mut set = HashSet::new();
+    let mut i = 0;
+
+    let mut x = data.to_vec();
+    permute(&mut x, 0, step, &mut |d| {
+        let len = data.len() * std::mem::size_of::<D>();
+        let perm_u8 = unsafe {
+            slice::from_raw_parts(d.as_ptr() as *const u8, len)
+        };
+        let mut hasher = build_hasher.build_hasher();
+        hasher.write(&perm_u8);
+        set.insert(hasher.finish());
+        i += 1;
+    });
+
+    //println!("Permutations. Combinations: {}, Collisions: {}", i, i - set.len());
+
+    // Collision rate
+    (i - set.len()) as f64 / i as f64
+}
+
+fn permute<T, F>(arr: &mut [T], start: usize, step: usize, f: &mut F) 
+    where F: FnMut(&[T])
+{
+    if start >= arr.len() - 1 {
+        f(arr);
+    } else {
+        for i in (start..arr.len()).step_by(step) {
+            arr.swap(start, i);
+            permute(arr, start + 1, step, f);
+            arr.swap(start, i);
+        }
+    }
+}
+
+fn max_k_for_permutations(n: usize, limit: usize) -> usize {
+    let mut k: usize = 0;
+    let mut p: usize = 1;
+
+    while k < n && p < limit {
+        k += 1;
+        p *= n - k + 1;
+    }
+
+    if p > limit { k - 1 } else { k }
+}
+
+fn hasher_collisions_powerset<B, D>(data: &[impl Hash]) -> f64
     where B : BuildHasher + Default
 {
     use itertools::Itertools;
@@ -123,7 +184,7 @@ fn collisions_powerset_bytes<B>(data: &[u8]) -> f64
 
     let build_hasher = B::default();
 
-    let mut set = ahash::AHashSet::new();
+    let mut set = HashSet::new();
     let mut i = 0;
 
     for perm in data.iter().powerset() {
@@ -146,7 +207,7 @@ fn collisions_padded_zeroes<B>(max_size: usize) -> f64
     let build_hasher = B::default();
     let bytes = vec![0u8; max_size];
 
-    let mut set = ahash::AHashSet::new();
+    let mut set = HashSet::new();
 
     let mut i = 0;
 
