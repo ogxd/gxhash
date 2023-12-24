@@ -12,7 +12,7 @@ env:
 jobs:
   build_test_i386:
     name: Build & Test i386
-    runs-on: ubuntu:latest
+    runs-on: ubuntu-latest
     container: 
       image: i386/ubuntu:latest
 
