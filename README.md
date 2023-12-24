@@ -66,7 +66,7 @@ GxHash is continuously benchmarked on X86 and ARM Github runners.
 **Lastest Benchmark Results:**    
 ![aarch64](./benches/throughput/aarch64.svg)
 ![x86_64](./benches/throughput/x86_64.svg)
-![x86_64-avx2](./benches/throughput/x86_64-avx2.svg)
+![x86_64-hybrid](./benches/throughput/x86_64-hybrid.svg)
 
 ## Security
 
