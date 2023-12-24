@@ -14,7 +14,7 @@ jobs:
     name: Build & Test i386
     runs-on: ubuntu-latest
     container: 
-      image: i386/ubuntu:latest
+      image: i386/rust:latest
 
     steps:
     # actions/checkout@v3 doesn't work in a i386 container: the GitHub runner
