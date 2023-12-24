@@ -1,7 +1,7 @@
 [package]
 name = "gxhash"
 authors = ["Olivier Giniaux"]
-version = "2.3.1"
+version = "3.0.0"
 edition = "2021"
 description = "GxHash non-cryptographic algorithm"
 license = "MIT"
@@ -13,10 +13,6 @@ categories = ["algorithms", "data-structures", "no-std"]
 exclude = ["article/*"]
 
 [features]
-# The 256-bit state GxHash is faster for large inputs than the default 128-bit state implementation, but faster on smaller hashes.
-# Please not however that the 256-bit GxHash and the 128-bit GxHash don't generate the same hashes for a same input.
-# Requires AVX2 and VAES (X86).
-avx2 = []
 # Only relevant for throughput benchmarks
 bench-csv = []
 bench-md = []
@@ -38,6 +34,9 @@ highway = "1.1.0"
 seahash = "4.1.0"
 metrohash = "1.0.6"
 fnv = "1.0.3"
+
+[build-dependencies]
+rustc_version = "0.4.0"
 
 [dev-dependencies.plotters]
 version = "0.3.5"

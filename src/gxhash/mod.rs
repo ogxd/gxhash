@@ -63,21 +63,22 @@ macro_rules! load_unaligned {
     };
 }
 
+pub(crate) use load_unaligned;
+
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
-    finalize(compress_fast(compress_all(input), seed))
+    finalize(aes_encrypt(compress_all(input), seed))
 }
 
 #[inline(always)]
 pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
 
     let len = input.len();
+    let mut ptr = input.as_ptr() as *const State;
 
     if len == 0 {
         return create_empty();
     }
-
-    let mut ptr = input.as_ptr() as *const State;
 
     if len <= VECTOR_SIZE {
         // Input fits on a single SIMD vector, however we might read beyond the input message
@@ -85,15 +86,13 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         return get_partial(ptr, len);
     }
 
-    let extra_bytes_count = len % VECTOR_SIZE;
-    let remaining_bytes: usize;
+    let mut hash_vector: State;
+    let end = ptr as usize + len;
 
-    // The input does not fit on a single SIMD vector
-    let hash_vector: State;
+    let extra_bytes_count = len % VECTOR_SIZE;
     if extra_bytes_count == 0 {
         load_unaligned!(ptr, v0);
         hash_vector = v0;
-        remaining_bytes = len - VECTOR_SIZE;
     } else {
         // If the input length does not match the length of a whole number of SIMD vectors,
         // it means we'll need to read a partial vector. We can start with the partial vector first,
@@ -101,57 +100,53 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
         // the input
         hash_vector = get_partial_unsafe(ptr, extra_bytes_count);
         ptr = ptr.cast::<u8>().add(extra_bytes_count).cast();
-        remaining_bytes = len - extra_bytes_count;
     }
 
-    #[allow(unused_assignments)]
-    if len <= VECTOR_SIZE * 2 {
-        // Fast path when input length > 16 and <= 32
-        load_unaligned!(ptr, v0);
-        compress(hash_vector, v0)
-    } else if len <= VECTOR_SIZE * 3 {
+    load_unaligned!(ptr, v0);
+
+    if len > VECTOR_SIZE * 2 {
         // Fast path when input length > 32 and <= 48
-        load_unaligned!(ptr, v0, v1);
-        compress(hash_vector, compress(v0, v1))
-    } else {
-        // Input message is large and we can use the high ILP loop
-        compress_many(ptr, hash_vector, remaining_bytes)
+        load_unaligned!(ptr, v);
+        v0 = aes_encrypt(v0, v);
+
+        if len > VECTOR_SIZE * 3 {
+            // Fast path when input length > 48 and <= 64
+            load_unaligned!(ptr, v);
+            v0 = aes_encrypt(v0, v);
+
+            if len > VECTOR_SIZE * 4 {
+                // Input message is large and we can use the high ILP loop
+                hash_vector = compress_many(ptr, end, hash_vector, len);
+            }
+        }
     }
+    
+    return aes_encrypt_last(hash_vector, 
+        aes_encrypt(aes_encrypt(v0, ld(KEYS.as_ptr())), ld(KEYS.as_ptr().offset(4))));
 }
 
 #[inline(always)]
-unsafe fn compress_many(mut ptr: *const State, hash_vector: State, remaining_bytes: usize) -> State {
+unsafe fn compress_many(mut ptr: *const State, end: usize, hash_vector: State, len: usize) -> State {
 
     const UNROLL_FACTOR: usize = 8;
 
+    let remaining_bytes = end -  ptr as usize;
+
     let unrollable_blocks_count: usize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
-    let end_address = ptr.add(unrollable_blocks_count) as usize;
-    let mut hash_vector = hash_vector;
-    while (ptr as usize) < end_address {
-
-        load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
-
-        let mut tmp: State;
-        tmp = compress_fast(v0, v1);
-        tmp = compress_fast(tmp, v2);
-        tmp = compress_fast(tmp, v3);
-        tmp = compress_fast(tmp, v4);
-        tmp = compress_fast(tmp, v5);
-        tmp = compress_fast(tmp, v6);
-        tmp = compress_fast(tmp, v7);
-
-        hash_vector = compress(hash_vector, tmp);
-    }
 
     let remaining_bytes = remaining_bytes - unrollable_blocks_count * VECTOR_SIZE;
     let end_address = ptr.add(remaining_bytes / VECTOR_SIZE) as usize;
 
+    // Process first individual blocks until we have an whole number of 8 blocks
+    let mut hash_vector = hash_vector;
     while (ptr as usize) < end_address {
         load_unaligned!(ptr, v0);
-        hash_vector = compress(hash_vector, v0);
+        hash_vector = aes_encrypt(hash_vector, v0);
     }
 
-    hash_vector
+    // Process the remaining n * 8 blocks
+    // This part may use 128-bit or 256-bit
+    compress_8(ptr, end, hash_vector, len)
 }
 
 #[cfg(test)]
@@ -218,13 +213,11 @@ mod tests {
         assert_ne!(0, gxhash32(&[0u8; 1200], 0));
     }
 
-    // GxHash with a 128-bit state must be stable despite the different endianesses / CPU instrinsics
-    #[cfg(not(feature = "avx2"))]
     #[test]
     fn is_stable() {
-        assert_eq!(456576800, gxhash32(&[0u8; 0], 0));
-        assert_eq!(978957914, gxhash32(&[0u8; 1], 0));
-        assert_eq!(3325885698, gxhash32(&[0u8; 1000], 0));
-        assert_eq!(3805815999, gxhash32(&[42u8; 4242], 42));
+        assert_eq!(2533353535, gxhash32(&[0u8; 0], 0));
+        assert_eq!(4243413987, gxhash32(&[0u8; 1], 0));
+        assert_eq!(2401749549, gxhash32(&[0u8; 1000], 0));
+        assert_eq!(4156851105, gxhash32(&[42u8; 4242], 42));
     }
 }
