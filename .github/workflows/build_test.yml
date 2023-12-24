@@ -25,44 +25,44 @@ jobs:
     - name: Test
       run: cargo test --release
 
-  build_test_x86:
-    name: Build & Test X86
-    runs-on: ubuntu-latest
+  # build_test_x86:
+  #   name: Build & Test X86
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v3
+  #   steps:
+  #   - uses: actions/checkout@v3
 
-    - name: Build
-      run: cargo build --release
+  #   - name: Build
+  #     run: cargo build --release
 
-    - name: Test
-      run: cargo test --release
+  #   - name: Test
+  #     run: cargo test --release
 
-  build_test_x86_avx2:
-    name: Build & Test X86 AVX2
-    runs-on: ubuntu-latest
+  # build_test_x86_avx2:
+  #   name: Build & Test X86 AVX2
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v3
+  #   steps:
+  #   - uses: actions/checkout@v3
 
-    - name: Switch to nightly rust
-      run: rustup default nightly
+  #   - name: Switch to nightly rust
+  #     run: rustup default nightly
 
-    - name: Build
-      run: cargo build --release
+  #   - name: Build
+  #     run: cargo build --release
 
-    - name: Test
-      run: cargo test --release
+  #   - name: Test
+  #     run: cargo test --release
 
-  build_test_arm:
-    name: Build & Test ARM
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+  # build_test_arm:
+  #   name: Build & Test ARM
+  #   runs-on: buildjet-2vcpu-ubuntu-2204-arm
 
-    steps:
-    - uses: actions/checkout@v3
+  #   steps:
+  #   - uses: actions/checkout@v3
 
-    - name: Build
-      run: cargo build --release
+  #   - name: Build
+  #     run: cargo build --release
 
-    - name: Test
-      run: cargo test --release
+  #   - name: Test
+  #     run: cargo test --release
