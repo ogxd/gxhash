@@ -17,7 +17,11 @@ jobs:
       image: i386/ubuntu:latest
 
     steps:
-    - uses: actions/checkout@v3
+    # actions/checkout@v3 doesn't work in a i386 container: the GitHub runner
+    # uses `node` that is installed on the host inside the container. The host
+    # is (likely) running x86_64 and using a binary build for x86_64 inside a
+    # i386 container just doesn't work.
+    - uses: actions/checkout@v1
 
     - name: Build
       run: cargo build --release
