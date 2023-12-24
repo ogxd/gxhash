@@ -44,7 +44,7 @@ GxHash is compatible with:
 > Other platforms are currently not supported (there is no fallback). The behavior on these platforms is undefined.
 
 ### Hashes Stability
-All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms. An exception to this is the AVX2 version of GxHash (nightly).
+All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms.
 
 ## Benchmarks
 
@@ -74,7 +74,7 @@ GxHash is continuously benchmarked on X86 and ARM Github runners.
 GxHash is a seeded hashing algorithm, meaning that depending on the seed used, it will generate completely different hashes. The default `HasherBuilder` (`GxHasherBuilder::default()`) uses seed randomization, making any `HashMap`/`HashSet` more DOS resistant, as it will make it much more difficult for attackers to be able to predict which hashes may collide without knowing the seed used. This does not mean however that it is completely DOS resistant. This has to be analyzed further.
 
 ### Multicollisions Resistance
-GxHash uses a 128-bit internal state (and even 256-bit with the `avx2` feature). This makes GxHash [a widepipe construction](https://en.wikipedia.org/wiki/Merkle%E2%80%93Damg%C3%A5rd_construction#Wide_pipe_construction) when generating hashes of size 64-bit or smaller, which had amongst other properties to be inherently more resistant to multicollision attacks. See [this paper](https://www.iacr.org/archive/crypto2004/31520306/multicollisions.pdf) for more details.
+GxHash uses a 128-bit internal state. This makes GxHash [a widepipe construction](https://en.wikipedia.org/wiki/Merkle%E2%80%93Damg%C3%A5rd_construction#Wide_pipe_construction) when generating hashes of size 64-bit or smaller, which had amongst other properties to be inherently more resistant to multicollision attacks. See [this paper](https://www.iacr.org/archive/crypto2004/31520306/multicollisions.pdf) for more details.
 
 ### Cryptographic Properties
 GxHash is a non-cryptographic hashing algorithm, thus it is not recommended to use it as a cryptographic algorithm (it is not a replacement for SHA). It has not been assessed if GxHash is preimage resistant and how difficult it is to be reversed.
