@@ -27,7 +27,7 @@ fn benchmark<T>(c: &mut Criterion, name: &str, value: T)
         iterate(b, &value, &mut set);
     });
 
-    let mut set: HashSet::<T, GxBuildHasher> = GxHashSet::<T>::default();
+    let mut set: HashSet::<T, GxBuildHasher> = gxhash::HashSet::<T>::default();
     group.bench_function("GxHash", |b| {
         iterate(b, &value, &mut set);
     });

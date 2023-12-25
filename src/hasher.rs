@@ -1,4 +1,3 @@
-use std::collections::{HashMap, HashSet};
 use std::hash::{BuildHasher, Hasher};
 use std::mem::MaybeUninit;
 
@@ -158,10 +157,55 @@ impl BuildHasher for GxBuildHasher {
 }
 
 /// A `HashMap` using a (DOS-resistant) [`GxBuildHasher`].
-pub type GxHashMap<K, V> = HashMap<K, V, GxBuildHasher>;
+pub type HashMap<K, V> = std::collections::HashMap<K, V, GxBuildHasher>;
+
+/// A convenience trait that can be used together with the type aliases defined
+/// to get access to the `new()` and `with_capacity()` methods for the
+/// [`HashMap`] type alias.
+pub trait HashMapExt {
+    /// Constructs a new HashMap.
+    fn new() -> Self;
+    /// Constructs a new HashMap with a given initial capacity.
+    fn with_capacity(capacity: usize) -> Self;
+}
+
+impl<K, V, S> HashMapExt for std::collections::HashMap<K, V, S>
+where
+    S: BuildHasher + Default,
+{
+    fn new() -> Self {
+        std::collections::HashMap::with_hasher(S::default())
+    }
+
+    fn with_capacity(capacity: usize) -> Self {
+        std::collections::HashMap::with_capacity_and_hasher(capacity, S::default())
+    }
+}
 
 /// A `HashSet` using a (DOS-resistant) [`GxBuildHasher`].
-pub type GxHashSet<T> = HashSet<T, GxBuildHasher>;
+pub type HashSet<T> = std::collections::HashSet<T, GxBuildHasher>;
+
+/// A convenience trait that can be used together with the type aliases defined
+/// to get access to the `new()` and `with_capacity()` methods for the
+/// [`HashSet`] type alias.
+pub trait HashSetExt {
+    /// Constructs a new HashMap.
+    fn new() -> Self;
+    /// Constructs a new HashMap with a given initial capacity.
+    fn with_capacity(capacity: usize) -> Self;
+}
+
+impl<K, S> HashSetExt for std::collections::HashSet<K, S>
+    where S: BuildHasher + Default,
+{
+    fn new() -> Self {
+        std::collections::HashSet::with_hasher(S::default())
+    }
+
+    fn with_capacity(capacity: usize) -> Self {
+        std::collections::HashSet::with_capacity_and_hasher(capacity, S::default())
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -171,13 +215,30 @@ mod tests {
     use super::*;
 
     #[test]
+    fn contructors_work() {
+        let mut map: std::collections::HashMap<&str, i32, GxBuildHasher> = HashMap::new();
+        assert_eq!(true, map.insert("foo", 1).is_none());
+
+        let mut map = HashMap::with_capacity(3);
+        assert_eq!(3, map.capacity());
+        assert_eq!(true, map.insert("bar", 2).is_none());
+
+        let mut set: std::collections::HashSet<i32, GxBuildHasher> = HashSet::new();
+        assert_eq!(true, set.insert(42));
+
+        let mut set = HashSet::with_capacity(3);
+        assert_eq!(true, set.insert(42));
+        assert_eq!(3, set.capacity());
+    }
+
+    #[test]
     fn hasher_produces_stable_hashes() {
-        let mut hashset = GxHashSet::default();
+        let mut hashset = HashSet::default();
         assert!(hashset.insert(1234));
         assert!(!hashset.insert(1234));
         assert!(hashset.insert(42));
 
-        let mut hashset = GxHashSet::default();
+        let mut hashset = HashSet::default();
         assert!(hashset.insert("hello"));
         assert!(hashset.insert("world"));
         assert!(!hashset.insert("hello"));
@@ -198,8 +259,8 @@ mod tests {
     // This is important for DOS resistance
     #[test]
     fn gxhashset_uses_default_gxhasherbuilder() {
-        let hashset_1 = GxHashSet::<u32>::default();
-        let hashset_2 = GxHashSet::<u32>::default();
+        let hashset_1 = HashSet::<u32>::default();
+        let hashset_2 = HashSet::<u32>::default();
 
         let mut hasher_1 = hashset_1.hasher().build_hasher();
         let mut hasher_2 = hashset_2.hasher().build_hasher();
