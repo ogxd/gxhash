@@ -33,7 +33,7 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
     let mut buffer = [0i8; VECTOR_SIZE];
     // Copy data into the buffer
-    std::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
+    core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
     // Load the buffer into a __m256i vector
     let partial_vector = vld1q_s8(buffer.as_ptr());
     vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
