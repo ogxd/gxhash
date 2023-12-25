@@ -12,7 +12,7 @@ fn hashset_contains(c: &mut Criterion) {
     benchmark(c, "u64", 42u64);
     benchmark(c, "u128", 42u128);
     benchmark(c, "small string", "gxhash".to_owned());
-    benchmark(c, "medium string","https://github.com/ogxd/gxhash".to_owned());
+    benchmark(c, "medium string", "https://github.com/ogxd/gxhash".to_owned());
     benchmark(c, "large string","Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.".to_owned());
     benchmark(c, "huge string", "Lorem ipsum dolor sit amet. Aut maxime voluptas ab quae explicabo et odio repellendus sed excepturi laboriosam? Ut molestiae obcaecati aut labore voluptates sed voluptatem voluptas non omnis harum et harum impedit ea eligendi autem id magni modi. Quo quam velit et error voluptas ut beatae repellendus et aspernatur incidunt hic veritatis accusamus sed autem modi cum error rerum. Sit perspiciatis consequuntur est perferendis veritatis et velit illum? At illo dolorum et voluptas nihil in voluptatum quas non quidem eveniet vel modi odit et sint nesciunt. Eos dicta consequuntur et sunt animi qui porro accusantium sed nisi voluptatum sed consectetur quibusdam ut ipsum mollitia. Et cupiditate iure aut omnis quia aut necessitatibus illum qui voluptas eius ut nihil laboriosam sit voluptatibus voluptas et galisum libero. Ut explicabo odit et adipisci accusantium ut officiis obcaecati. Eum pariatur sunt et autem neque ut eligendi autem. Qui voluptas Quis ut ratione officiis et placeat repudiandae sed tempora vitae At maxime quidem vel iure distinctio. Et doloremque esse ex eius voluptas id voluptatem recusandae qui illum quia ut consectetur quibusdam ea nisi accusamus!".to_owned());
 }
@@ -44,6 +44,21 @@ fn benchmark<T>(c: &mut Criterion, name: &str, value: T)
 
     let mut set = FnvHashSet::<T>::default();
     group.bench_function("FNV-1a", |b| {
+        iterate(b, &value, &mut set);
+    });
+
+    let mut set = t1ha::T1haHashSet::<T>::default();
+    group.bench_function("T1ha", |b| {
+        iterate(b, &value, &mut set);
+    });
+
+    let mut set = HashSet::<T, highway::HighwayBuildHasher>::default();
+    group.bench_function("HighwayHash", |b| {
+        iterate(b, &value, &mut set);
+    });
+
+    let mut set = metrohash::MetroHashSet::<T>::default();
+    group.bench_function("MetroHash", |b| {
         iterate(b, &value, &mut set);
     });
 
