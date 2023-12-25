@@ -1,7 +1,7 @@
 [package]
 name = "gxhash"
 authors = ["Olivier Giniaux"]
-version = "3.1.0"
+version = "3.1.1"
 edition = "2021"
 description = "GxHash non-cryptographic algorithm"
 license = "MIT"
@@ -13,6 +13,8 @@ categories = ["algorithms", "data-structures", "no-std"]
 exclude = ["article/*"]
 
 [features]
+default = ["std"]
+std = []
 # Only relevant for throughput benchmarks
 bench-csv = []
 bench-md = []
