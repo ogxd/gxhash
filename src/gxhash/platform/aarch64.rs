@@ -73,15 +73,6 @@ pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
 }
 
 #[inline(always)]
-pub unsafe fn finalize(hash: State) -> State {
-    let mut hash = aes_encrypt(hash, ld(KEYS.as_ptr()));
-    hash = aes_encrypt(hash, ld(KEYS.as_ptr().offset(4)));
-    hash = aes_encrypt_last(hash, ld(KEYS.as_ptr().offset(8)));
-
-    hash
-}
-
-#[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
 
     // Disambiguation vectors

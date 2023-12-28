@@ -66,16 +66,6 @@ pub unsafe fn ld(array: *const u32) -> State {
     _mm_loadu_si128(array as *const State)
 }
 
-#[inline(always)]
-#[allow(overflowing_literals)]
-pub unsafe fn finalize(hash: State) -> State {
-    let mut hash = _mm_aesenc_si128(hash, ld(KEYS.as_ptr()));
-    hash = _mm_aesenc_si128(hash, ld(KEYS.as_ptr().offset(4)));
-    hash = _mm_aesenclast_si128(hash, ld(KEYS.as_ptr().offset(8)));
-
-    hash
-}
-
 #[cfg(not(hybrid))]
 #[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
