@@ -22,6 +22,16 @@ let mut hashset = gxhash::GxHashSet::default();
 hashset.insert("hello world");
 ```
 
+GxHash provides an implementation of the [`Hasher`](core::hash::Hasher) trait.
+For convenience, this crate also provides the type aliases `gxhash::HashMap` and `gxhash::HashSet`.
+
+```rust
+use gxhash::{HashMap, HashMapExt};
+
+let mut map: HashMap<&str, i32> = HashMap::new();
+map.insert("answer", 42);
+```
+
 ## Features
 
 ### Blazingly Fast 🚀  
