@@ -1,9 +1,9 @@
-#[cfg(target_arch = "aarch64")]
-#[path = "aarch64.rs"]
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_feature = "aes", target_feature = "neon"))]
+#[path = "arm.rs"]
 mod platform;
 
-#[cfg(target_arch = "x86_64")]
-#[path = "x86_64.rs"]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "aes", target_feature = "sse2"))]
+#[path = "x86.rs"]
 mod platform;
 
 pub use platform::*;
