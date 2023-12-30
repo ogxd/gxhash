@@ -22,16 +22,6 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
     vld1q_s8(p as *const i8)
 }
 
-#[inline(always)]
-pub unsafe fn get_partial(p: *const State, len: usize) -> State {
-    // Safety check
-    if check_same_page(p) {
-        get_partial_unsafe(p, len)
-    } else {
-        get_partial_safe(p, len)
-    }
-}
-
 #[inline(never)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
@@ -74,15 +64,6 @@ pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
 #[inline(always)]
 pub unsafe fn ld(array: *const u32) -> State {
     vreinterpretq_s8_u32(vld1q_u32(array))
-}
-
-#[inline(always)]
-pub unsafe fn finalize(hash: State) -> State {
-    let mut hash = aes_encrypt(hash, ld(KEYS.as_ptr()));
-    hash = aes_encrypt(hash, ld(KEYS.as_ptr().offset(4)));
-    hash = aes_encrypt_last(hash, ld(KEYS.as_ptr().offset(8)));
-
-    hash
 }
 
 #[inline(always)]

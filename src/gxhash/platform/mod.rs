@@ -15,12 +15,31 @@ pub(crate) const VECTOR_SIZE: usize = size_of::<State>();
 const PAGE_SIZE: usize = 0x1000;
 
 #[inline(always)]
+pub unsafe fn get_partial(p: *const State, len: usize) -> State {
+    // Safety check
+    if check_same_page(p) {
+        get_partial_unsafe(p, len)
+    } else {
+        get_partial_safe(p, len)
+    }
+}
+
+#[inline(always)]
 unsafe fn check_same_page(ptr: *const State) -> bool {
     let address = ptr as usize;
     // Mask to keep only the last 12 bits
     let offset_within_page = address & (PAGE_SIZE - 1);
     // Check if the 16nd byte from the current offset exceeds the page boundary
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
+}
+
+#[inline(always)]
+pub unsafe fn finalize(hash: State) -> State {
+    let mut hash = aes_encrypt(hash, ld(KEYS.as_ptr()));
+    hash = aes_encrypt(hash, ld(KEYS.as_ptr().offset(4)));
+    hash = aes_encrypt_last(hash, ld(KEYS.as_ptr().offset(8)));
+
+    hash
 }
 
 pub const KEYS: [u32; 12] = 

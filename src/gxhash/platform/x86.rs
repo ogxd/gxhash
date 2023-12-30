@@ -23,16 +23,6 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 }
 
 #[inline(always)]
-pub unsafe fn get_partial(p: *const State, len: usize) -> State {
-    // Safety check
-    if check_same_page(p) {
-        get_partial_unsafe(p, len)
-    } else {
-        get_partial_safe(p, len)
-    }
-}
-
-#[inline(always)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
     let mut buffer = [0i8; VECTOR_SIZE];
@@ -67,16 +57,6 @@ pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
 #[allow(dead_code)]
 pub unsafe fn ld(array: *const u32) -> State {
     _mm_loadu_si128(array as *const State)
-}
-
-#[inline(always)]
-#[allow(overflowing_literals)]
-pub unsafe fn finalize(hash: State) -> State {
-    let mut hash = _mm_aesenc_si128(hash, ld(KEYS.as_ptr()));
-    hash = _mm_aesenc_si128(hash, ld(KEYS.as_ptr().offset(4)));
-    hash = _mm_aesenclast_si128(hash, ld(KEYS.as_ptr().offset(8)));
-
-    hash
 }
 
 #[cfg(not(hybrid))]
