@@ -38,10 +38,10 @@ Check out the [paper](https://github.com/ogxd/gxhash-rust/blob/main/article/arti
 
 ### Architecture Compatibility
 GxHash is compatible with:
-- X86 processors with `AES-NI` intrinsics
-- ARM processors with `NEON` intrinsics
+- X86 processors with `AES-NI` & `SSE2` intrinsics
+- ARM processors with `AES` & `NEON` intrinsics
 > **Warning**
-> Other platforms are currently not supported (there is no fallback). The behavior on these platforms is undefined.
+> Other platforms are currently not supported (there is no fallback). GxHash will not build on these platforms.
 
 ### Hashes Stability
 All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms.

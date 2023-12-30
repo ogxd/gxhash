@@ -1,3 +1,6 @@
+#[cfg(target_arch = "arm")]
+use core::arch::arm::*;
+#[cfg(target_arch = "aarch64")]
 use core::arch::aarch64::*;
 
 use super::*;
@@ -21,6 +24,7 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 
 #[inline(always)]
 pub unsafe fn get_partial(p: *const State, len: usize) -> State {
+    // Safety check
     if check_same_page(p) {
         get_partial_unsafe(p, len)
     } else {
@@ -48,11 +52,6 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
 }
 
 #[inline(always)]
-pub unsafe fn ld(array: *const u32) -> State {
-    vreinterpretq_s8_u32(vld1q_u32(array))
-}
-
-#[inline(always)]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
 pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     // Encrypt
@@ -70,6 +69,11 @@ pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     let encrypted = vaeseq_u8(vreinterpretq_u8_s8(data), vdupq_n_u8(0));
     // Xor keys
     vreinterpretq_s8_u8(veorq_u8(encrypted, vreinterpretq_u8_s8(keys)))
+}
+
+#[inline(always)]
+pub unsafe fn ld(array: *const u32) -> State {
+    vreinterpretq_s8_u32(vld1q_u32(array))
 }
 
 #[inline(always)]
