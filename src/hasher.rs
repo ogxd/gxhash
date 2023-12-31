@@ -1,8 +1,9 @@
+#[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
-use std::hash::{BuildHasher, Hasher};
-use std::mem::MaybeUninit;
+use core::hash::{BuildHasher, Hasher};
+use core::mem::MaybeUninit;
 
-use rand::RngCore;
+use rand_core::{RngCore, SeedableRng};
 
 use crate::gxhash::platform::*;
 use crate::gxhash::*;
@@ -84,7 +85,7 @@ impl GxHasher {
     /// unsigned integer.
     #[inline]
     pub fn finish_u128(&self) -> u128 {
-        debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
+        debug_assert!(core::mem::size_of::<State>() >= core::mem::size_of::<u128>());
 
         unsafe {
             let p = &finalize(self.state) as *const State as *const u128;
@@ -139,10 +140,13 @@ impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
         let mut uninit: MaybeUninit<State> = MaybeUninit::uninit();
-        let mut rng = rand::thread_rng();
+        #[cfg(any(target_feature = "rdrand", feature = "std"))]
+        let mut rng = rand_chacha::ChaCha12Rng::from_entropy();
+        #[cfg(not(any(target_feature = "rdrand", feature = "std")))]
+        let mut rng = rand_chacha::ChaCha12Rng::from_seed(const_random::const_random!([u8; 32]));
         unsafe {
             let ptr = uninit.as_mut_ptr() as *mut u8;
-            let slice = std::slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
+            let slice = core::slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
             rng.fill_bytes(slice);
             GxBuildHasher(uninit.assume_init())
         }
@@ -158,9 +162,11 @@ impl BuildHasher for GxBuildHasher {
 }
 
 /// A `HashMap` using a (DOS-resistant) [`GxBuildHasher`].
+#[cfg(feature = "std")]
 pub type GxHashMap<K, V> = HashMap<K, V, GxBuildHasher>;
 
 /// A `HashSet` using a (DOS-resistant) [`GxBuildHasher`].
+#[cfg(feature = "std")]
 pub type GxHashSet<T> = HashSet<T, GxBuildHasher>;
 
 #[cfg(test)]

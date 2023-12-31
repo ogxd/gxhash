@@ -14,16 +14,24 @@ exclude = ["article/*"]
 
 [features]
 default = ["std"]
-std = []
+std = ["rand_core/std"]
 # Only relevant for throughput benchmarks
 bench-csv = []
 bench-md = []
 bench-plot = []
 
 [dependencies]
-rand = "0.8"
+const-random = "0.1"
+rand_chacha = { version = "0.3", default_features = false }
+rand_core = "0.6"
+
+# (no_std) RDRAND is still preferable to constant seed
+[target.'cfg(target_feature = "rdrand")'.dependencies]
+getrandom = { version = "0.2", features = ["rdrand"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
 
 [dev-dependencies]
+rand = "0.8"
 lazy_static = { version = "1.4" }
 itertools = "0.12.0"
 # Benchmarks
@@ -38,6 +46,7 @@ metrohash = "1.0.6"
 fnv = "1.0.3"
 
 [build-dependencies]
+rand = "0.8"
 rustc_version = "0.4.0"
 
 [dev-dependencies.plotters]

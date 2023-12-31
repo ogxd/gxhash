@@ -6,7 +6,5 @@
 mod gxhash;
 pub use crate::gxhash::*;
 
-#[cfg(feature = "std")]
 mod hasher;
-#[cfg(feature = "std")]
 pub use crate::hasher::*;
