@@ -46,6 +46,16 @@ GxHash is compatible with:
 ### Hashes Stability
 All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms.
 
+### `no_std`
+
+The `std` feature flag enables the `HashMap`/`HashSet` container convenience type aliases. This is on by default. Disable to make the crate `no_std`:
+
+```toml
+[dependencies.gxhash]
+...
+default-features = false
+```
+
 ## Benchmarks
 
 To run the benchmarks locally use one of the following:

@@ -17,14 +17,17 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Build no_std
+      run: cargo build --release --no-default-features
+
     - name: Build
       run: cargo build --release
 
     - name: Test
       run: cargo test --release --lib
 
-  build_test_x86_avx2:
-    name: Build & Test X86 AVX2
+  build_test_x86_hybrid:
+    name: Build & Test X86 Hybrid
     runs-on: ubuntu-latest
 
     steps:
@@ -32,6 +35,9 @@ jobs:
 
     - name: Switch to nightly rust
       run: rustup default nightly
+
+    - name: Build no_std
+      run: cargo build --release --no-default-features
 
     - name: Build
       run: cargo build --release
@@ -45,6 +51,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Build no_std
+      run: cargo build --release --no-default-features
 
     - name: Build
       run: cargo build --release

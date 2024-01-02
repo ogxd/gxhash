@@ -8,7 +8,7 @@ mod platform;
 
 pub use platform::*;
 
-use std::mem::size_of;
+use core::mem::size_of;
 
 pub(crate) const VECTOR_SIZE: usize = size_of::<State>();
 // 4KiB is the default page size for most systems, and conservative for other systems such as MacOS ARM (16KiB)
