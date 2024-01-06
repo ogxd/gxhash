@@ -23,6 +23,9 @@ jobs:
     - name: Test
       run: cargo test --release
 
+    - name: Bench
+      run: cargo bench --bench throughput
+
   build_test_x86_avx2:
     name: Build & Test X86 AVX2
     runs-on: ubuntu-latest
