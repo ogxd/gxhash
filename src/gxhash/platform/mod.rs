@@ -6,7 +6,6 @@ mod platform;
 
 #[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))]
 #[path = "x86.rs"]
-#[unsafe_target_feature("sse2")]
 mod platform;
 
 pub use platform::*;
