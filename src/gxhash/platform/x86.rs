@@ -3,8 +3,6 @@ use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
 
-use unsafe_target_feature::unsafe_target_feature;
-
 use super::*;
 
 pub type State = __m128i;
@@ -15,19 +13,19 @@ pub unsafe fn check_support() -> bool {
 }
 
 #[inline]
-#[unsafe_target_feature("sse2")]
+#[target_feature(enable = "sse2")]
 pub unsafe fn create_empty() -> State {
     _mm_setzero_si128()
 }
 
 #[inline]
-#[unsafe_target_feature("sse2")]
+#[target_feature(enable = "sse2")]
 pub unsafe fn create_seed(seed: i64) -> State {
     _mm_set1_epi64x(seed)
 }
 
 #[inline]
-#[unsafe_target_feature("sse2")]
+#[target_feature(enable = "sse2")]
 pub unsafe fn load_unaligned(p: *const State) -> State {
     _mm_loadu_si128(p)
 }
@@ -44,7 +42,7 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
 }
 
 #[inline]
-#[unsafe_target_feature("sse2")]
+#[target_feature(enable = "sse2")]
 pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
     let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
@@ -53,26 +51,28 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
 }
 
 #[inline]
-#[unsafe_target_feature("aes")]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))]
+#[target_feature(enable = "aes")]
 pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     _mm_aesenc_si128(data, keys)
 }
 
 #[inline]
-#[unsafe_target_feature("aes")]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))]
+#[target_feature(enable = "aes")]
 pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     _mm_aesenclast_si128(data, keys)
 }
 
 #[inline]
-#[unsafe_target_feature("sse2")]
+#[target_feature(enable = "sse2")]
 pub unsafe fn ld(array: *const u32) -> State {
     _mm_loadu_si128(array as *const State)
 }
 
 #[cfg(not(hybrid))]
 #[inline]
-#[unsafe_target_feature("sse2")]
+#[target_feature(enable = "sse2")]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
 
     // Disambiguation vectors
@@ -114,7 +114,7 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
 
 #[cfg(hybrid)]
 #[inline]
-#[unsafe_target_feature("sse2")]
+#[target_feature(enable = "sse2")]
 pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
     macro_rules! load_unaligned_x2 {
         ($ptr:ident, $($var:ident),+) => {
