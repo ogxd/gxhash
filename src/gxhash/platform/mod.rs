@@ -1,8 +1,8 @@
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_feature = "aes"))]
 #[path = "arm.rs"]
 mod platform;
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "aes"))]
 #[path = "x86.rs"]
 mod platform;
 
