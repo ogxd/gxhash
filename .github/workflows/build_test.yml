@@ -21,7 +21,7 @@ jobs:
       run: cargo build --release
 
     - name: Test
-      run: cargo test --release
+      run: cargo test --release --lib
 
     - name: Bench
       run: cargo bench --bench throughput
@@ -40,7 +40,7 @@ jobs:
       run: cargo build --release
 
     - name: Test
-      run: cargo test --release
+      run: cargo test --release --lib
 
   build_test_arm:
     name: Build & Test ARM
@@ -53,4 +53,4 @@ jobs:
       run: cargo build --release
 
     - name: Test
-      run: cargo test --release
+      run: cargo test --release --lib
