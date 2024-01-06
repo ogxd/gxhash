@@ -16,7 +16,7 @@ fn main() {
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn has_hardware_support() -> Result<(), Box<dyn std::error::Error>> {
+fn check_hardware_support() -> Result<(), Box<dyn std::error::Error>> {
     if !std::is_x86_feature_detected!("aes") {
         return Result::Err("CPU feature 'aes' is required")?;
     }
