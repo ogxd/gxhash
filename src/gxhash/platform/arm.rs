@@ -46,7 +46,8 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
 }
 
-#[inline(always)]
+#[inline]
+#[target_feature(enable = "aes")]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
 pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     // Encrypt
@@ -57,7 +58,8 @@ pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     vreinterpretq_s8_u8(veorq_u8(mixed, vreinterpretq_u8_s8(keys)))
 }
 
-#[inline(always)]
+#[inline]
+#[target_feature(enable = "aes")]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
 pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     // Encrypt
