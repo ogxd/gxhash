@@ -50,15 +50,11 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
 }
 
-#[inline]
-#[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "aes")]
 pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     _mm_aesenc_si128(data, keys)
 }
 
-#[inline]
-#[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "aes")]
 pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     _mm_aesenclast_si128(data, keys)
