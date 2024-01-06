@@ -8,6 +8,11 @@ use super::*;
 pub type State = __m128i;
 
 #[inline(always)]
+pub unsafe fn check_support() -> bool {
+    std::arch::is_x86_feature_detected!("aes") && std::arch::is_x86_feature_detected!("sse2")
+}
+
+#[inline(always)]
 pub unsafe fn create_empty() -> State {
     _mm_setzero_si128()
 }
