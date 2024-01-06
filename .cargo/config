@@ -1,2 +1,5 @@
-[build]
-rustflags = ["-C", "target-cpu=native"]
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "target-feature=+aes,+neon"]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "target-feature=+aes,+sse2"]
