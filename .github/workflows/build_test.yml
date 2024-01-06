@@ -54,3 +54,6 @@ jobs:
 
     - name: Test
       run: cargo test --release
+
+    - name: Bench
+      run: cargo bench --bench throughput

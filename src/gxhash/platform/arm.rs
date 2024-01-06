@@ -3,6 +3,8 @@ use core::arch::arm::*;
 #[cfg(target_arch = "aarch64")]
 use core::arch::aarch64::*;
 
+use unsafe_target_feature::unsafe_target_feature;
+
 use super::*;
 
 pub type State = int8x16_t;
@@ -60,6 +62,7 @@ pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
 
 #[inline]
 #[target_feature(enable = "aes")]
+#[unsafe_target_feature("aes")]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
 pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     // Encrypt

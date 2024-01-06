@@ -3,6 +3,8 @@ use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
 
+use unsafe_target_feature::unsafe_target_feature;
+
 use super::*;
 
 pub type State = __m128i;

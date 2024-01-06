@@ -1,5 +1,3 @@
-use unsafe_target_feature::unsafe_target_feature;
-
 #[cfg(all(any(target_arch = "arm", target_arch = "aarch64")))]
 #[path = "arm.rs"]
 mod platform;
