@@ -52,13 +52,13 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
 }
 
 #[inline]
-#[target_feature(enable = "aes")]
+#[target_feature(enable = "aes", enable = "sse2")]
 pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     _mm_aesenc_si128(data, keys)
 }
 
 #[inline]
-#[target_feature(enable = "aes")]
+#[target_feature(enable = "aes", enable = "sse2")]
 pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     _mm_aesenclast_si128(data, keys)
 }
