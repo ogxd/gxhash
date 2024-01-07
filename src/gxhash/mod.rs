@@ -70,8 +70,13 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
     finalize(aes_encrypt(compress_all(input), seed))
 }
 
-#[inline(always)]
+#[inline]
+#[target_feature(enable = "aes")]
 pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
+
+    // if !check_support() {
+    //     panic!("Not supported");
+    // }
 
     let len = input.len();
     let mut ptr = input.as_ptr() as *const State;

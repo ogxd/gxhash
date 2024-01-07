@@ -21,7 +21,10 @@ jobs:
       run: cargo build --release
 
     - name: Test
-      run: cargo test --release --lib
+      run: cargo test --release
+
+    - name: Bench
+      run: cargo bench --bench throughput
 
   build_test_x86_avx2:
     name: Build & Test X86 AVX2
@@ -37,7 +40,7 @@ jobs:
       run: cargo build --release
 
     - name: Test
-      run: cargo test --release --lib
+      run: cargo test --release
 
   build_test_arm:
     name: Build & Test ARM
@@ -50,4 +53,7 @@ jobs:
       run: cargo build --release
 
     - name: Test
-      run: cargo test --release --lib
+      run: cargo test --release
+
+    - name: Bench
+      run: cargo bench --bench throughput
