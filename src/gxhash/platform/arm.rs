@@ -7,21 +7,29 @@ use super::*;
 
 pub type State = int8x16_t;
 
-#[inline(always)]
+// #[inline(always)]
+// pub unsafe fn check_support() -> bool {
+//     std::arch::is_aarch64_feature_detected!("aes") && std::arch::is_aarch64_feature_detected!("neon")
+// }
+
+enable_target_feature! {"neon", "aes";
+
+#[inline]
 pub unsafe fn create_empty() -> State {
     vdupq_n_s8(0)
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn create_seed(seed: i64) -> State {
     vreinterpretq_s8_s64(vdupq_n_s64(seed))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_unaligned(p: *const State) -> State {
     vld1q_s8(p as *const i8)
 }
 
+// We don't inline the safe fallback to reduce the bytecode size on the hotpath
 #[inline(never)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
@@ -33,7 +41,7 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
     let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
@@ -41,7 +49,7 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
 }
 
-#[inline(always)]
+#[inline]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
 pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     // Encrypt
@@ -52,7 +60,7 @@ pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     vreinterpretq_s8_u8(veorq_u8(mixed, vreinterpretq_u8_s8(keys)))
 }
 
-#[inline(always)]
+#[inline]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
 pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     // Encrypt
@@ -61,12 +69,12 @@ pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     vreinterpretq_s8_u8(veorq_u8(encrypted, vreinterpretq_u8_s8(keys)))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn ld(array: *const u32) -> State {
     vreinterpretq_s8_u32(vld1q_u32(array))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
 
     // Disambiguation vectors
@@ -106,54 +114,56 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     aes_encrypt(lane1, lane2)
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_u8(x: u8) -> State {
     vreinterpretq_s8_u8(vdupq_n_u8(x))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_u16(x: u16) -> State {
     vreinterpretq_s8_u16(vdupq_n_u16(x))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_u32(x: u32) -> State {
     vreinterpretq_s8_u32(vdupq_n_u32(x))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_u64(x: u64) -> State {
     vreinterpretq_s8_u64(vdupq_n_u64(x))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_u128(x: u128) -> State {
     let ptr = &x as *const u128 as *const i8;
     vld1q_s8(ptr)
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_i8(x: i8) -> State {
     vdupq_n_s8(x)
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_i16(x: i16) -> State {
     vreinterpretq_s8_s16(vdupq_n_s16(x))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_i32(x: i32) -> State {
     vreinterpretq_s8_s32(vdupq_n_s32(x))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_i64(x: i64) -> State {
     vreinterpretq_s8_s64(vdupq_n_s64(x))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn load_i128(x: i128) -> State {
     let ptr = &x as *const i128 as *const i8;
     vld1q_s8(ptr)
+}
+
 }

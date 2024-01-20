@@ -7,22 +7,24 @@ use super::*;
 
 pub type State = __m128i;
 
-#[inline(always)]
+// pub unsafe fn check_support() -> bool {
+//     std::arch::is_x86_feature_detected!("aes") && std::arch::is_x86_feature_detected!("sse2")
+// }
+
+enable_target_feature! {"sse2", "aes";
+
+#[inline]
 pub unsafe fn create_empty() -> State {
     _mm_setzero_si128()
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn create_seed(seed: i64) -> State {
     _mm_set1_epi64x(seed)
 }
 
-#[inline(always)]
-pub unsafe fn load_unaligned(p: *const State) -> State {
-    _mm_loadu_si128(p)
-}
-
-#[inline(always)]
+// We don't inline the safe fallback to reduce the bytecode size on the hotpath
+#[inline(never)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
     let mut buffer = [0i8; VECTOR_SIZE];
@@ -33,7 +35,7 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
 }
 
-#[inline(always)]
+#[inline]
 pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
     let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
@@ -41,28 +43,31 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
 }
 
-#[inline(always)]
-#[allow(dead_code)]
+#[inline]
+pub unsafe fn load_unaligned(p: *const State) -> State {
+    _mm_loadu_si128(p)
+}
+    
+#[inline]
 pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
     _mm_aesenc_si128(data, keys)
 }
 
-#[inline(always)]
-#[allow(dead_code)]
+#[inline]
 pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     _mm_aesenclast_si128(data, keys)
 }
 
-#[inline(always)]
-#[allow(dead_code)]
+#[inline]
 pub unsafe fn ld(array: *const u32) -> State {
     _mm_loadu_si128(array as *const State)
 }
 
 #[cfg(not(hybrid))]
-#[inline(always)]
+#[inline]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
 
+    //panic!("C'est non");
     // Disambiguation vectors
     let mut t1: State = create_empty();
     let mut t2: State = create_empty();
@@ -100,8 +105,65 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     aes_encrypt(lane1, lane2)
 }
 
+
+#[inline]
+pub unsafe fn load_u8(x: u8) -> State {
+    _mm_set1_epi8(x as i8)
+}
+
+#[inline]
+pub unsafe fn load_u16(x: u16) -> State {
+    _mm_set1_epi16(x as i16)
+}
+
+#[inline]
+pub unsafe fn load_u32(x: u32) -> State {
+    _mm_set1_epi32(x as i32)
+}
+
+#[inline]
+pub unsafe fn load_u64(x: u64) -> State {
+    _mm_set1_epi64x(x as i64)
+}
+
+#[inline]
+pub unsafe fn load_u128(x: u128) -> State {
+    let ptr = &x as *const u128 as *const State;
+    _mm_loadu_si128(ptr)
+}
+
+#[inline]
+pub unsafe fn load_i8(x: i8) -> State {
+    _mm_set1_epi8(x)
+}
+
+#[inline]
+pub unsafe fn load_i16(x: i16) -> State {
+    _mm_set1_epi16(x)
+}
+
+#[inline]
+pub unsafe fn load_i32(x: i32) -> State {
+    _mm_set1_epi32(x)
+}
+
+#[inline]
+pub unsafe fn load_i64(x: i64) -> State {
+    _mm_set1_epi64x(x)
+}
+
+#[inline]
+pub unsafe fn load_i128(x: i128) -> State {
+    let ptr = &x as *const i128 as *const State;
+    _mm_loadu_si128(ptr)
+}
+}
+
 #[cfg(hybrid)]
-#[inline(always)]
+#[inline]
+#[target_feature(enable = "avx2")]
+#[target_feature(enable = "avx")]
+#[target_feature(enable = "vaes")]
 pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
     macro_rules! load_unaligned_x2 {
         ($ptr:ident, $($var:ident),+) => {
@@ -132,61 +194,9 @@ pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: Sta
     let mut lane1 = _mm256_castsi256_si128(lane);
     let mut lane2 = _mm256_extracti128_si256(lane, 1);
     // For 'Zeroes' test
-    let len_vec =  _mm_set1_epi32(len as i32);
+    let len_vec = _mm_set1_epi32(len as i32);
     lane1 = _mm_add_epi8(lane1, len_vec);
     lane2 = _mm_add_epi8(lane2, len_vec);
     // Merge lanes
     aes_encrypt(lane1, lane2)
-}
-
-#[inline(always)]
-pub unsafe fn load_u8(x: u8) -> State {
-    _mm_set1_epi8(x as i8)
-}
-
-#[inline(always)]
-pub unsafe fn load_u16(x: u16) -> State {
-    _mm_set1_epi16(x as i16)
-}
-
-#[inline(always)]
-pub unsafe fn load_u32(x: u32) -> State {
-    _mm_set1_epi32(x as i32)
-}
-
-#[inline(always)]
-pub unsafe fn load_u64(x: u64) -> State {
-    _mm_set1_epi64x(x as i64)
-}
-
-#[inline(always)]
-pub unsafe fn load_u128(x: u128) -> State {
-    let ptr = &x as *const u128 as *const State;
-    _mm_loadu_si128(ptr)
-}
-
-#[inline(always)]
-pub unsafe fn load_i8(x: i8) -> State {
-    _mm_set1_epi8(x)
-}
-
-#[inline(always)]
-pub unsafe fn load_i16(x: i16) -> State {
-    _mm_set1_epi16(x)
-}
-
-#[inline(always)]
-pub unsafe fn load_i32(x: i32) -> State {
-    _mm_set1_epi32(x)
-}
-
-#[inline(always)]
-pub unsafe fn load_i64(x: i64) -> State {
-    _mm_set1_epi64x(x)
-}
-
-#[inline(always)]
-pub unsafe fn load_i128(x: i128) -> State {
-    let ptr = &x as *const i128 as *const State;
-    _mm_loadu_si128(ptr)
 }

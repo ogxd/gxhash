@@ -1,8 +1,8 @@
-#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_feature = "aes", target_feature = "neon"))]
+#[cfg(all(any(target_arch = "arm", target_arch = "aarch64")))]
 #[path = "arm.rs"]
 mod platform;
 
-#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "aes", target_feature = "sse2"))]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))]
 #[path = "x86.rs"]
 mod platform;
 
@@ -46,3 +46,22 @@ pub const KEYS: [u32; 12] =
    [0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E,
     0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39132BD9,
     0xD0012E32, 0x689D2B7D, 0x5544B1B7, 0xC78B122B];
+
+
+macro_rules! enable_target_feature {
+    // Single function case
+    ($($literal:literal),*; $x:item) => {
+        $(
+            #[target_feature(enable = $literal)]
+        )*
+        $x
+    };
+
+    // Multiple items case
+    ($($literal:literal),*; $x:item $($y:item)+) => {
+        enable_target_feature!($($literal),*; $x);
+        enable_target_feature!($($literal),*; $($y)+);
+    };
+}
+
+pub(crate) use enable_target_feature;
