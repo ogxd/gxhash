@@ -7,10 +7,10 @@ use super::*;
 
 pub type State = int8x16_t;
 
-#[inline(always)]
-pub unsafe fn check_support() -> bool {
-    std::arch::is_aarch64_feature_detected!("aes") && std::arch::is_aarch64_feature_detected!("neon")
-}
+// #[inline(always)]
+// pub unsafe fn check_support() -> bool {
+//     std::arch::is_aarch64_feature_detected!("aes") && std::arch::is_aarch64_feature_detected!("neon")
+// }
 
 enable_target_feature! {"neon", "aes";
 

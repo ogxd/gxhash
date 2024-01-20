@@ -7,9 +7,9 @@ use super::*;
 
 pub type State = __m128i;
 
-pub unsafe fn check_support() -> bool {
-    std::arch::is_x86_feature_detected!("aes") && std::arch::is_x86_feature_detected!("sse2")
-}
+// pub unsafe fn check_support() -> bool {
+//     std::arch::is_x86_feature_detected!("aes") && std::arch::is_x86_feature_detected!("sse2")
+// }
 
 enable_target_feature! {"sse2", "aes";
 
