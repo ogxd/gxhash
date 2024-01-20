@@ -11,7 +11,7 @@ pub unsafe fn check_support() -> bool {
     std::arch::is_x86_feature_detected!("aes") && std::arch::is_x86_feature_detected!("sse2")
 }
 
-enable_target_feature! {"sse2", "aes", "vaes", "avx", "avx2";
+enable_target_feature! {"sse2", "aes";
 
 #[inline]
 pub unsafe fn create_empty() -> State {
@@ -63,48 +63,47 @@ pub unsafe fn ld(array: *const u32) -> State {
     _mm_loadu_si128(array as *const State)
 }
 
-// #[cfg(not(hybrid))]
-// #[inline]
-// pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
+#[cfg(not(hybrid))]
+#[inline]
+pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
 
-//     // Disambiguation vectors
-//     let mut t1: State = create_empty();
-//     let mut t2: State = create_empty();
+    //panic!("C'est non");
+    // Disambiguation vectors
+    let mut t1: State = create_empty();
+    let mut t2: State = create_empty();
 
-//     // Hash is processed in two separate 128-bit parallel lanes
-//     // This allows the same processing to be applied using 256-bit V-AES instrinsics
-//     // so that hashes are stable in both cases. 
-//     let mut lane1 = hash_vector;
-//     let mut lane2 = hash_vector;
+    // Hash is processed in two separate 128-bit parallel lanes
+    // This allows the same processing to be applied using 256-bit V-AES instrinsics
+    // so that hashes are stable in both cases. 
+    let mut lane1 = hash_vector;
+    let mut lane2 = hash_vector;
 
-//     while (ptr as usize) < end_address {
+    while (ptr as usize) < end_address {
 
-//         crate::gxhash::load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
+        crate::gxhash::load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
 
-//         let mut tmp1 = aes_encrypt(v0, v2);
-//         let mut tmp2 = aes_encrypt(v1, v3);
+        let mut tmp1 = aes_encrypt(v0, v2);
+        let mut tmp2 = aes_encrypt(v1, v3);
 
-//         tmp1 = aes_encrypt(tmp1, v4);
-//         tmp2 = aes_encrypt(tmp2, v5);
+        tmp1 = aes_encrypt(tmp1, v4);
+        tmp2 = aes_encrypt(tmp2, v5);
 
-//         tmp1 = aes_encrypt(tmp1, v6);
-//         tmp2 = aes_encrypt(tmp2, v7);
+        tmp1 = aes_encrypt(tmp1, v6);
+        tmp2 = aes_encrypt(tmp2, v7);
 
-//         t1 = _mm_add_epi8(t1, ld(KEYS.as_ptr()));
-//         t2 = _mm_add_epi8(t2, ld(KEYS.as_ptr().offset(4)));
+        t1 = _mm_add_epi8(t1, ld(KEYS.as_ptr()));
+        t2 = _mm_add_epi8(t2, ld(KEYS.as_ptr().offset(4)));
 
-//         lane1 = aes_encrypt_last(aes_encrypt(tmp1, t1), lane1);
-//         lane2 = aes_encrypt_last(aes_encrypt(tmp2, t2), lane2);
-//     }
-//     // For 'Zeroes' test
-//     let len_vec =  _mm_set1_epi32(len as i32);
-//     lane1 = _mm_add_epi8(lane1, len_vec);
-//     lane2 = _mm_add_epi8(lane2, len_vec);
-//     // Merge lanes
-//     aes_encrypt(lane1, lane2)
-// }
-
-//#[cfg(hybrid)]
+        lane1 = aes_encrypt_last(aes_encrypt(tmp1, t1), lane1);
+        lane2 = aes_encrypt_last(aes_encrypt(tmp2, t2), lane2);
+    }
+    // For 'Zeroes' test
+    let len_vec =  _mm_set1_epi32(len as i32);
+    lane1 = _mm_add_epi8(lane1, len_vec);
+    lane2 = _mm_add_epi8(lane2, len_vec);
+    // Merge lanes
+    aes_encrypt(lane1, lane2)
+}
 
 
 #[inline]
@@ -160,7 +159,11 @@ pub unsafe fn load_i128(x: i128) -> State {
 }
 }
 
-#[inline(always)]
+#[cfg(hybrid)]
+#[inline]
+#[target_feature(enable = "avx2")]
+#[target_feature(enable = "avx")]
+#[target_feature(enable = "vaes")]
 pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
     macro_rules! load_unaligned_x2 {
         ($ptr:ident, $($var:ident),+) => {

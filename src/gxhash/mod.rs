@@ -71,7 +71,6 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 }
 
 #[inline]
-#[target_feature(enable = "aes")]
 pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
 
     if !check_support() {

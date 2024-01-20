@@ -3,8 +3,6 @@ use core::arch::arm::*;
 #[cfg(target_arch = "aarch64")]
 use core::arch::aarch64::*;
 
-use unsafe_target_feature::unsafe_target_feature;
-
 use super::*;
 
 pub type State = int8x16_t;
