@@ -20,7 +20,6 @@ bench-plot = []
 
 [dependencies]
 rand = "0.8"
-unsafe_target_feature = "0.1.1"
 
 [dev-dependencies]
 lazy_static = { version = "1.4" }

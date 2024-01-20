@@ -74,9 +74,9 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 #[target_feature(enable = "aes")]
 pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
 
-    // if !check_support() {
-    //     panic!("Not supported");
-    // }
+    if !check_support() {
+        panic!("Not supported");
+    }
 
     let len = input.len();
     let mut ptr = input.as_ptr() as *const State;

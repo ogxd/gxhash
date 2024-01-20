@@ -46,3 +46,22 @@ pub const KEYS: [u32; 12] =
    [0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E,
     0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39132BD9,
     0xD0012E32, 0x689D2B7D, 0x5544B1B7, 0xC78B122B];
+
+
+macro_rules! enable_target_feature {
+    // Single function case
+    ($($literal:literal),*; $x:item) => {
+        $(
+            #[target_feature(enable = $literal)]
+        )*
+        $x
+    };
+
+    // Multiple items case
+    ($($literal:literal),*; $x:item $($y:item)+) => {
+        enable_target_feature!($($literal),*; $x);
+        enable_target_feature!($($literal),*; $($y)+);
+    };
+}
+
+pub(crate) use enable_target_feature;
