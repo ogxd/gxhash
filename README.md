@@ -36,6 +36,9 @@ Check out the [paper](https://github.com/ogxd/gxhash-rust/blob/main/article/arti
 
 ## Portability
 
+> **Important**
+> Because GxHash relies on `aes` hardware acceleration, you must make sure the `aes` feature is enabled when building (otherwise it won't build). This can be done by setting the `RUSTFLAGS` environment variable to `-C target-feature=+aes` or `-C target-cpu=native` (the latter should work if your CPU is properly recognized by rustc, which is the case most of the time).
+
 ### Architecture Compatibility
 GxHash is compatible with:
 - X86 processors with `AES-NI` & `SSE2` intrinsics
