@@ -64,4 +64,4 @@ name = "quality"
 harness = false
 
 [package.metadata.docs.rs]
-rustc-args = ["-C target-cpu=native"]
+rustc-args = ["-C", "target-feature=+aes"]
