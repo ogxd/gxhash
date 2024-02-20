@@ -62,3 +62,6 @@ harness = false
 [[bench]]
 name = "quality"
 harness = false
+
+[package.metadata.docs.rs]
+rustc-args = ["-C", "target-feature=+aes"]
