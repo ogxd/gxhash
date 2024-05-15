@@ -17,13 +17,13 @@ jobs:
 
     strategy:
       matrix:
-        version: ["1.65.0", "1.72.0", "1.78.0", "1.79.0"]
+        version: ["1.65", "1.72", "1.78", "1.79"]
 
     steps:
     - uses: actions/checkout@v3
 
     - name: Install ${{ matrix.version }}
-      run: rustup install ${{ matrix.version }}
+      run: rustup toolchain install ${{ matrix.version }}
 
     - name: Rust version
       run: cargo rustc -- --version
