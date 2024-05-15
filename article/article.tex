@@ -604,7 +604,7 @@ UInt32 Crc(1000)                 & 0,0123\% & 0,000708  & 0,000002 & 0,00499 \\
 \label{tab:scores-words}
 \end{table}
 
-We still observe about 0.0116\% of collisions for all algorithms, explainable by the birthday paradox, as seen previously. This time however, XxHash\cite{xxhash}, Fnv1a, and Crc are not able to beep bijectivity as inputs use more bytes compared to the sequential case, making the bijectivity property impossible and thus leading to inevitable collision.
+We still observe about 0.0116\% of collisions for all algorithms, explainable by the birthday paradox, as seen previously. This time however, XxHash\cite{xxhash}, Fnv1a, and Crc are not able to keep bijectivity as inputs use more bytes compared to the sequential case, making the bijectivity property impossible and thus leading to inevitable collision.
 The bits distribution is very close for all algorithms benchmarked, at about 0.001. The avalanche score for GxHash is very good, on pair with HighwayHash\cite{highwayhash}, XxHash\cite{xxhash}, and T1ha\cite{rust-t1ha}.
 
 \begin{figure}[H]
