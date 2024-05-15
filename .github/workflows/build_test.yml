@@ -42,6 +42,15 @@ jobs:
     - name: Build
       run: cargo build --release
 
+    - name: Install 1.72
+      run: rustup install 1.72
+
+    - name: Build 1.72.0
+      run: cargo +1.72 build --release
+
+    - name: Rust version
+      run: cargo rustc -- --version
+
     - name: Test
       run: cargo test --release --lib
 
