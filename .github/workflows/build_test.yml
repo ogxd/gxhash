@@ -17,6 +17,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Rust version
+      run: cargo rustc -- --version
+
     - name: Build
       run: cargo build --release
 
@@ -33,6 +36,9 @@ jobs:
     - name: Switch to nightly rust
       run: rustup default nightly
 
+    - name: Rust version
+      run: cargo rustc -- --version
+
     - name: Build
       run: cargo build --release
 
@@ -41,10 +47,13 @@ jobs:
 
   build_test_arm:
     name: Build & Test ARM
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Rust version
+      run: cargo rustc -- --version
 
     - name: Build
       run: cargo build --release
