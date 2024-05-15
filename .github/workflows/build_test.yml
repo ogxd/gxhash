@@ -17,6 +17,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Rust version
+      run: cargo rustc -- --version
+
     - name: Build
       run: cargo build --release
 
@@ -32,6 +35,9 @@ jobs:
 
     - name: Switch to nightly rust
       run: rustup default nightly
+
+    - name: Rust version
+      run: cargo rustc -- --version
 
     - name: Build
       run: cargo build --release
@@ -51,6 +57,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Rust version
+      run: cargo rustc -- --version
 
     - name: Build
       run: cargo build --release
