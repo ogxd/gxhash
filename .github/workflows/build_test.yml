@@ -42,12 +42,6 @@ jobs:
     - name: Build
       run: cargo build --release
 
-    - name: Install 1.78.0
-      run: rustup install 1.78
-
-    - name: Build 1.78.0
-      run: cargo +1.78 build --release
-
     - name: Test
       run: cargo test --release --lib
 
