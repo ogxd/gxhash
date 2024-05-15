@@ -30,7 +30,7 @@ jobs:
       run: cargo rustc -- --version
 
     - name: Build
-      run: RUSTFLAGS="--cfg hybrid" cargo +${{ matrix.version }} build --release
+      run: RUSTFLAGS="-C target-cpu=native --cfg hybrid" cargo +${{ matrix.version }} build --release
 
     - name: Test
-      run: RUSTFLAGS="--cfg hybrid" cargo +${{ matrix.version }} test --release --lib
+      run: RUSTFLAGS="-C target-cpu=native --cfg hybrid" cargo +${{ matrix.version }} test --release --lib
