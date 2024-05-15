@@ -53,7 +53,7 @@ jobs:
 
   build_test_arm:
     name: Build & Test ARM
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v3
