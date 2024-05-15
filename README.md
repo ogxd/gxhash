@@ -51,20 +51,24 @@ All generated hashes for a given version of GxHash are stable, meaning that for 
 
 ## Benchmarks
 
+[![Benchmark](https://github.com/ogxd/gxhash/actions/workflows/bench.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/bench.yml)  
+GxHash is continuously benchmarked on X86 and ARM Github runners. 
+
 To run the benchmarks locally use one of the following:
 ```bash
 # Benchmark throughput
+# Add --features bench-md for markdown output or --features bench-plot for .svg plots
 cargo bench --bench throughput
+
 # Benchmark performance of GxHash's Hasher when used in a HashSet
 cargo bench --bench hashset
-# Benchmark throughput and get output as a markdown table
-cargo bench --bench throughput --features bench-md
-# Benchmark throughput and get output as .svg plots
-cargo bench --bench throughput --features bench-plot
 ```
 
-GxHash is continuously benchmarked on X86 and ARM Github runners.  
-[![Benchmark](https://github.com/ogxd/gxhash/actions/workflows/bench.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/bench.yml)
+### Throughput
+
+Throughput is measured as the number of bytes hashed per second.
+
+*Some prefer talking **latency** (time for generating a hash) or **hashrate** (the number of hashes generated per second) for measuring hash function performance, but those are all equivalent in the end as they all boil down to measuring the time it takes to hash some input and then apply different scalar transformation. For instance, if latency for a `4 bytes` hash is `1 ms`, then the throughput is `1 / 0.001 * 4 = 4000 bytes per second`. Throughput allows us to conveniently compare the performance of a hash function for any input size on a single graph.*
 
 **Lastest Benchmark Results:**    
 ![aarch64](./benches/throughput/aarch64.svg)
