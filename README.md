@@ -25,7 +25,8 @@ hashset.insert("hello world");
 ## Features
 
 ### Blazingly Fast 🚀  
-Up to this date, GxHash is the fastest non-cryptographic hashing algorithm of its class, for all input sizes. This performance is possible mostly thanks to heavy usage of SIMD intrinsics, high ILP construction and a small bytecode (easily inlined and cached).  
+Up to this date, GxHash is the fastest non-cryptographic hashing algorithm of its class, for all input sizes. This performance is possible mostly thanks to heavy usage of SIMD intrinsics, high ILP construction, a small bytecode (easily inlined and cached) and some ([outrageously unsafe](https://ogxd.github.io/articles/unsafe-read-beyond-of-death/)) tricks.  
+
 See the [benchmarks](#benchmarks).
 
 ### Highly Robust 🗿  
