@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         version: ["1.65", "1.72", "1.78", "1.79"]
 
