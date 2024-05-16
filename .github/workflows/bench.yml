@@ -14,6 +14,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Update rust
+      run: rustup update
+
     - name: Benchmark
       run: cargo bench --bench throughput --features bench-plot
 
@@ -46,6 +49,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Update rust
+      run: rustup update
 
     - name: Benchmark
       run: cargo bench --bench throughput --features bench-plot
