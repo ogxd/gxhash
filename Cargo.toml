@@ -17,6 +17,7 @@ exclude = ["article/*"]
 bench-csv = []
 bench-md = []
 bench-plot = []
+hybrid = []
 
 [dependencies]
 rand = "0.8"
