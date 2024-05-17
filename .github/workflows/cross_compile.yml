@@ -42,9 +42,9 @@ jobs:
         - from: macos-latest
           target: "aarch64-apple-darwin"
           can_work_as_hybrid: true
-        - from: macos-latest
-          target: "x86_64-unknown-linux-gnu"
-          can_work_as_hybrid: true
+        # - from: macos-latest
+        #   target: "x86_64-unknown-linux-gnu"
+        #   can_work_as_hybrid: true
 
     runs-on: ${{ matrix.from }}
 
@@ -57,7 +57,10 @@ jobs:
     - name: Build
       run: cargo build --release --target ${{ matrix.target }}
 
+    - name: Switch to nightly rust
+      run: rustup default nightly
+      if: ${{ matrix.can_work_as_hybrid }}
+
     - name: Build Hybrid
       continue-on-error: ${{ !matrix.can_work_as_hybrid }}
-      # if: ${{ matrix.can_work_as_hybrid }}
       run: cargo build --release --features hybrid --target ${{ matrix.target }}
