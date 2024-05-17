@@ -59,7 +59,7 @@ pub unsafe fn ld(array: *const u32) -> State {
     _mm_loadu_si128(array as *const State)
 }
 
-#[cfg(not(hybrid))]
+#[cfg(not(feature = "hybrid"))]
 #[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
 
@@ -100,7 +100,7 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     aes_encrypt(lane1, lane2)
 }
 
-#[cfg(hybrid)]
+#[cfg(feature = "hybrid")]
 #[inline(always)]
 pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
     macro_rules! load_unaligned_x2 {
