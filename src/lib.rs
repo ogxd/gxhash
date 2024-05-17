@@ -1,5 +1,5 @@
 // Hybrid SIMD width usage currently requires unstable 'stdsimd'
-#![cfg_attr(hybrid, feature(stdarch_x86_avx512))]
+#![cfg_attr(feature = "hybrid", feature(stdarch_x86_avx512))]
 
 #[cfg(all(feature = "hybrid", not(any(target_arch = "x86_64", target_feature = "avx2", target_feature = "vaes"))))]
 compile_error!{"Hybrid feature is only available on x86 processors with avx2 and vaes intrinsics."}
