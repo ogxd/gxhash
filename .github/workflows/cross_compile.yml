@@ -14,26 +14,39 @@ env:
 
 jobs:
 
-  build:
+  build_x86:
     name: Build
-    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
         include:
-        - target: "aarch64-apple-darwin"
+        - from: ubuntu-latest
+          target: "aarch64-apple-darwin"
           can_work_as_hybrid: false
-        - target: "aarch64-unknown-linux-gnu"
+        - from: ubuntu-latest
+          target: "aarch64-unknown-linux-gnu"
           can_work_as_hybrid: false
-        - target: "aarch64-unknown-linux-musl"
+        - from: ubuntu-latest
+          target: "aarch64-unknown-linux-musl"
           can_work_as_hybrid: false
-        - target: "i686-unknown-linux-gnu"
+        - from: ubuntu-latest
+          target: "i686-unknown-linux-gnu"
           can_work_as_hybrid: true
-        - target: "x86_64-pc-windows-gnu"
+        - from: ubuntu-latest
+          target: "x86_64-pc-windows-gnu"
           can_work_as_hybrid: true
-        - target: "x86_64-unknown-linux-gnu"
+        - from: ubuntu-latest
+          target: "x86_64-unknown-linux-gnu"
           can_work_as_hybrid: true
+        - from: macos-latest
+          target: "aarch64-apple-darwin"
+          can_work_as_hybrid: true
+        - from: macos-latest
+          target: "x86_64-unknown-linux-gnu"
+          can_work_as_hybrid: true
+
+    runs-on: ${{ matrix.from }}
 
     steps:
     - uses: actions/checkout@v3
@@ -45,5 +58,6 @@ jobs:
       run: cargo build --release --target ${{ matrix.target }}
 
     - name: Build Hybrid
-      if: ${{ matrix.can_work_as_hybrid }}
+      continue-on-error: ${{ !matrix.can_work_as_hybrid }}
+      # if: ${{ matrix.can_work_as_hybrid }}
       run: cargo build --release --features hybrid --target ${{ matrix.target }}
