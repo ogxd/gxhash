@@ -25,12 +25,14 @@ jobs:
         - target: "aarch64-apple-darwin"
           can_work_as_hybrid: false
         - target: "aarch64-unknown-linux-gnu"
-          can_work_as_hybrid: true
+          can_work_as_hybrid: false
         - target: "aarch64-unknown-linux-musl"
-          can_work_as_hybrid: true
+          can_work_as_hybrid: false
         - target: "i686-unknown-linux-gnu"
           can_work_as_hybrid: true
         - target: "x86_64-pc-windows-gnu"
+          can_work_as_hybrid: true
+        - target: "x86_64-unknown-linux-gnu"
           can_work_as_hybrid: true
 
     steps:

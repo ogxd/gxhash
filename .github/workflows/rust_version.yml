@@ -4,6 +4,8 @@ on:
   # Trigger when merged on main
   push:
     branches: [ "main" ]
+  # Manual trigger
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
