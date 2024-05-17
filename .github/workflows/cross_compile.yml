@@ -1,0 +1,47 @@
+name: Cross Compile
+
+on:
+  # Trigger when merged on main
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # Manual trigger
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - target: "aarch64-apple-darwin"
+          can_work_as_hybrid: false
+        - target: "aarch64-unknown-linux-gnu"
+          can_work_as_hybrid: true
+        - target: "aarch64-unknown-linux-musl"
+          can_work_as_hybrid: true
+        - target: "i686-unknown-linux-gnu"
+          can_work_as_hybrid: true
+        - target: "x86_64-pc-windows-gnu"
+          can_work_as_hybrid: true
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install target
+      run: rustup target add ${{ matrix.target }}
+
+    - name: Build
+      run: cargo build --release --target ${{ matrix.target }}
+
+    - name: Build Hybrid
+      if: ${{ matrix.can_work_as_hybrid }}
+      run: cargo build --release --features hybrid --target ${{ matrix.target }}

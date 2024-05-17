@@ -1,7 +1,9 @@
 name: Rust Version Compatibility
 
 on:
-  workflow_dispatch:
+  # Trigger when merged on main
+  push:
+    branches: [ "main" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -24,5 +26,4 @@ jobs:
       run: rustup toolchain install ${{ matrix.version }}
 
     - name: Build
-      # RUSTFLAGS="-C target-cpu=native --cfg hybrid"
-      run: RUSTFLAGS="-C target-cpu=native" cargo +${{ matrix.version }} build --release
+      run: cargo +${{ matrix.version }} build --release
