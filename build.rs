@@ -2,6 +2,11 @@ extern crate rustc_version;
 use rustc_version::{version_meta, Channel};
 
 fn main() {
+    // Avoid platform checks if building for docs.rs
+    if &std::env::var("DOCS_RS").unwrap_or_default() == "1" {
+        return;
+    }
+
     // When conditions permits, enable hybrid feature to leverage wider intrinsics for even more throughput
     if version_meta().unwrap().channel == Channel::Nightly
     && cfg!(target_arch = "x86_64")
