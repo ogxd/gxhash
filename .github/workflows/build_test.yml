@@ -24,7 +24,7 @@ jobs:
       run: cargo build --release
 
     - name: Test
-      run: cargo test --release --lib
+      run: cargo test --release
 
   build_test_x86_avx2:
     name: Build & Test X86 AVX2
@@ -43,7 +43,7 @@ jobs:
       run: cargo build --release --features hybrid
 
     - name: Test
-      run: cargo test --release --lib --features hybrid
+      run: cargo test --release --features hybrid
 
   build_test_arm:
     name: Build & Test ARM
@@ -59,4 +59,4 @@ jobs:
       run: cargo build --release
 
     - name: Test
-      run: cargo test --release --lib
+      run: cargo test --release
