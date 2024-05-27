@@ -1,8 +1,10 @@
-#[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_feature = "aes", target_feature = "neon"))]
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(all(target_feature = "aes", target_feature = "neon"))]
 #[path = "arm.rs"]
 mod platform;
 
-#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "aes", target_feature = "sse2"))]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(any(all(target_feature = "aes", target_feature = "sse2"), docsrs))] // docsrs bypasses the target_feature check
 #[path = "x86.rs"]
 mod platform;
 
