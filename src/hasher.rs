@@ -1,8 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::{BuildHasher, Hasher};
-use std::mem::MaybeUninit;
-
-use rand::RngCore;
 
 use crate::gxhash::platform::*;
 use crate::gxhash::*;
@@ -138,13 +135,10 @@ pub struct GxBuildHasher(State);
 impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
-        let mut uninit: MaybeUninit<State> = MaybeUninit::uninit();
-        let mut rng = rand::thread_rng();
+        let random_state = std::hash::RandomState::new();
         unsafe {
-            let ptr = uninit.as_mut_ptr() as *mut u8;
-            let slice = std::slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
-            rng.fill_bytes(slice);
-            GxBuildHasher(uninit.assume_init())
+            let state: State = std::mem::transmute(random_state);
+            GxBuildHasher(state)
         }
     }
 }
