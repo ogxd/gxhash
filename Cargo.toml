@@ -1,7 +1,7 @@
 [package]
 name = "gxhash"
 authors = ["Olivier Giniaux"]
-version = "3.4.0"
+version = "3.4.1"
 edition = "2021"
 description = "GxHash non-cryptographic algorithm"
 license = "MIT"
@@ -63,6 +63,3 @@ harness = false
 [[bench]]
 name = "quality"
 harness = false
-
-[package.metadata.docs.rs]
-rustc-args = ["-C", "target-feature=+aes,+sse2"]

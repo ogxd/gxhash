@@ -1,4 +1,4 @@
-#[cfg(not(all(target_feature = "aes", target_feature = "sse2")))]
+#[cfg(not(any(all(target_feature = "aes", target_feature = "sse2"), docsrs)))] // docs.rs bypasses the target_feature check
 compile_error!{"Gxhash requires aes and sse2 intrinsics. Make sure the processor supports it and build with RUSTFLAGS=\"-C target-cpu=native\" or RUSTFLAGS=\"-C target-feature=+aes,+sse2\"."}
 
 #[cfg(all(feature = "hybrid", not(any(target_feature = "aes", target_feature = "vaes", target_feature = "avx2"))))]
