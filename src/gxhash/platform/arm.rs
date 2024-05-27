@@ -3,6 +3,9 @@ use core::arch::arm::*;
 #[cfg(target_arch = "aarch64")]
 use core::arch::aarch64::*;
 
+#[cfg(not(any(all(target_feature = "aes", target_feature = "neon"), docsrs)))] // docs.rs bypasses the target_feature check
+compile_error!{"Gxhash requires aes intrinsics. Make sure the processor supports it and build with RUSTFLAGS=\"-C target-cpu=native\" or RUSTFLAGS=\"-C target-feature=+aes,+neon\"."}
+
 use super::*;
 
 pub type State = int8x16_t;
