@@ -1,3 +1,9 @@
+#[cfg(not(any(all(target_feature = "aes", target_feature = "sse2"), docsrs)))] // docs.rs bypasses the target_feature check
+compile_error!{"Gxhash requires aes and sse2 intrinsics. Make sure the processor supports it and build with RUSTFLAGS=\"-C target-cpu=native\" or RUSTFLAGS=\"-C target-feature=+aes,+sse2\"."}
+
+#[cfg(all(feature = "hybrid", not(any(target_feature = "aes", target_feature = "vaes", target_feature = "avx2"))))]
+compile_error!{"Hybrid feature is only available on x86 processors with avx2 and vaes intrinsics."}
+
 #[cfg(target_arch = "x86")]
 use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]

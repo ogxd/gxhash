@@ -1,3 +1,6 @@
+#[cfg(not(any(all(target_feature = "aes", target_feature = "neon"), docsrs)))] // docs.rs bypasses the target_feature check
+compile_error!{"Gxhash requires aes and neon intrinsics. Make sure the processor supports it and build with RUSTFLAGS=\"-C target-cpu=native\" or RUSTFLAGS=\"-C target-feature=+aes,+neon\"."}
+
 #[cfg(target_arch = "arm")]
 use core::arch::arm::*;
 #[cfg(target_arch = "aarch64")]
