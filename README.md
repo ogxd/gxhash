@@ -1,5 +1,7 @@
 # GxHash
 [![Build & Test](https://github.com/ogxd/gxhash/actions/workflows/build_test.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/build_test.yml)
+[![Cross Compile](https://github.com/ogxd/gxhash/actions/workflows/cross_compile.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/cross_compile.yml)
+[![Rust Version Compatibility](https://github.com/ogxd/gxhash/actions/workflows/rust_version.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/rust_version.yml)
 
 GxHash is a [**blazingly fast**](#performance) and [**robust**](#robustness) non-cryptographic hashing algorithm.
 
@@ -14,12 +16,6 @@ let seed = 1234;
 println!(" 32-bit hash: {:x}", gxhash::gxhash32(&bytes, seed));
 println!(" 64-bit hash: {:x}", gxhash::gxhash64(&bytes, seed));
 println!("128-bit hash: {:x}", gxhash::gxhash128(&bytes, seed));
-```
-Used in `HashMap`/`HashSet`:
-```rust
-// Type alias for HashSet::<String, GxBuildHasher>
-let mut hashset = gxhash::GxHashSet::default();
-hashset.insert("hello world");
 ```
 
 GxHash provides an implementation of the [`Hasher`](core::hash::Hasher) trait.
