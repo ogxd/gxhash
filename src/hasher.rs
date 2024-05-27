@@ -132,10 +132,17 @@ impl Hasher for GxHasher {
 #[derive(Clone, Debug)]
 pub struct GxBuildHasher(State);
 
+#[rustversion::before(1.76)]
+use std::collections::hash_map::RandomState;
+
+#[rustversion::since(1.76)]
+use std::hash::RandomState;
+
 impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
-        let random_state = std::hash::RandomState::new();
+
+        let random_state = RandomState::new();
         unsafe {
             let state: State = std::mem::transmute(random_state);
             GxBuildHasher(state)

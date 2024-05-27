@@ -22,7 +22,7 @@ bench-plot = []
 hybrid = []
 
 [dependencies]
-# No dependencies!
+rustversion = "1.0" # Compile-time cfg based on rustc version for compatibility
 
 [dev-dependencies]
 rand = "0.8"
