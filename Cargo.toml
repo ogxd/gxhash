@@ -13,6 +13,8 @@ categories = ["algorithms", "data-structures", "no-std"]
 exclude = ["article/*"]
 
 [features]
+default = ["std"]
+std = []
 # Only relevant for throughput benchmarks
 bench-csv = []
 bench-md = []

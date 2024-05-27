@@ -35,6 +35,9 @@ Thanks to this, GxHash passes all [SMHasher](https://github.com/rurban/smhasher)
 
 Check out the [paper](https://github.com/ogxd/gxhash-rust/blob/main/article/article.pdf) for more technical details.
 
+### 0 Dependencies 📦
+GxHash has 0 cargo dependency. The `Hasher` and `Hashset`/`Hashmap` convenience types require the standard library, enabled by default with the `std` feature.
+
 ## Portability
 
 > **Important**
@@ -49,6 +52,22 @@ GxHash is compatible with:
 
 ### Hashes Stability
 All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms.
+
+### `no_std`
+
+The `std` feature flag enables the `HashMap`/`HashSet` container convenience type aliases. This is on by default. Disable to make the crate `no_std`:
+
+```toml
+[dependencies.gxhash]
+...
+default-features = false
+```
+
+### `hybrid`
+
+The `hybrid` feature flag enables a hybrid implementation of GxHash. This is disabled by default. When `hybrid` feature is enabled and for CPUs that supports it, GxHash will use wider registers and instructions (`VAES` + `AVX2`), which can lead to a significant performance improvement for large inputs. This preserves hashes stability, meaning that hashes generated with or without the `hybrid` feature are the same for a given input and seed.
+
+*Note: Even without this feature enabled GxHash is already the fastest option out there. We recommend enabling this feature only when inputs can be larger than a few hundred bytes, see the benchmarks below.*
 
 ## Benchmarks
 
