@@ -219,5 +219,8 @@ mod tests {
         assert_eq!(4243413987, gxhash32(&[0u8; 1], 0));
         assert_eq!(2401749549, gxhash32(&[0u8; 1000], 0));
         assert_eq!(4156851105, gxhash32(&[42u8; 4242], 42));
+        assert_eq!(1981427771, gxhash32(&[42u8; 4242], -42));
+        assert_eq!(1156095992, gxhash32(b"Hello World", i64::MAX));
+        assert_eq!(540827083, gxhash32(b"Hello World", i64::MIN));
     }
 }
