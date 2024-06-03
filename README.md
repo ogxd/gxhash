@@ -121,7 +121,7 @@ GxHash is a non-cryptographic hashing algorithm, thus it is not recommended to u
   - Minor for API changes/removal
   - Patch for new APIs, bug fixes and performance improvements
 
-> ℹ️ [cargo-asm](https://github.com/gnzlbg/cargo-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash64`) (method `#[inline]` should be removed otherwise it won't be seen by the tool)  
+> ℹ️ [cargo-show-asm](https://github.com/pacak/cargo-show-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash64`) (method `#[inline]` should be removed otherwise it won't be seen by the tool)  
 > ℹ️ [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on time spent per instruction.
 
 ## Publication
