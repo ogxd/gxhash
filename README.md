@@ -64,9 +64,9 @@ All generated hashes for a given version of GxHash are stable, meaning that for 
 The `std` feature flag enables the `HashMap`/`HashSet` container convenience type aliases. This is on by default. Disable to make the crate `no_std`:
 
 ```toml
-[dependencies.gxhash]
+[dependencies]
 ...
-default-features = false
+gxhash = { version = "3", default-features = false, features = ["inlined"] }
 ```
 
 ### `hybrid`
@@ -121,7 +121,7 @@ GxHash is a non-cryptographic hashing algorithm, thus it is not recommended to u
   - Minor for API changes/removal
   - Patch for new APIs, bug fixes and performance improvements
 
-> ℹ️ [cargo-show-asm](https://github.com/pacak/cargo-show-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash64`) (method `#[inline]` should be removed otherwise it won't be seen by the tool)  
+> ℹ️ [cargo-show-asm](https://github.com/pacak/cargo-show-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash64`). Eg: `cargo asm gxhash::gxhash::gxhash64 --lib --features no-inlining`.
 > ℹ️ [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on time spent per instruction.
 
 ## Publication

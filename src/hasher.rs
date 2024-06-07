@@ -94,7 +94,7 @@ macro_rules! write {
         #[inline]
         fn $name(&mut self, value: $type) {
             self.state = unsafe {
-                aes_encrypt_last($load(value), aes_encrypt(self.state, ld(KEYS.as_ptr())))
+                aes_encrypt(self.state, $load(value))
             };
         }
     }
@@ -112,7 +112,7 @@ impl Hasher for GxHasher {
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
         // Improvement: only compress at this stage and finalize in finish
-        self.state = unsafe { aes_encrypt_last(compress_all(bytes), aes_encrypt(self.state, ld(KEYS.as_ptr()))) };
+        self.state = unsafe { compress_all(bytes, self.state) };
     }
 
     write!(write_u8, u8, load_u8);
