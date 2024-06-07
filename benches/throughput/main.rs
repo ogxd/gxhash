@@ -47,13 +47,15 @@ fn main() {
     benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed)
     });
-
-    // FoldHash
-    let foldhash_hasher: foldhash::quality::RandomState = foldhash::quality::RandomState::default();
-    benchmark(processor.as_mut(), slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
-        foldhash_hasher.hash_one(data)
-    });
     
+    // FxHash (rustc-hash)
+    benchmark(processor.as_mut(), slice, "FxHasher (rustc_hash)", |data: &[u8], seed: u64| -> u64 {
+        let mut fxhasher = rustc_hash::FxHasher::default();
+        fxhasher.write_u64(seed); // Better way to seed?
+        fxhasher.write(data);
+        fxhasher.finish()
+    });
+
     // AHash
     let ahash_hasher = ahash::RandomState::with_seed(42);
     benchmark(processor.as_mut(), slice, "AHash", |data: &[u8], _: i32| -> u64 {
@@ -65,6 +67,12 @@ fn main() {
         t1ha::t1ha0(data, seed)
     });
 
+    // FoldHash
+    let foldhash_hasher: foldhash::quality::RandomState = foldhash::quality::RandomState::default();
+    benchmark(processor.as_mut(), slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
+        foldhash_hasher.hash_one(data)
+    });
+
     // FNV-1a
     benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
         let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
@@ -73,7 +81,7 @@ fn main() {
     });
 
     // MetroHash
-    benchmark(processor.as_mut(), slice, "Metrohash", |data: &[u8], seed: i32| -> u64 {
+    benchmark(processor.as_mut(), slice, "MetroHash", |data: &[u8], seed: i32| -> u64 {
         let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
         metrohash_hasher.write(data);
         metrohash_hasher.finish()
