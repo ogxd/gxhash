@@ -57,17 +57,6 @@ pub unsafe fn aes_encrypt(data: State, keys: State) -> State {
 
 #[inline(always)]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
-pub unsafe fn aes_decrypt(data: State, keys: State) -> State {
-    // Encrypt
-    let encrypted = vaesdq_u8(vreinterpretq_u8_s8(data), vdupq_n_u8(0));
-    // Mix columns
-    let mixed = vaesimcq_u8(encrypted);
-    // Xor keys
-    vreinterpretq_s8_u8(veorq_u8(mixed, vreinterpretq_u8_s8(keys)))
-}
-
-#[inline(always)]
-// See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
 pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     // Encrypt
     let encrypted = vaeseq_u8(vreinterpretq_u8_s8(data), vdupq_n_u8(0));
