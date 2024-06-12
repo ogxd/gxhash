@@ -15,6 +15,7 @@ exclude = ["article/*"]
 [features]
 default = ["std"]
 std = []
+no-inlining = []
 # Only relevant for throughput benchmarks
 bench-csv = []
 bench-md = []
@@ -38,6 +39,7 @@ highway = "1.1.0"
 seahash = "4.1.0"
 metrohash = "1.0.6"
 fnv = "1.0.3"
+aes_crypto = "1.2.0"
 
 [dev-dependencies.plotters]
 version = "0.3.5"

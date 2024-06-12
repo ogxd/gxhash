@@ -22,13 +22,13 @@ fn benchmark<T>(c: &mut Criterion, name: &str, value: T)
 {
     let mut group = c.benchmark_group(format!("HashSet/{}", name));
 
-    let mut set = HashSet::<T>::new();
-    group.bench_function("Default Hasher", |b| {
+    let mut set: HashSet::<T, GxBuildHasher> = gxhash::HashSet::<T>::default();
+    group.bench_function("GxHash", |b| {
         iterate(b, &value, &mut set);
     });
 
-    let mut set: HashSet::<T, GxBuildHasher> = gxhash::HashSet::<T>::default();
-    group.bench_function("GxHash", |b| {
+    let mut set = HashSet::<T>::new();
+    group.bench_function("Default Hasher", |b| {
         iterate(b, &value, &mut set);
     });
 
