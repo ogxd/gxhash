@@ -16,8 +16,8 @@ pub unsafe fn create_empty() -> State {
 }
 
 #[inline(always)]
-pub unsafe fn create_seed(seed: i64) -> State {
-    vreinterpretq_s8_s64(vdupq_n_s64(seed))
+pub unsafe fn create_seed(seed: u64) -> State {
+    vreinterpretq_s8_p64(vdupq_n_p64(seed))
 }
 
 #[inline(always)]

@@ -12,7 +12,7 @@ use platform::*;
 /// println!("Hash is {:x}!", gxhash::gxhash32(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash32(input: &[u8], seed: i64) -> u32 {
+pub fn gxhash32(input: &[u8], seed: u64) -> u32 {
     unsafe {
         let p = &gxhash(input, create_seed(seed)) as *const State as *const u32;
         *p
@@ -29,7 +29,7 @@ pub fn gxhash32(input: &[u8], seed: i64) -> u32 {
 /// println!("Hash is {:x}!", gxhash::gxhash64(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash64(input: &[u8], seed: i64) -> u64 {
+pub fn gxhash64(input: &[u8], seed: u64) -> u64 {
     unsafe {
         let p = &gxhash(input, create_seed(seed)) as *const State as *const u64;
         *p
@@ -46,7 +46,7 @@ pub fn gxhash64(input: &[u8], seed: i64) -> u64 {
 /// println!("Hash is {:x}!", gxhash::gxhash128(&bytes, seed));
 /// ```
 #[inline(always)]
-pub fn gxhash128(input: &[u8], seed: i64) -> u128 {
+pub fn gxhash128(input: &[u8], seed: u64) -> u128 {
     unsafe {
         let p = &gxhash(input, create_seed(seed)) as *const State as *const u128;
         *p
@@ -219,8 +219,8 @@ mod tests {
         assert_eq!(4243413987, gxhash32(&[0u8; 1], 0));
         assert_eq!(2401749549, gxhash32(&[0u8; 1000], 0));
         assert_eq!(4156851105, gxhash32(&[42u8; 4242], 42));
-        assert_eq!(1981427771, gxhash32(&[42u8; 4242], -42));
-        assert_eq!(1156095992, gxhash32(b"Hello World", i64::MAX));
-        assert_eq!(540827083, gxhash32(b"Hello World", i64::MIN));
+        assert_eq!(1981427771, gxhash32(&[42u8; 4242], -42i64 as u64));
+        assert_eq!(1156095992, gxhash32(b"Hello World", i64::MAX as u64));
+        assert_eq!(540827083, gxhash32(b"Hello World", i64::MIN as u64));
     }
 }

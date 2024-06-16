@@ -39,7 +39,7 @@ fn main() {
 
     // GxHash
     let gxhash_name = if cfg!(hybrid) { "gxhash-hybrid" } else { "gxhash" };
-    benchmark(processor.as_mut(), slice, gxhash_name, |data: &[u8], seed: i64| -> u64 {
+    benchmark(processor.as_mut(), slice, gxhash_name, |data: &[u8], seed: u64| -> u64 {
         gxhash64(data, seed)
     });
 
