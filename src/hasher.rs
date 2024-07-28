@@ -23,7 +23,7 @@ impl GxHasher {
 }
 
 impl Default for GxHasher {
-    /// Creates a new hasher with a empty seed.
+    /// Creates a new hasher with an empty seed.
     ///
     /// # Warning ⚠️
     /// Not using a seed may make your [`Hasher`] vulnerable to DOS attacks.
