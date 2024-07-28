@@ -74,7 +74,7 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     let mut t2: State = create_empty();
 
     // Hash is processed in two separate 128-bit parallel lanes
-    // This allows the same processing to be applied using 256-bit V-AES instrinsics
+    // This allows the same processing to be applied using 256-bit V-AES intrinsics
     // so that hashes are stable in both cases. 
     let mut lane1 = hash_vector;
     let mut lane2 = hash_vector;

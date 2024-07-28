@@ -6,10 +6,11 @@ use crate::gxhash::*;
 /// A `Hasher` for hashing an arbitrary stream of bytes.
 /// # Features
 /// - The fastest [`Hasher`] of its class<sup>1</sup>, for all input sizes
-/// - Highly collision resitant
+/// - Highly collision resistant
 /// - DOS resistance thanks to seed randomization when using [`GxHasher::default()`]
 ///
-/// *<sup>1</sup>There might me faster alternatives, such as `fxhash` for very small input sizes, but that usually have low quality properties.*
+/// *<sup>1</sup>There might be faster alternatives, such as `fxhash` for very small input sizes,
+/// but that usually have low quality properties.*
 #[derive(Clone, Debug)]
 pub struct GxHasher {
     state: State,
@@ -76,7 +77,7 @@ impl GxHasher {
         GxHasher::with_state(unsafe { create_seed(seed) })
     }
 
-    /// Finish this hasher and return the hashed value as a 128 bit
+    /// Finish this hasher and return the hashed value as a 128-bit
     /// unsigned integer.
     #[inline]
     pub fn finish_u128(&self) -> u128 {
