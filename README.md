@@ -78,7 +78,7 @@ The `hybrid` feature flag enables a hybrid implementation of GxHash. This is dis
 ## Benchmarks
 
 [![Benchmark](https://github.com/ogxd/gxhash/actions/workflows/bench.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/bench.yml)  
-GxHash is continuously benchmarked on X86 and ARM Github runners. 
+GxHash is continuously benchmarked on X86 and ARM GitHub runners. 
 
 To run the benchmarks locally use one of the following:
 ```bash
@@ -96,7 +96,7 @@ Throughput is measured as the number of bytes hashed per second.
 
 *Some prefer talking **latency** (time for generating a hash) or **hashrate** (the number of hashes generated per second) for measuring hash function performance, but those are all equivalent in the end as they all boil down to measuring the time it takes to hash some input and then apply different scalar transformation. For instance, if latency for a `4 bytes` hash is `1 ms`, then the throughput is `1 / 0.001 * 4 = 4000 bytes per second`. Throughput allows us to conveniently compare the performance of a hash function for any input size on a single graph.*
 
-**Lastest Benchmark Results:**    
+**Latest Benchmark Results:**    
 ![aarch64](./benches/throughput/aarch64.svg)
 ![x86_64](./benches/throughput/x86_64.svg)
 ![x86_64-hybrid](./benches/throughput/x86_64-hybrid.svg)
