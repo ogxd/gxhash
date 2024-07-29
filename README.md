@@ -104,7 +104,7 @@ Throughput is measured as the number of bytes hashed per second.
 ## Security
 
 ### DOS Resistance
-GxHash is a seeded hashing algorithm, meaning that depending on the seed used, it will generate completely different hashes. The default `HasherBuilder` (`GxHasherBuilder::default()`) uses seed randomization, making any `HashMap`/`HashSet` more DOS resistant, as it will make it much more difficult for attackers to be able to predict which hashes may collide without knowing the seed used. This does not mean however that it is completely DOS resistant. This has to be analyzed further.
+GxHash is a seeded hashing algorithm, meaning that depending on the seed used, it will generate completely different hashes. The default `HasherBuilder` (`GxHasherBuilder::default()`) uses seed randomization, making any `HashMap`/`HashSet` more DOS resistant, as it will make it much more difficult for attackers to be able to predict which hashes may collide without knowing the seed used. This does not mean however that it is completely DOS-resistant (currently, it's probably not). This has to be analyzed further.
 
 ### Multicollisions Resistance
 GxHash uses a 128-bit internal state. This makes GxHash [a widepipe construction](https://en.wikipedia.org/wiki/Merkle%E2%80%93Damg%C3%A5rd_construction#Wide_pipe_construction) when generating hashes of size 64-bit or smaller, which had amongst other properties to be inherently more resistant to multicollision attacks. See [this paper](https://www.iacr.org/archive/crypto2004/31520306/multicollisions.pdf) for more details.
