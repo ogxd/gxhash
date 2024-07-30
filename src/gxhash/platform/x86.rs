@@ -19,8 +19,8 @@ pub unsafe fn create_empty() -> State {
 }
 
 #[inline(always)]
-pub unsafe fn create_seed(seed: i64) -> State {
-    _mm_set1_epi64x(seed)
+pub unsafe fn create_seed(seed: u64) -> State {
+    _mm_set1_epi64x(seed as i64)
 }
 
 #[inline(always)]

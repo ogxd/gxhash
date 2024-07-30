@@ -72,7 +72,7 @@ impl GxHasher {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     #[inline]
-    pub fn with_seed(seed: i64) -> GxHasher {
+    pub fn with_seed(seed: u64) -> GxHasher {
         // Use gxhash64 to generate an initial state from a seed
         GxHasher::with_state(unsafe { create_seed(seed) })
     }
@@ -145,7 +145,7 @@ impl GxBuildHasher {
     /// Hardcoding a seed may make your [`Hasher`] vulnerable to DOS attacks.
     /// It is recommended to use [`GxBuildHasher::default()`] for improved DOS resistance.
     #[inline]
-    pub fn with_seed(seed: i64) -> GxBuildHasher {
+    pub fn with_seed(seed: u64) -> GxBuildHasher {
         // Use gxhash64 to generate an initial state from a seed
         GxBuildHasher(unsafe { create_seed(seed) })
     }
