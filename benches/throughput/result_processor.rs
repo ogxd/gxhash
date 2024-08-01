@@ -121,6 +121,7 @@ impl ResultProcessor for OutputPlot {
     fn finish(&self) {
         let mut arch = std::env::consts::ARCH.to_string();
         if cfg!(feature = "hybrid") {
+            println!("Hybrid feature enabled");
             arch += "-hybrid";
         }
         let file_name = format!("benches/throughput/{}.svg", arch);
