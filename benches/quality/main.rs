@@ -4,10 +4,10 @@ use criterion::black_box;
 
 fn main() {
     bench_hasher_quality::<gxhash::GxBuildHasher>("GxHash");
+    bench_hasher_quality::<std::collections::hash_map::RandomState>("Default");
+    bench_hasher_quality::<twox_hash::xxh3::RandomHashBuilder64>("XxHash (XXH3)");
     bench_hasher_quality::<ahash::RandomState>("AHash");
     bench_hasher_quality::<t1ha::T1haBuildHasher>("T1ha");
-    bench_hasher_quality::<twox_hash::xxh3::RandomHashBuilder64>("XxHash3");
-    bench_hasher_quality::<std::collections::hash_map::RandomState>("Default");
     bench_hasher_quality::<fnv::FnvBuildHasher>("FNV-1a");
 }
 

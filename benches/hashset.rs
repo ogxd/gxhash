@@ -22,13 +22,18 @@ fn benchmark<T>(c: &mut Criterion, name: &str, value: T)
 {
     let mut group = c.benchmark_group(format!("HashSet/{}", name));
 
+    let mut set: HashSet::<T, GxBuildHasher> = gxhash::HashSet::<T>::default();
+    group.bench_function("GxHash", |b| {
+        iterate(b, &value, &mut set);
+    });
+
     let mut set = HashSet::<T>::new();
     group.bench_function("Default Hasher", |b| {
         iterate(b, &value, &mut set);
     });
 
-    let mut set: HashSet::<T, GxBuildHasher> = gxhash::HashSet::<T>::default();
-    group.bench_function("GxHash", |b| {
+    let mut set = HashSet::<T, BuildHasherDefault<xxh3::Hash64>>::default();
+    group.bench_function("XxHash (XXH3)", |b| {
         iterate(b, &value, &mut set);
     });
 
@@ -37,18 +42,13 @@ fn benchmark<T>(c: &mut Criterion, name: &str, value: T)
         iterate(b, &value, &mut set);
     });
 
-    let mut set = HashSet::<T, BuildHasherDefault<xxh3::Hash64>>::default();
-    group.bench_function("XxHash", |b| {
+    let mut set = t1ha::T1haHashSet::<T>::default();
+    group.bench_function("T1ha", |b| {
         iterate(b, &value, &mut set);
     });
 
     let mut set = FnvHashSet::<T>::default();
     group.bench_function("FNV-1a", |b| {
-        iterate(b, &value, &mut set);
-    });
-
-    let mut set = t1ha::T1haHashSet::<T>::default();
-    group.bench_function("T1ha", |b| {
         iterate(b, &value, &mut set);
     });
 

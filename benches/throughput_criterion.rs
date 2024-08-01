@@ -44,38 +44,38 @@ fn benchmark_all(c: &mut Criterion) {
     group.plot_config(plot_config);
 
     // GxHash
-    let gxhash_name = if cfg!(hybrid) { "gxhash-hybrid" } else { "gxhash" };
+    let gxhash_name = if cfg!(hybrid) { "GxHash-Hybrid" } else { "GxHash" };
     benchmark(&mut group, slice, gxhash_name, |data: &[u8], seed: i32| -> u64 {
         gxhash64(data, seed as i64)
     });
-    
+
+    // XxHash (twox-hash)
+    benchmark(&mut group, slice, "XxHash (XXH3)", |data: &[u8], seed: i32| -> u64 {
+        twox_hash::xxh3::hash64_with_seed(data, seed as u64)
+    });
+
     // AHash
-    benchmark(&mut group, slice, "ahash", |data: &[u8], seed: i32| -> u64 {
+    benchmark(&mut group, slice, "AHash", |data: &[u8], seed: i32| -> u64 {
         let ahash_hasher = ahash::RandomState::with_seeds(seed as u64, 0, 0, 0);
         ahash_hasher.hash_one(data)
     });
 
     // T1ha0
-    benchmark(&mut group, slice, "t1ha0", |data: &[u8], seed: i32| -> u64 {
+    benchmark(&mut group, slice, "T1ha0", |data: &[u8], seed: i32| -> u64 {
         t1ha::t1ha0(data, seed as u64)
     });
 
-    // XxHash (twox-hash)
-    benchmark(&mut group, slice, "xxhash", |data: &[u8], seed: i32| -> u64 {
-        twox_hash::xxh3::hash64_with_seed(data, seed as u64)
-    });
-
-    // HighwayHash
-    benchmark(&mut group, slice, "highwayhash", |data: &[u8], _: i32| -> u64 {
-        use highway::{HighwayHasher, HighwayHash};
-        HighwayHasher::default().hash64(data)
-    });
-
     // FNV-1a
-    benchmark(&mut group, slice, "fnv-1a", |data: &[u8], seed: i32| -> u64 {
+    benchmark(&mut group, slice, "FNV-1a", |data: &[u8], seed: i32| -> u64 {
         let mut fnv_hasher = fnv::FnvHasher::with_key(seed as u64);
         fnv_hasher.write(data);
         fnv_hasher.finish()
+    });
+
+    // HighwayHash
+    benchmark(&mut group, slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
+        use highway::{HighwayHasher, HighwayHash};
+        HighwayHasher::default().hash64(data)
     });
 
     group.finish();

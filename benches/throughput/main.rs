@@ -38,50 +38,50 @@ fn main() {
     };
 
     // GxHash
-    let gxhash_name = if cfg!(hybrid) { "gxhash-hybrid" } else { "gxhash" };
+    let gxhash_name = if cfg!(hybrid) { "GxHash-Hybrid" } else { "GxHash" };
     benchmark(processor.as_mut(), slice, gxhash_name, |data: &[u8], seed: i64| -> u64 {
         gxhash64(data, seed)
     });
 
     // XxHash (twox-hash)
-    benchmark(processor.as_mut(), slice, "xxhash", |data: &[u8], seed: u64| -> u64 {
+    benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed)
     });
     
     // AHash
     let ahash_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
-    benchmark(processor.as_mut(), slice, "ahash", |data: &[u8], _: i32| -> u64 {
+    benchmark(processor.as_mut(), slice, "AHash", |data: &[u8], _: i32| -> u64 {
         ahash_hasher.hash_one(data)
     });
 
     // T1ha0
-    benchmark(processor.as_mut(), slice, "t1ha0", |data: &[u8], seed: u64| -> u64 {
+    benchmark(processor.as_mut(), slice, "T1ha0", |data: &[u8], seed: u64| -> u64 {
         t1ha::t1ha0(data, seed)
     });
 
-    // SeaHash
-    benchmark(processor.as_mut(), slice, "seahash", |data: &[u8], seed: u64| -> u64 {
-        seahash::hash_seeded(data, seed, 0, 0, 0)
-    });
-
-    // MetroHash
-    benchmark(processor.as_mut(), slice, "metrohash", |data: &[u8], seed: i32| -> u64 {
-        let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
-        metrohash_hasher.write(data);
-        metrohash_hasher.finish()
+    // FNV-1a
+    benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
+        let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
+        fnv_hasher.write(data);
+        fnv_hasher.finish()
     });
 
     // HighwayHash
-    benchmark(processor.as_mut(), slice, "highwayhash", |data: &[u8], _: i32| -> u64 {
+    benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
         use highway::{HighwayHasher, HighwayHash};
         HighwayHasher::default().hash64(data)
     });
 
-    // FNV-1a
-    benchmark(processor.as_mut(), slice, "fnv-1a", |data: &[u8], seed: u64| -> u64 {
-        let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
-        fnv_hasher.write(data);
-        fnv_hasher.finish()
+    // SeaHash
+    benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
+        seahash::hash_seeded(data, seed, 0, 0, 0)
+    });
+
+    // MetroHash
+    benchmark(processor.as_mut(), slice, "Metrohash", |data: &[u8], seed: i32| -> u64 {
+        let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
+        metrohash_hasher.write(data);
+        metrohash_hasher.finish()
     });
 
     processor.finish();
