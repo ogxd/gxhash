@@ -36,7 +36,7 @@ jobs:
       run: rustup default nightly
 
     - name: Benchmark
-      run: cargo bench --bench throughput --features bench-plot hybrid
+      run: cargo bench --bench throughput --features bench-plot,hybrid
 
     - uses: actions/upload-artifact@v3
       with:
