@@ -44,7 +44,7 @@ fn benchmark_all(c: &mut Criterion) {
     group.plot_config(plot_config);
 
     // GxHash
-    let gxhash_name = if cfg!(hybrid) { "GxHash-Hybrid" } else { "GxHash" };
+    let gxhash_name = if cfg!(feature = "hybrid") { "GxHash-Hybrid" } else { "GxHash" };
     benchmark(&mut group, slice, gxhash_name, |data: &[u8], seed: i32| -> u64 {
         gxhash64(data, seed as i64)
     });
