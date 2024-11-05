@@ -5,6 +5,54 @@
 
 GxHash is a [**blazingly fast**](#performance) and [**robust**](#robustness) non-cryptographic hashing algorithm.
 
+**[Features](#features) | [Considerations](#important-considerations) | [Usage](#usage) | [Benchmarks](#benchmarks) | [Contributing](#contributing)**
+
+## Features
+
+### Blazingly Fast 🚀  
+Up to this date, GxHash is the fastest non-cryptographic hashing algorithm of its class, for all input sizes. This performance is possible mostly thanks to heavy usage of SIMD intrinsics, high ILP construction, a small bytecode (easily inlined and cached) and some ([outrageously unsafe](https://ogxd.github.io/articles/unsafe-read-beyond-of-death/)) tricks.  
+
+See the [benchmarks](#benchmarks).
+
+### Highly Robust 🗿  
+GxHash uses several rounds of hardware-accelerated AES block cipher for efficient bit mixing.  
+Thanks to this, GxHash passes all [SMHasher](https://github.com/rurban/smhasher) tests, which is the de facto quality benchmark for non-cryptographic hash functions, gathering most of the existing algorithms. GxHash has low collisions, uniform distribution and high avalanche properties.
+
+Check out the [paper](https://github.com/ogxd/gxhash-rust/blob/main/article/article.pdf) for more technical details.
+
+### 0 Dependencies 📦
+GxHash has 0 cargo dependency. The `Hasher` and `Hashset`/`Hashmap` convenience types require the standard library, enabled by default with the `std` feature.
+
+## Important Considerations
+
+### Hardware Acceleration
+GxHash requires a few specific hardware acceleration features, which are supported on *most* modern processors, but not all of them.
+- X86 processors with `AES-NI` & `SSE2` intrinsics
+- ARM processors with `AES` & `NEON` intrinsics
+> **Warning**
+> Other platforms are currently not supported (there is no fallback). GxHash will not build on these platforms.
+
+In case you are building gxhash without the required features, the crate will fail to build with an error message like this (even if you know your target supports the required features): 
+```
+Gxhash requires aes and sse2 intrinsics. Make sure the processor supports it and build with RUSTFLAGS="-C target-cpu=native" or RUSTFLAGS="-C target-feature=+aes,+sse2"
+```
+
+To fix this, simply follow the instructions in the error message. Setting `RUSTFLAGS` to `-C target-cpu=native` should work if your CPU is properly recognized by rustc, which is the case most of the time.
+
+### Hashes Stability
+All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms.
+
+### Consistency of Hashes When Using the `Hasher` Trait
+The `Hasher` trait defines methods to hash specific types. This allows the implementation to circumvent some tricks used when the size is unknown. For this reason, hashing 4 `u32` using a `Hasher` will return a different hash compared to using the  `gxhash128` method directly with these same 4 `u32` but represented as 16 `u8`. The rationale being that `Hasher` (mostly used for things like `HashMap` or `HashSet`) and  `gxhash128` are used in two different scenarios. Both way are independently stable still. 
+
+### Unsafety
+In order to achieve this magnitude of performance, this crate contains unsafe code, and a [trick](https://ogxd.github.io/articles/unsafe-read-beyond-of-death/) that some people qualify as "undefined behavior". For this reason, this crate is not intended for use in safety-critical applications, but rather for applications that require extreme hashing performance and that are less concerned about this aspect.
+
+### Security
+GxHash is seeded (with seed randomization) to improve DOS resistance and uses a wide (128-bit) internal state to improve multicollision resistance. Yet, such resistances are just basic safeguards and do not make GxHash secure against all attacks.
+
+Also, it is important to note that GxHash is not a cryptographic hash function and should not be used for cryptographic purposes.
+
 ## Usage
 ```bash
 cargo add gxhash
@@ -28,36 +76,7 @@ let mut map: HashMap<&str, i32> = HashMap::new();
 map.insert("answer", 42);
 ```
 
-## Features
-
-### Blazingly Fast 🚀  
-Up to this date, GxHash is the fastest non-cryptographic hashing algorithm of its class, for all input sizes. This performance is possible mostly thanks to heavy usage of SIMD intrinsics, high ILP construction, a small bytecode (easily inlined and cached) and some ([outrageously unsafe](https://ogxd.github.io/articles/unsafe-read-beyond-of-death/)) tricks.  
-
-See the [benchmarks](#benchmarks).
-
-### Highly Robust 🗿  
-GxHash uses several rounds of hardware-accelerated AES block cipher for efficient bit mixing.  
-Thanks to this, GxHash passes all [SMHasher](https://github.com/rurban/smhasher) tests, which is the de facto quality benchmark for non-cryptographic hash functions, gathering most of the existing algorithms. GxHash has low collisions, uniform distribution and high avalanche properties.
-
-Check out the [paper](https://github.com/ogxd/gxhash-rust/blob/main/article/article.pdf) for more technical details.
-
-### 0 Dependencies 📦
-GxHash has 0 cargo dependency. The `Hasher` and `Hashset`/`Hashmap` convenience types require the standard library, enabled by default with the `std` feature.
-
-## Portability
-
-> **Important**
-> Because GxHash relies on `aes` hardware acceleration, you must make sure the `aes` feature is enabled when building (otherwise it won't build). This can be done by setting the `RUSTFLAGS` environment variable to `-C target-feature=+aes` or `-C target-cpu=native` (the latter should work if your CPU is properly recognized by rustc, which is the case most of the time).
-
-### Architecture Compatibility
-GxHash is compatible with:
-- X86 processors with `AES-NI` & `SSE2` intrinsics
-- ARM processors with `AES` & `NEON` intrinsics
-> **Warning**
-> Other platforms are currently not supported (there is no fallback). GxHash will not build on these platforms.
-
-### Hashes Stability
-All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms.
+## Flags
 
 ### `no_std`
 
@@ -100,17 +119,6 @@ Throughput is measured as the number of bytes hashed per second.
 ![aarch64](./benches/throughput/aarch64.svg)
 ![x86_64](./benches/throughput/x86_64.svg)
 ![x86_64-hybrid](./benches/throughput/x86_64-hybrid.svg)
-
-## Security
-
-### DOS Resistance
-GxHash is a seeded hashing algorithm, meaning that depending on the seed used, it will generate completely different hashes. The default `HasherBuilder` (`GxHasherBuilder::default()`) uses seed randomization, making any `HashMap`/`HashSet` more DOS resistant, as it will make it much more difficult for attackers to be able to predict which hashes may collide without knowing the seed used. This does not mean however that it is completely DOS-resistant (currently, it's probably not). This has to be analyzed further.
-
-### Multicollisions Resistance
-GxHash uses a 128-bit internal state. This makes GxHash [a widepipe construction](https://en.wikipedia.org/wiki/Merkle%E2%80%93Damg%C3%A5rd_construction#Wide_pipe_construction) when generating hashes of size 64-bit or smaller, which had amongst other properties to be inherently more resistant to multicollision attacks. See [this paper](https://www.iacr.org/archive/crypto2004/31520306/multicollisions.pdf) for more details.
-
-### Cryptographic Properties
-GxHash is a non-cryptographic hashing algorithm, thus it is not recommended to use it as a cryptographic algorithm (it is not a replacement for SHA). It has not been assessed if GxHash is preimage resistant and how difficult it is to be reversed.
 
 ## Contributing
 
