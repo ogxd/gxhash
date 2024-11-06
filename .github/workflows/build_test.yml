@@ -17,6 +17,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Switch to nightly rust
+      run: rustup default nightly
+
     - name: Rust version
       run: cargo rustc -- --version
 
@@ -51,6 +54,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Switch to nightly rust
+      run: rustup default nightly
 
     - name: Rust version
       run: cargo rustc -- --version

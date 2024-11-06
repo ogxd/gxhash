@@ -1,4 +1,5 @@
 #![feature(core_intrinsics)]
+#![feature(portable_simd)]
 #![cfg_attr(not(feature = "std"), no_std)]
 // Hybrid SIMD width usage currently requires unstable 'stdsimd'
 #![cfg_attr(feature = "hybrid", feature(stdarch_x86_avx512))]
