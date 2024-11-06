@@ -74,11 +74,12 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
 
     let len = input.len();
-    let mut ptr = input.as_ptr() as *const State;
 
     if len == 0 {
         return create_empty();
     }
+
+    let mut ptr = input.as_ptr() as *const State;
 
     if len <= VECTOR_SIZE {
         // Input fits on a single SIMD vector, however we might read beyond the input message
@@ -130,7 +131,7 @@ unsafe fn compress_many(mut ptr: *const State, end: usize, hash_vector: State, l
 
     const UNROLL_FACTOR: usize = 8;
 
-    let remaining_bytes = end -  ptr as usize;
+    let remaining_bytes = end - ptr as usize;
 
     let unrollable_blocks_count: usize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
 
