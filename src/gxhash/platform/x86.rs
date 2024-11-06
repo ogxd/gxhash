@@ -31,12 +31,16 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 #[inline(always)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
-    let mut buffer = [0i8; VECTOR_SIZE];
-    // Copy data into the buffer
-    core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
-    // Load the buffer into a __m256i vector
-    let partial_vector = _mm_loadu_si128(buffer.as_ptr() as *const State);
-    _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
+    // let mut buffer = [0i8; VECTOR_SIZE];
+    // // Copy data into the buffer
+    // core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
+    // // Load the buffer into a __m256i vector
+    // let partial_vector = _mm_loadu_si128(buffer.as_ptr() as *const State);
+    // _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
+
+    let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
+    std::intrinsics::simd::simd_masked_load(mask, data as *const i8, _mm_set1_epi8(len as i8))
 }
 
 #[inline(always)]
