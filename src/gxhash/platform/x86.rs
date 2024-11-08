@@ -38,9 +38,18 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // let partial_vector = _mm_loadu_si128(buffer.as_ptr() as *const State);
     // _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
 
-    let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
-    State::from(std::intrinsics::simd::simd_masked_load(core::simd::i8x16::from(mask), data as *const i8, core::simd::i8x16::from(_mm_set1_epi8(len as i8))))
+    // Using simd_masked_load
+    // let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    // let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
+    // State::from(std::intrinsics::simd::simd_masked_load(core::simd::i8x16::from(mask), data as *const i8, core::simd::i8x16::from(_mm_set1_epi8(len as i8))))
+
+    // Using std::simd
+    use std::simd::*;
+    use std::mem::transmute;
+    let slice = std::slice::from_raw_parts(data as *const i8, len);
+    let data: Simd<i8, 16> = Simd::<i8, 16>::load_or_default(&slice);
+    let vector: State = transmute(data);
+    return vector;
 }
 
 #[inline(always)]
