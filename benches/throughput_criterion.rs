@@ -4,7 +4,7 @@ use std::slice;
 use std::hash::Hasher;
 
 use criterion::measurement::WallTime;
-use criterion::{criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup, BenchmarkId};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup, BenchmarkId, black_box};
 use rand::Rng;
 
 use gxhash::*;
@@ -21,9 +21,9 @@ fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, deleg
         c.throughput(Throughput::Bytes(len as u64));
 
         let slice = &data[0..len]; // Aligned
-        // let slice = &data[1..len]; // Unaligned
+        //let slice = &data[1..len]; // Unaligned
         c.bench_with_input(BenchmarkId::new(name, len), slice, |bencher, input| {
-            bencher.iter(|| delegate(criterion::black_box(input), criterion::black_box(42)))
+            bencher.iter(|| black_box(delegate(black_box(input), black_box(42))))
         });
     }
 }
