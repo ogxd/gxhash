@@ -3,16 +3,18 @@ mod result_processor;
 use result_processor::*;
 
 use std::hash::Hasher;
-use std::hint::black_box;
 use std::time::{Instant, Duration};
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
+
+// black_box from std::hint is not as good as preventing bias
+use criterion::black_box;
 
 use rand::Rng;
 
 use gxhash::*;
 
-const ITERATIONS: u32 = 1000;
+const ITERATIONS: u32 = 10000;
 const MAX_RUN_DURATION: Duration = Duration::from_millis(1000);
 const FORCE_NO_INLINING: bool = false;
 
@@ -91,7 +93,7 @@ fn main() {
 }
 
 fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str, delegate: F)
-    where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize>
+    where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize> + Clone + Copy
 {
     processor.on_start(name);
     for i in 2.. {
@@ -101,7 +103,7 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
         }
 
         // Warmup
-        black_box(time(ITERATIONS, &|| delegate(&data[..len], S::default()))); 
+        black_box(time(ITERATIONS, &|| delegate(black_box(&data[..len]), black_box(S::default())))); 
 
         let mut durations_s = vec![];
         let now = Instant::now();
@@ -116,7 +118,8 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
             let end = start + len;
             let slice = &data[start..end];
             // Execute method for a new iterations
-            let duration = time(ITERATIONS, &|| delegate(slice, S::default()));
+            let seed_copy = seed.clone();
+            let duration = time(ITERATIONS, &|| black_box(delegate(black_box(slice), black_box(seed_copy))));
             durations_s.push(duration.as_secs_f64());
         }
         let average_duration_s = calculate_average_without_outliers(&mut durations_s);
