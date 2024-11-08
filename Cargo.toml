@@ -63,3 +63,7 @@ harness = false
 [[bench]]
 name = "quality"
 harness = false
+
+[[bench]]
+name = "read_beyond"
+harness = false
