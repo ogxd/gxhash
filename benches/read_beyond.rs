@@ -53,6 +53,15 @@ mod arch {
     }
 
     #[inline(always)]
+    pub unsafe fn urbd_asm(data: *const State, len: usize) -> State {
+        // Stripped of page check for simplicity, might crash program
+        let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
+        let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
+        let oob_vector = vld1q_s8(data as *const i8); // asm to do
+        vandq_s8(oob_vector, vreinterpretq_s8_u8(mask))
+    }
+
+    #[inline(always)]
     pub unsafe fn simd_masked_load(data: *const State, len: usize) -> State {
         let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
         let mask = vreinterpretq_s8_u8(vcgtq_s8(vdupq_n_s8(len as i8), indices));
@@ -94,6 +103,17 @@ mod arch {
     }
 
     #[inline(always)]
+    pub unsafe fn urbd_asm(data: *const State, len: usize) -> State {
+        use std::arch::asm;
+        // Stripped of page check for simplicity, might crash program
+        let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+        let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
+        let mut oob_vector: State;
+        asm!("movdqu [{}], {}", in(reg) data, out(xmm_reg) oob_vector, options(pure, nomem, nostack));
+        _mm_and_si128(oob_vector, mask)
+    }
+
+    #[inline(always)]
     pub unsafe fn simd_masked_load(data: *const State, len: usize) -> State {
         let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
         let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
@@ -126,6 +146,15 @@ fn benchmark(c: &mut Criterion) {
         });
 
         group.bench_function(format!("urbd ({})", len), |b| {
+            b.iter(|| unsafe {
+                black_box(arch::urbd(
+                    black_box(&test_data as *const arch::State),
+                    black_box(len),
+                ))
+            })
+        });
+
+        group.bench_function(format!("urbd_asm ({})", len), |b| {
             b.iter(|| unsafe {
                 black_box(arch::urbd(
                     black_box(&test_data as *const arch::State),

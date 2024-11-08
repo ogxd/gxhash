@@ -12,7 +12,7 @@ use core::mem::size_of;
 
 pub(crate) const VECTOR_SIZE: usize = size_of::<State>();
 // 4KiB is the default page size for most systems, and conservative for other systems such as macOS ARM (16KiB)
-// const PAGE_SIZE: usize = 0x1000;
+const PAGE_SIZE: usize = 0x1000;
 
 #[inline(always)]
 pub unsafe fn get_partial(p: *const State, len: usize) -> State {
@@ -26,14 +26,14 @@ pub unsafe fn get_partial(p: *const State, len: usize) -> State {
     get_partial_safe(p, len)
 }
 
-// #[inline(always)]
-// unsafe fn check_same_page(ptr: *const State) -> bool {
-//     let address = ptr as usize;
-//     // Mask to keep only the last 12 bits
-//     let offset_within_page = address & (PAGE_SIZE - 1);
-//     // Check if the 16th byte from the current offset exceeds the page boundary
-//     offset_within_page < PAGE_SIZE - VECTOR_SIZE
-// }
+#[inline(always)]
+unsafe fn check_same_page(ptr: *const State) -> bool {
+    let address = ptr as usize;
+    // Mask to keep only the last 12 bits
+    let offset_within_page = address & (PAGE_SIZE - 1);
+    // Check if the 16th byte from the current offset exceeds the page boundary
+    offset_within_page < PAGE_SIZE - VECTOR_SIZE
+}
 
 #[inline(always)]
 pub unsafe fn finalize(hash: State) -> State {
