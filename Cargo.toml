@@ -31,7 +31,7 @@ itertools = "0.12.0"
 # Benchmarks
 criterion = { version = "0.5.1" }
 # Other hash algorithms, for comparison.
-ahash = "0.8.6"
+ahash = "0.8.11"
 t1ha = "0.1.0"
 twox-hash = "1.6.3"
 highway = "1.1.0"

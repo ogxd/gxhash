@@ -18,6 +18,16 @@ mod arch {
     // get_partial_safe/portable_simd (4)
     //                         time:   [3.8087 ns 3.8305 ns 3.8581 ns]
 
+    // AMD Ryzen 5 5625U
+    // get_partial_safe/copy (4)
+    //                         time:   [9.0579 ns 9.0854 ns 9.1167 ns]
+    // get_partial_safe/urbd (4)
+    //                         time:   [4.6165 ns 4.6203 ns 4.6244 ns]
+    // get_partial_safe/simd_masked_load (4)
+    //                         time:   [3.2439 ns 3.2556 ns 3.2746 ns]
+    // get_partial_safe/portable_simd (4)
+    //                         time:   [3.3122 ns 3.3192 ns 3.3280 ns]
+
     use super::*;
     use core::arch::aarch64::*;
 
@@ -67,7 +77,7 @@ mod arch {
     #[inline(always)]
     pub unsafe fn copy(data: *const State, len: usize) -> State {
         // Temporary buffer filled with zeros
-        let mut buffer = [0i8; VECTOR_SIZE];
+        let mut buffer = [0i8; 16];
         // Copy data into the buffer
         core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
         // // Load the buffer into a __m256i vector
