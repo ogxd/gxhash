@@ -27,28 +27,36 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 
 #[inline(always)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
-    // // Temporary buffer filled with zeros
-    // let mut buffer = [0i8; VECTOR_SIZE];
-    // // Copy data into the buffer
-    // core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
-    // // Load the buffer into a __m256i vector
-    // let partial_vector = vld1q_s8(buffer.as_ptr());
-    // vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
+    // Temporary buffer filled with zeros
+    let mut buffer = [0i8; VECTOR_SIZE];
+    // Copy data into the buffer
+    core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
+    // Load the buffer into a __m256i vector
+    let partial_vector = vld1q_s8(buffer.as_ptr());
+    vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
 
     //let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
     //let mask = vreinterpretq_s8_u8(vcgtq_s8(vdupq_n_s8(len as i8), indices));
 
     // Using simd_masked_load
-    //State::from(std::intrinsics::simd::simd_masked_load(core::simd::i8x16::from(mask), data as *const i8, core::simd::i8x16::from(vdupq_n_s8(len as i8))))
-    //std::intrinsics::simd::simd_masked_load(mask, data as *const i8, vdupq_n_s8(len as i8))
+    // State::from(std::intrinsics::simd::simd_masked_load(core::simd::i8x16::from(mask), data as *const i8, core::simd::i8x16::from(vdupq_n_s8(len as i8))))
+    // std::intrinsics::simd::simd_masked_load(mask, data as *const i8, vdupq_n_s8(len as i8))
 
     // Using std::simd
-    use std::simd::*;
-    use std::mem::transmute;
-    let slice = std::slice::from_raw_parts(data as *const i8, len);
-    let data: Simd<i8, 16> = Simd::<i8, 16>::load_or_default(&slice);
-    let vector: State = transmute(data);
-    return vector;
+    // use std::simd::*;
+    // use std::mem::transmute;
+    // let slice = std::slice::from_raw_parts(data as *const i8, len);
+    // let data: Simd<i8, 16> = Simd::<i8, 16>::load_or_default(&slice);
+    // let vector: State = transmute(data);
+    // return vector;
+}
+
+#[inline(always)]
+pub unsafe fn get_partial_unsafe_no_ub(data: *const State, len: usize) -> State {
+    let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
+    let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
+    let partial_vector = vandq_s8(load_unaligned(data), vreinterpretq_s8_u8(mask));
+    vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
 }
 
 #[inline(always)]
