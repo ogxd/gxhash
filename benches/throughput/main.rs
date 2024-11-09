@@ -62,29 +62,29 @@ fn main() {
     });
 
     // FNV-1a
-    benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
-        let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
-        fnv_hasher.write(data);
-        fnv_hasher.finish()
-    });
+    // benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
+    //     let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
+    //     fnv_hasher.write(data);
+    //     fnv_hasher.finish()
+    // });
 
-    // HighwayHash
-    benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
-        use highway::{HighwayHasher, HighwayHash};
-        HighwayHasher::default().hash64(data)
-    });
+    // // HighwayHash
+    // benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
+    //     use highway::{HighwayHasher, HighwayHash};
+    //     HighwayHasher::default().hash64(data)
+    // });
 
-    // SeaHash
-    benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
-        seahash::hash_seeded(data, seed, 0, 0, 0)
-    });
+    // // SeaHash
+    // benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
+    //     seahash::hash_seeded(data, seed, 0, 0, 0)
+    // });
 
-    // MetroHash
-    benchmark(processor.as_mut(), slice, "Metrohash", |data: &[u8], seed: i32| -> u64 {
-        let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
-        metrohash_hasher.write(data);
-        metrohash_hasher.finish()
-    });
+    // // MetroHash
+    // benchmark(processor.as_mut(), slice, "Metrohash", |data: &[u8], seed: i32| -> u64 {
+    //     let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
+    //     metrohash_hasher.write(data);
+    //     metrohash_hasher.finish()
+    // });
 
     processor.finish();
 
