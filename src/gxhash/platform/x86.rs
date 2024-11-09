@@ -1,8 +1,8 @@
 #[cfg(not(any(all(target_feature = "aes", target_feature = "sse2"), docsrs)))] // docs.rs bypasses the target_feature check
 compile_error!{"Gxhash requires aes and sse2 intrinsics. Make sure the processor supports it and build with RUSTFLAGS=\"-C target-cpu=native\" or RUSTFLAGS=\"-C target-feature=+aes,+sse2\"."}
 
-#[cfg(all(feature = "hybrid", not(any(target_feature = "aes", target_feature = "vaes", target_feature = "avx2"))))]
-compile_error!{"Hybrid feature is only available on x86 processors with avx2 and vaes intrinsics."}
+#[cfg(all(feature = "hybrid", not(all(target_feature = "aes", target_feature = "sse2", target_feature = "avx2"))))]
+compile_error!{"Hybrid feature is only available on x86 processors with avx2 intrinsics."}
 
 #[cfg(target_arch = "x86")]
 use core::arch::x86::*;
@@ -28,7 +28,7 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
     _mm_loadu_si128(p)
 }
 
-#[inline(always)]
+#[inline(never)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
     let mut buffer = [0i8; VECTOR_SIZE];
