@@ -12,9 +12,8 @@ use rand::Rng;
 
 use gxhash::*;
 
-const ITERATIONS: u32 = 10000;
+const ITERATIONS: u32 = 1000;
 const MAX_RUN_DURATION: Duration = Duration::from_millis(1000);
-const FORCE_NO_INLINING: bool = false;
 
 fn main() {
     let mut rng = rand::thread_rng();
@@ -44,12 +43,12 @@ fn main() {
     });
 
     // XxHash (twox-hash)
-    // benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
-    //     twox_hash::xxh3::hash64_with_seed(data, seed)
-    // });
+    benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
+        twox_hash::xxh3::hash64_with_seed(data, seed)
+    });
     
     // AHash
-    let ahash_hasher = ahash::RandomState::with_seed(black_box(42));
+    let ahash_hasher = ahash::RandomState::with_seed(42);
     benchmark(processor.as_mut(), slice, "AHash", |data: &[u8], _: i32| -> u64 {
         ahash_hasher.hash_one(data)
     });
@@ -60,29 +59,29 @@ fn main() {
     });
 
     // FNV-1a
-    // benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
-    //     let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
-    //     fnv_hasher.write(data);
-    //     fnv_hasher.finish()
-    // });
+    benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
+        let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
+        fnv_hasher.write(data);
+        fnv_hasher.finish()
+    });
 
-    // // HighwayHash
-    // benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
-    //     use highway::{HighwayHasher, HighwayHash};
-    //     HighwayHasher::default().hash64(data)
-    // });
+    // HighwayHash
+    benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
+        use highway::{HighwayHasher, HighwayHash};
+        HighwayHasher::default().hash64(data)
+    });
 
-    // // SeaHash
-    // benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
-    //     seahash::hash_seeded(data, seed, 0, 0, 0)
-    // });
+    // SeaHash
+    benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
+        seahash::hash_seeded(data, seed, 0, 0, 0)
+    });
 
-    // // MetroHash
-    // benchmark(processor.as_mut(), slice, "Metrohash", |data: &[u8], seed: i32| -> u64 {
-    //     let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
-    //     metrohash_hasher.write(data);
-    //     metrohash_hasher.finish()
-    // });
+    // MetroHash
+    benchmark(processor.as_mut(), slice, "Metrohash", |data: &[u8], seed: i32| -> u64 {
+        let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
+        metrohash_hasher.write(data);
+        metrohash_hasher.finish()
+    });
 
     processor.finish();
 
@@ -101,23 +100,20 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
         }
 
         // Warmup
-        //time(ITERATIONS, &|| delegate(black_box(&data[..len]), black_box(S::default()))); 
+        time(ITERATIONS, &delegate, &data[..len], S::default()); 
 
         let mut durations_s = vec![];
         let now = Instant::now();
         while now.elapsed() < MAX_RUN_DURATION {
             // Make seed unpredictable to prevent optimizations
-            let seed = S::try_from(now.elapsed().as_nanos())
-                .unwrap_or_else(|_| panic!("Something went horribly wrong!"));
+            let seed = S::try_from(now.elapsed().as_nanos()).unwrap_or_else(|_| panic!());
             // Offset slice by an unpredictable amount to prevent optimization (pre caching)
             // and make the benchmark use both aligned and unaligned data
-            let start = S::try_into(seed)
-                .unwrap_or_else(|_| panic!("Something went horribly wrong!")) & 0xFF;
+            let start = S::try_into(seed).unwrap_or_else(|_| panic!()) & 0xFF;
             let end = start + len;
             let slice = &data[start..end];
             // Execute method for a new iterations
-            let seed_copy = seed.clone();
-            let duration = time(ITERATIONS, &delegate, slice, seed_copy);
+            let duration = time(ITERATIONS, &delegate, slice, seed);
             durations_s.push(duration.as_secs_f64());
         }
         let average_duration_s = calculate_average_without_outliers(&mut durations_s);
@@ -133,25 +129,15 @@ fn time<F, S>(iterations: u32, delegate: F, slice: &[u8], seed: S) -> Duration
     where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize> + Clone + Copy
 {
     let now = Instant::now();
-    // Bench the same way to what is done in criterion.rs
+    // Bench a similar way to what is done in criterion.rs
     // https://github.com/bheisler/criterion.rs/blob/e1a8c9ab2104fbf2d15f700d0038b2675054a2c8/src/bencher.rs#L87
-    for _ in 0..iterations {  
-        //if FORCE_NO_INLINING {
-        //    black_box(execute_noinlining(delegate));
-        //} else {
-            black_box(delegate(black_box(slice), black_box(seed)));
-        //}
+    for _ in 0..iterations {
+        // Black box the result to prevent the compiler from optimizing the operation away
+        // Black box the slice to prevent the compiler to assume the slice is constant
+        // We don't black box the seed because it's likely to be constant in most real-world usage scenarios
+        black_box(delegate(black_box(slice), seed));
     }
     now.elapsed()
-}
-
-// Some algorithm are more likely to be inlined than others.
-// This puts then all at the same level. But is it fair?
-#[inline(never)]
-fn execute_noinlining<F>(delegate: &F) -> u64
-    where F: Fn() -> u64
-{
-    delegate()
 }
 
 // Outliers are inevitable, especially on a low number of iterations

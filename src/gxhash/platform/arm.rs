@@ -59,7 +59,7 @@ pub unsafe fn get_partial_unsafe_no_ub(data: *const State, len: usize) -> State 
     let mut result: State;
     asm!(
         "ld1 {0}, [{1}]",
-        out(vreg) result, in(reg) data,
+        out(reg) result, in(reg) data,
         options(pure, nomem, nostack)
     );
     let partial_vector = vandq_s8(result, vreinterpretq_s8_u8(mask));
