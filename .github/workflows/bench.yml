@@ -23,7 +23,7 @@ jobs:
       run: rustup default nightly
 
     - name: Benchmark
-      run: cargo bench --bench throughput --features bench-md
+      run: cargo bench --bench throughput --features bench-plot
 
     - uses: actions/upload-artifact@v3
       with:
@@ -44,7 +44,7 @@ jobs:
       run: rustup default nightly
 
     - name: Benchmark
-      run: cargo bench --bench throughput --features bench-md,hybrid
+      run: cargo bench --bench throughput --features bench-plot,hybrid
 
     - uses: actions/upload-artifact@v3
       with:
@@ -65,7 +65,7 @@ jobs:
       run: rustup default nightly
 
     - name: Benchmark
-      run: cargo bench --bench throughput --features bench-md
+      run: cargo bench --bench throughput --features bench-plot
 
     - uses: actions/upload-artifact@v3
       with:

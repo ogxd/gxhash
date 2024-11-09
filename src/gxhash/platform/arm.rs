@@ -62,6 +62,7 @@ pub unsafe fn get_partial_unsafe_no_ub(data: *const State, len: usize) -> State 
         src = in(reg) data, out("v2") result,
         options(nomem, nostack)
     );
+    //let result = load_unaligned(data);
     let partial_vector = vandq_s8(result, vreinterpretq_s8_u8(mask));
     vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
 }

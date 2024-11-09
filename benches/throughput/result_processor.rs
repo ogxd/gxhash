@@ -144,8 +144,8 @@ impl ResultProcessor for OutputPlot {
                 (x_min..x_max)
                     .log_scale()
                     .with_key_points(self.series.iter().next().unwrap().1.iter().map(|(x, _)| *x as u32).collect::<Vec<u32>>()),
-                    y_min..y_max
-                    //.log_scale(),
+                    (y_min..y_max)
+                    .log_scale(),
             ).unwrap();
 
         chart
