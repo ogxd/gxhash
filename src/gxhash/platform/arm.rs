@@ -58,7 +58,7 @@ pub unsafe fn get_partial_unsafe_no_ub(data: *const State, len: usize) -> State 
     use std::arch::asm;
     let mut result: State;
     asm!(
-        "vld1.8 {0}, [{1}]",
+        "ld1 {0}, [{1}]",
         out(vreg) result, in(reg) data,
         options(pure, nomem, nostack)
     );

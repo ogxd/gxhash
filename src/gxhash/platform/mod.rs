@@ -17,13 +17,13 @@ const PAGE_SIZE: usize = 0x1000;
 #[inline(always)]
 pub unsafe fn get_partial(p: *const State, len: usize) -> State {
     // Safety check
-    // if check_same_page(p) {
-    //     get_partial_unsafe_no_ub(p, len)
-    // } else {
-    //     get_partial_safe(p, len)
-    // }
+    if check_same_page(p) {
+        get_partial_unsafe_no_ub(p, len)
+    } else {
+        get_partial_safe(p, len)
+    }
 
-    get_partial_safe(p, len)
+    //get_partial_safe(p, len)
 }
 
 #[inline(always)]

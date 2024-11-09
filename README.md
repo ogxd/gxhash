@@ -111,6 +111,8 @@ cargo bench --bench hashset
 
 Note: The `throughput` benchmark does not relies of criterion of timings measurements. In an attempt of reducing biais in this microbenchmark as much as possible, it shuffles seeds, input data, and alignment. It also has the benefit of being less of a "black box" compared to criterion. There is however a criterion-based throughput benchmark named `throughput_criterion` if you prefer. Results vary slightly between the two benchmarks, don't hesitate to submit an issue if you suspect biais and want to suggest improvements.
 
+Most importantly: if performance if a critical feature for your application, don't forget to benchmark the cost of hashing in your own context. Numbers shared here may be radically different in your environment and with your hardware.
+
 ### Throughput
 
 Throughput is measured as the number of bytes hashed per second.
