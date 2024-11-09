@@ -28,21 +28,21 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
     _mm_loadu_si128(p)
 }
 
-#[inline(never)]
+#[inline(always)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
-    let mut buffer = [0i8; VECTOR_SIZE];
-    core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
-    let partial_vector = _mm_loadu_si128(buffer.as_ptr() as *const State);
-    _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
+    // let mut buffer = [0i8; VECTOR_SIZE];
+    // core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
+    // let partial_vector = _mm_loadu_si128(buffer.as_ptr() as *const State);
+    // _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
 
     // Using URBD
     //get_partial_unsafe(data, len)
 
     // Using simd_masked_load
-    // let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    // let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
-    // State::from(std::intrinsics::simd::simd_masked_load(core::simd::i8x16::from(mask), data as *const i8, core::simd::i8x16::from(_mm_set1_epi8(len as i8))))
+    let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
+    State::from(std::intrinsics::simd::simd_masked_load(core::simd::i8x16::from(mask), data as *const i8, core::simd::i8x16::from(_mm_set1_epi8(len as i8))))
 
     // Using std::simd
     // use std::simd::*;
