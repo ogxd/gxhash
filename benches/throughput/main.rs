@@ -2,13 +2,11 @@ mod result_processor;
 
 use result_processor::*;
 
+use std::hint::black_box;
 use std::hash::Hasher;
 use std::time::{Instant, Duration};
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
-
-// black_box from std::hint is not as good as preventing bias
-use criterion::black_box;
 
 use rand::Rng;
 
@@ -46,12 +44,12 @@ fn main() {
     });
 
     // XxHash (twox-hash)
-    benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
-        twox_hash::xxh3::hash64_with_seed(data, seed)
-    });
+    // benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
+    //     twox_hash::xxh3::hash64_with_seed(data, seed)
+    // });
     
     // AHash
-    let ahash_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
+    let ahash_hasher = ahash::RandomState::with_seed(black_box(42));
     benchmark(processor.as_mut(), slice, "AHash", |data: &[u8], _: i32| -> u64 {
         ahash_hasher.hash_one(data)
     });
@@ -103,7 +101,7 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
         }
 
         // Warmup
-        black_box(time(ITERATIONS, &|| delegate(black_box(&data[..len]), black_box(S::default())))); 
+        //time(ITERATIONS, &|| delegate(black_box(&data[..len]), black_box(S::default()))); 
 
         let mut durations_s = vec![];
         let now = Instant::now();
@@ -119,7 +117,7 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
             let slice = &data[start..end];
             // Execute method for a new iterations
             let seed_copy = seed.clone();
-            let duration = time(ITERATIONS, &|| black_box(delegate(black_box(slice), black_box(seed_copy))));
+            let duration = time(ITERATIONS, &delegate, slice, seed_copy);
             durations_s.push(duration.as_secs_f64());
         }
         let average_duration_s = calculate_average_without_outliers(&mut durations_s);
@@ -131,18 +129,18 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
 }
 
 #[inline(never)]
-fn time<F>(iterations: u32, delegate: &F) -> Duration
-    where F: Fn() -> u64
+fn time<F, S>(iterations: u32, delegate: F, slice: &[u8], seed: S) -> Duration
+    where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize> + Clone + Copy
 {
     let now = Instant::now();
     // Bench the same way to what is done in criterion.rs
     // https://github.com/bheisler/criterion.rs/blob/e1a8c9ab2104fbf2d15f700d0038b2675054a2c8/src/bencher.rs#L87
     for _ in 0..iterations {  
-        if FORCE_NO_INLINING {
-            black_box(execute_noinlining(delegate));
-        } else {
-            black_box(delegate());
-        }
+        //if FORCE_NO_INLINING {
+        //    black_box(execute_noinlining(delegate));
+        //} else {
+            black_box(delegate(black_box(slice), black_box(seed)));
+        //}
     }
     now.elapsed()
 }

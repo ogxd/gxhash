@@ -65,18 +65,18 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
 #[inline(always)]
 pub unsafe fn get_partial_unsafe_no_ub(data: *const State, len: usize) -> State {
     // Using inline assembly to load out-of-bounds
-    // use std::arch::asm;
-    // let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    // let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
-    // let mut result: State;
-    // asm!("movdqu [{}], {}", in(reg) data, out(xmm_reg) result, options(pure, nomem, nostack));
-    // let partial_vector = _mm_and_si128(result, mask);
-    // _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
-
-    // Using simd_masked_load
+    use std::arch::asm;
     let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
     let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
-    State::from(std::intrinsics::simd::simd_masked_load(core::simd::i8x16::from(mask), data as *const i8, core::simd::i8x16::from(_mm_set1_epi8(len as i8))))
+    let mut result: State;
+    asm!("movdqu [{}], {}", in(reg) data, out(xmm_reg) result, options(pure, nomem, nostack));
+    let partial_vector = _mm_and_si128(result, mask);
+    _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
+
+    // Using simd_masked_load
+    // let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    // let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
+    // State::from(std::intrinsics::simd::simd_masked_load(core::simd::i8x16::from(mask), data as *const i8, core::simd::i8x16::from(_mm_set1_epi8(len as i8))))
 
     // Using std::simd
     // use std::simd::*;
