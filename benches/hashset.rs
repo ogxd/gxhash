@@ -74,7 +74,7 @@ fn iterate<T, B>(b: &mut criterion::Bencher<'_>, value: &T, set: &mut HashSet<T,
     set.insert(T::default());
     b.iter(|| {
         // We intentionally check on a value that is not present, otherwise there will be an
-        // additional equality check perform, diluting the hashing time and biasing the benchmark.
+        // additional equality check performed, diluting the hashing time and biasing the benchmark.
         set.contains(criterion::black_box(value))
     });
 }

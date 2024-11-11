@@ -132,7 +132,7 @@ impl ResultProcessor for OutputPlot {
         let x_min = self.series.iter().next().unwrap().1.iter().map(|(x, _)| *x as u32).min().unwrap();
         let x_max = self.series.iter().next().unwrap().1.iter().map(|(x, _)| *x as u32).max().unwrap();
 
-        let y_min = 0u32;
+        let y_min = self.series.iter().flat_map(|inner_map| inner_map.1.iter()).map(|(_, y)| (0.95 * *y) as u32).min().unwrap();
         let y_max = self.series.iter().flat_map(|inner_map| inner_map.1.iter()).map(|(_, y)| (1.05 * *y) as u32).max().unwrap();
 
         let mut chart = ChartBuilder::on(&canvas)
@@ -144,8 +144,8 @@ impl ResultProcessor for OutputPlot {
                 (x_min..x_max)
                     .log_scale()
                     .with_key_points(self.series.iter().next().unwrap().1.iter().map(|(x, _)| *x as u32).collect::<Vec<u32>>()),
-                    y_min..y_max
-                    //.log_scale(),
+                    (y_min..y_max)
+                    .log_scale(),
             ).unwrap();
 
         chart

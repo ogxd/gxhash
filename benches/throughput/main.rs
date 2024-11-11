@@ -2,8 +2,8 @@ mod result_processor;
 
 use result_processor::*;
 
-use std::hash::Hasher;
 use std::hint::black_box;
+use std::hash::Hasher;
 use std::time::{Instant, Duration};
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
@@ -12,9 +12,8 @@ use rand::Rng;
 
 use gxhash::*;
 
-const ITERATIONS: u32 = 1000;
+const ITERATIONS: usize = 1000;
 const MAX_RUN_DURATION: Duration = Duration::from_millis(1000);
-const FORCE_NO_INLINING: bool = false;
 
 fn main() {
     let mut rng = rand::thread_rng();
@@ -49,7 +48,7 @@ fn main() {
     });
     
     // AHash
-    let ahash_hasher = ahash::RandomState::with_seeds(0, 0, 0, 0);
+    let ahash_hasher = ahash::RandomState::with_seed(42);
     benchmark(processor.as_mut(), slice, "AHash", |data: &[u8], _: i32| -> u64 {
         ahash_hasher.hash_one(data)
     });
@@ -91,7 +90,7 @@ fn main() {
 }
 
 fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str, delegate: F)
-    where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize>
+    where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize> + Clone + Copy
 {
     processor.on_start(name);
     for i in 2.. {
@@ -101,22 +100,20 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
         }
 
         // Warmup
-        black_box(time(ITERATIONS, &|| delegate(&data[..len], S::default()))); 
+        time::<_, _, ITERATIONS>(&delegate, &data[..len], S::default()); 
 
         let mut durations_s = vec![];
         let now = Instant::now();
         while now.elapsed() < MAX_RUN_DURATION {
             // Make seed unpredictable to prevent optimizations
-            let seed = S::try_from(now.elapsed().as_nanos())
-                .unwrap_or_else(|_| panic!("Something went horribly wrong!"));
+            let seed = S::try_from(now.elapsed().as_nanos()).unwrap_or_else(|_| panic!());
             // Offset slice by an unpredictable amount to prevent optimization (pre caching)
             // and make the benchmark use both aligned and unaligned data
-            let start = S::try_into(seed)
-                .unwrap_or_else(|_| panic!("Something went horribly wrong!")) & 0xFF;
+            let start = S::try_into(seed).unwrap_or_else(|_| panic!()) & 0xFF;
             let end = start + len;
             let slice = &data[start..end];
             // Execute method for a new iterations
-            let duration = time(ITERATIONS, &|| delegate(slice, S::default()));
+            let duration = time::<_, _, ITERATIONS>(&delegate, slice, seed);
             durations_s.push(duration.as_secs_f64());
         }
         let average_duration_s = calculate_average_without_outliers(&mut durations_s);
@@ -127,30 +124,28 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
     processor.on_end();
 }
 
-#[inline(never)]
-fn time<F>(iterations: u32, delegate: &F) -> Duration
-    where F: Fn() -> u64
+fn time<F, S, const N: usize>(delegate: F, slice: &[u8], seed: S) -> Duration
+    where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize> + Clone + Copy
 {
-    let now = Instant::now();
-    // Bench the same way to what is done in criterion.rs
+    // Time measurement similar to what is done in criterion.rs
     // https://github.com/bheisler/criterion.rs/blob/e1a8c9ab2104fbf2d15f700d0038b2675054a2c8/src/bencher.rs#L87
-    for _ in 0..iterations {  
-        if FORCE_NO_INLINING {
-            black_box(execute_noinlining(delegate));
-        } else {
-            black_box(delegate());
-        }
-    }
+    let now = Instant::now();
+    iter::<F, S, N>(delegate, slice, seed);
     now.elapsed()
 }
 
-// Some algorithm are more likely to be inlined than others.
-// This puts then all at the same level. But is it fair?
+// The content might be inlined, but the function itself should not be inlined
+// This favors benchmarked methods with small byte code size, which is more realistic
 #[inline(never)]
-fn execute_noinlining<F>(delegate: &F) -> u64
-    where F: Fn() -> u64
+fn iter<F, S, const N: usize>(delegate: F, slice: &[u8], seed: S)
+    where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize> + Clone + Copy
 {
-    delegate()
+    for _ in 0..N {
+        // Black box the result to prevent the compiler from optimizing the operation away
+        // Black box the slice to prevent the compiler to assume the slice is constant
+        // We don't black box the seed because it's likely to be constant in most real-world usage scenarios
+        black_box(delegate(black_box(slice), seed));
+    }
 }
 
 // Outliers are inevitable, especially on a low number of iterations
