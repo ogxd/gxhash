@@ -97,7 +97,9 @@ The `hybrid` feature flag enables a hybrid implementation of GxHash. This is dis
 ## Benchmarks
 
 [![Benchmark](https://github.com/ogxd/gxhash/actions/workflows/bench.yml/badge.svg)](https://github.com/ogxd/gxhash/actions/workflows/bench.yml)  
-GxHash is continuously benchmarked on X86 and ARM GitHub runners. 
+GxHash is continuously benchmarked on X86 and ARM GitHub runners.  
+
+Important: If performance if a critical feature for your application, don't forget to benchmark the cost of hashing in your own context. Numbers shared here may be radically different in your environment and with your hardware.  
 
 To run the benchmarks locally use one of the following:
 ```bash
@@ -113,7 +115,9 @@ cargo bench --bench hashset
 
 Throughput is measured as the number of bytes hashed per second.
 
-*Some prefer talking **latency** (time for generating a hash) or **hashrate** (the number of hashes generated per second) for measuring hash function performance, but those are all equivalent in the end as they all boil down to measuring the time it takes to hash some input and then apply different scalar transformation. For instance, if latency for a `4 bytes` hash is `1 ms`, then the throughput is `1 / 0.001 * 4 = 4000 bytes per second`. Throughput allows us to conveniently compare the performance of a hash function for any input size on a single graph.*
+*Some prefer talking of **latency** (time for generating a hash) or **hashrate** (the number of hashes generated per second) for measuring hash function performance, but those are all equivalent in the end as they all boil down to measuring the time it takes to hash some input and then apply different scalar transformation. For instance, if latency for a `4 bytes` hash is `1 ms`, then the throughput is `1 / 0.001 * 4 = 4000 bytes per second`. Throughput allows us to conveniently compare the performance of a hash function for any input size on a single graph.*
+
+The `throughput` benchmark is custom (it does not rely on criterion.rs). In an attempt of reducing biais in this microbenchmark as much as possible, it shuffles seeds, input data, and alignment. It also has the benefit of being less of a "black box" compared to criterion. There is however a criterion-based throughput benchmark named `throughput_criterion` if you prefer. Results vary slightly between the two benchmarks, don't hesitate to submit an issue if you suspect biais and want to suggest improvements.
 
 **Latest Benchmark Results:**    
 ![aarch64](./benches/throughput/aarch64.svg)
@@ -129,8 +133,13 @@ Throughput is measured as the number of bytes hashed per second.
   - Minor for API changes/removal
   - Patch for new APIs, bug fixes and performance improvements
 
-> ℹ️ [cargo-show-asm](https://github.com/pacak/cargo-show-asm) is an easy way to view the actual generated assembly code (`cargo asm gxhash::gxhash::gxhash64`) (method `#[inline]` should be removed otherwise it won't be seen by the tool)  
-> ℹ️ [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on time spent per instruction.
+#### Useful profiling tools
+- [cargo-show-asm](https://github.com/pacak/cargo-show-asm) is an easy way to view the actual generated assembly code. You can use the hello_world example to view the isolated, unoptimized byte code for gxhash. A few useful commands:
+  - Line by line generated asm: `cargo asm --rust --simplify --example hello_world hello_world::gxhash`
+  - Generated llvm: `cargo asm --llvm --example hello_world hello_world::gxhash`
+  - Count of assembly instructions: `cargo asm --simplify --example hello_world hello_world::gxhash | grep -v '^\.' | wc -l`
+    - Powershell version: `cargo asm --simplify --example hello_world hello_world::gxhash | where { !$_.StartsWith(".") } | measure -Line`
+- [AMD μProf](https://www.amd.com/en/developer/uprof.html) gives some useful insights on time spent per instruction.
 
 ## Publication
 > Author note:

@@ -63,3 +63,6 @@ harness = false
 [[bench]]
 name = "quality"
 harness = false
+
+[[example]]
+name = "hello_world"
