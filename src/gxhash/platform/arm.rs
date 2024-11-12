@@ -77,8 +77,10 @@ pub unsafe fn ld(array: *const u32) -> State {
     vreinterpretq_s8_u32(vld1q_u32(array))
 }
 
-#[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
+#[inline(never)]
+pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> (State, *const State, usize) {
+
+    let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
 
     // Disambiguation vectors
     let mut t1: State = create_empty();
@@ -113,8 +115,9 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     let len_vec =  vreinterpretq_s8_u32(vdupq_n_u32(len as u32));
     lane1 = vaddq_s8(lane1, len_vec);
     lane2 = vaddq_s8(lane2, len_vec);
+
     // Merge lanes
-    aes_encrypt(lane1, lane2)
+    (aes_encrypt(lane1, lane2), ptr, whole_vector_count % 8)
 }
 
 #[inline(always)]
