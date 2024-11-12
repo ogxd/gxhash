@@ -65,10 +65,10 @@ macro_rules! load_unaligned {
 
 pub(crate) use load_unaligned;
 
-#[cfg(target_arch = "x86")]
-use core::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
-use core::arch::x86_64::*;
+#[cfg(target_arch = "arm")]
+use core::arch::arm::*;
+#[cfg(target_arch = "aarch64")]
+use core::arch::aarch64::*;
 
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
@@ -90,31 +90,32 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
     'p0: {
         'p1: {
             'p2: {
-                // This seems ultra efficient
+                // C-style fallthrough alternative
                 if lzcnt == 64 {
                     break 'p0;
                 } else if lzcnt >= 60 {
                     break 'p1;
-                } else if lzcnt >= 55 {
+                } else if lzcnt >= 56 {
                     break 'p2;
                 }
 
-                state = compress_8(ptr, whole_vector_count, state, len);
-
-                whole_vector_count %= 8;
+                // Process vectors by batches of 8
+                // This method is not inlined because len is large enough to make it not worth it, so we keep the bytecode size small
+                (state, ptr, whole_vector_count) = compress_8(ptr, whole_vector_count, state, len);
             }
 
+            // Process remaining vectors
             let end_address = ptr.add(whole_vector_count) as usize;
-
             while (ptr as usize) < end_address {
                 load_unaligned!(ptr, v0);
                 state = aes_encrypt(state, v0);
             }
         }
 
+        // Process remaining bytes
         let len_partial = len % VECTOR_SIZE;
         let partial = get_partial(ptr, len_partial);
-        state = _mm_add_epi8(state, partial);
+        state = vaddq_s8(state, partial);
     }
  
     return state;
