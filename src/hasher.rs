@@ -113,7 +113,7 @@ impl Hasher for GxHasher {
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
         // Improvement: only compress at this stage and finalize in finish
-        self.state = unsafe { aes_encrypt_last(compress_all(bytes), aes_encrypt(self.state, ld(KEYS.as_ptr()))) };
+        // self.state = unsafe { aes_encrypt_last(compress_all(bytes), aes_encrypt(self.state, ld(KEYS.as_ptr()))) };
     }
 
     write!(write_u8, u8, load_u8);
