@@ -95,7 +95,7 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
                     break 'p0;
                 } else if lzcnt >= 60 {
                     break 'p1;
-                } else if lzcnt >= 56 {
+                } else if lzcnt >= 57 {
                     break 'p2;
                 }
 
@@ -104,9 +104,41 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
                 (state, ptr, whole_vector_count) = compress_8(ptr, whole_vector_count, state, len);
             }
 
-            // Process remaining vectors
-            let end_address = ptr.add(whole_vector_count) as usize;
-            while (ptr as usize) < end_address {
+            'process1: {
+                'process2: {
+                    'process3: {
+                        'process4: {
+                            'process5: {
+                                'process6: {
+                                    'process7: {
+                                        match whole_vector_count {
+                                            0 => break 'process1,
+                                            1 => break 'process2,
+                                            2 => break 'process3,
+                                            3 => break 'process4,
+                                            4 => break 'process5,
+                                            5 => break 'process6,
+                                            6 => break 'process7,
+                                            _ => {}
+                                        };
+                                        load_unaligned!(ptr, v0);
+                                        state = aes_encrypt(state, v0);
+                                    }
+                                    load_unaligned!(ptr, v0);
+                                    state = aes_encrypt(state, v0);
+                                }
+                                load_unaligned!(ptr, v0);
+                                state = aes_encrypt(state, v0);
+                            }
+                            load_unaligned!(ptr, v0);
+                            state = aes_encrypt(state, v0);
+                        }
+                        load_unaligned!(ptr, v0);
+                        state = aes_encrypt(state, v0);
+                    }
+                    load_unaligned!(ptr, v0);
+                    state = aes_encrypt(state, v0);
+                }
                 load_unaligned!(ptr, v0);
                 state = aes_encrypt(state, v0);
             }
