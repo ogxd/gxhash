@@ -86,22 +86,46 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 
     let mut state = seed;
 
-    if len > 0 { // This alone accounts for 5 instructions on x86
-        // The number of bytes that are not part of a full vector
-        let len_partial = len % VECTOR_SIZE;
-        let whole_vector_count = len / VECTOR_SIZE;
+    let mut whole_vector_count = len / VECTOR_SIZE;
 
-        let partial = get_partial(ptr, len_partial);
-        ptr = ptr.cast::<u8>().add(len_partial).cast();
+    let lzcnt = len.leading_zeros();
+    'p0: {
+        'p1: {
+            'p2: {
+                // This seems ultra efficient
+                if lzcnt == 64 {
+                    break 'p0;
+                } else if lzcnt >= 60 {
+                    break 'p1;
+                } else if lzcnt >= 56 {
+                    break 'p2;
+                }
 
-        state = _mm_add_epi8(state, partial);
+                // If we have less than 56 leading zeroes, it means length is at least 256 bits, or two vectors
+                let end_address = ptr.add((whole_vector_count / 2) * 2) as usize;
+                let mut lane1 = state;
+                let mut lane2 = state;
+                while (ptr as usize) < end_address {
+                    crate::gxhash::load_unaligned!(ptr, v0, v1);
+                    lane1 = aes_encrypt(lane1, v0);
+                    lane2 = aes_encrypt(lane2, v1);
+                }
+                // Merge lanes
+                state = aes_encrypt(lane1, lane2);
+                whole_vector_count = whole_vector_count % 2;
+            }
 
-        let end_address = ptr.add(whole_vector_count) as usize;
+            let end_address = ptr.add(whole_vector_count) as usize;
 
-        while (ptr as usize) < end_address {
-            load_unaligned!(ptr, v0);
-            state = aes_encrypt(state, v0);
+            while (ptr as usize) < end_address {
+                load_unaligned!(ptr, v0);
+                state = aes_encrypt(state, v0);
+            }
         }
+
+        let len_partial = len % VECTOR_SIZE;
+        let partial = get_partial(ptr, len_partial);
+        state = _mm_add_epi8(state, partial);
     }
  
     return finalize(state);
