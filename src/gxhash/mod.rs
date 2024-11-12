@@ -72,6 +72,11 @@ use core::arch::x86_64::*;
 
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
+    return finalize(gxhash_no_finish(input, seed));
+}
+
+#[inline(always)]
+pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
 
     let mut ptr = input.as_ptr() as *const State; // Do we need to check if valid slice?
 
@@ -112,7 +117,7 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
         state = _mm_add_epi8(state, partial);
     }
  
-    return finalize(state);
+    return state;
 }
 
 #[cfg(test)]
