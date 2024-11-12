@@ -69,8 +69,10 @@ pub unsafe fn ld(array: *const u32) -> State {
 }
 
 #[cfg(not(feature = "hybrid"))]
-#[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
+#[inline(never)]
+pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> State {
+
+    let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
 
     // Disambiguation vectors
     let mut t1: State = create_empty();
@@ -105,6 +107,7 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     let len_vec =  _mm_set1_epi32(len as i32);
     lane1 = _mm_add_epi8(lane1, len_vec);
     lane2 = _mm_add_epi8(lane2, len_vec);
+
     // Merge lanes
     aes_encrypt(lane1, lane2)
 }
