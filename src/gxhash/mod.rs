@@ -65,9 +65,46 @@ macro_rules! load_unaligned {
 
 pub(crate) use load_unaligned;
 
+#[cfg(target_arch = "x86")]
+use core::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use core::arch::x86_64::*;
+
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
-    finalize(aes_encrypt(compress_all(input), seed))
+
+    // gxhash v4 flow:
+    // - Start with state = seed
+    // - Read partial first, regardless of input length. This way we don't duplicate the code for partial read, and skip the 0 len check.
+    // - Incorporate the partial read into the state
+    // - Then loop over the input in blocks of 128 bits
+    // - Finalize the hash with aes instructions for better diffusion and avalanche effect
+
+    let mut ptr = input.as_ptr() as *const State; // Do we need to check if valid slice?
+
+    let len = input.len();
+
+    let mut state = seed;
+
+    if len > 0 { // This alone accounts for 5 instructions on x86
+        // The number of bytes that are not part of a full vector
+        let len_partial = len % VECTOR_SIZE;
+        let whole_vector_count = len / VECTOR_SIZE;
+
+        let partial = get_partial(ptr, len_partial);
+        ptr = ptr.cast::<u8>().add(len_partial).cast();
+
+        state = _mm_add_epi8(state, partial);
+
+        let end_address = ptr.add(whole_vector_count) as usize;
+
+        while (ptr as usize) < end_address {
+            load_unaligned!(ptr, v0);
+            state = aes_encrypt(state, v0);
+        }
+    }
+ 
+    return finalize(state);
 }
 
 #[inline(always)]
