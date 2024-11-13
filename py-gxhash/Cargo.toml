@@ -1,0 +1,12 @@
+[package]
+name = "py-gxhash"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "gxhash"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.22.0"
+gxhash = { path = "..", features = ["hybrid"] }
