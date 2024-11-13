@@ -31,6 +31,7 @@ fn bench_hasher_quality<B>(name: &str)
 
     check!(avalanche::<B, 4>());
     check!(avalanche::<B, 10>());
+    check!(avalanche::<B, 16>());
     check!(avalanche::<B, 32>());
     check!(avalanche::<B, 128>());
     check!(avalanche::<B, 512>());

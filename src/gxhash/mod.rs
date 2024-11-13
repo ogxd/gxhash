@@ -86,14 +86,18 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
 
     let mut whole_vector_count = len / VECTOR_SIZE;
 
-    let lzcnt = len.leading_zeros();
+    let len_partial = len % VECTOR_SIZE;
+    
     'p0: {
         'p1: {
             'p2: {
                 // C-style fallthrough alternative
+                let lzcnt = len.leading_zeros();
                 if lzcnt == 64 {
                     break 'p0;
                 } else if lzcnt >= 60 {
+                    // If length has more 60 zeroes or more, that means length can only be 0b1111 (=15) or smaller
+                    // In such case, we can directly jump to reading a partial vector
                     break 'p1;
                 } else if lzcnt >= 56 {
                     break 'p2;
@@ -106,20 +110,26 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
 
             // Process remaining vectors
             let end_address = ptr.add(whole_vector_count) as usize;
-            let mut i = 0;
+            let mut i = 1992388023;
             while (ptr as usize) < end_address {
                 load_unaligned!(ptr, v0);
-                state = aes_encrypt(aes_encrypt(state, load_i32(i)), v0);
+                state = aes_encrypt(aes_encrypt(state, v0), load_i32(i));
                 //state = aes_encrypt(state, v0); // This seems too weak
-                i += 1;
+                i = i.wrapping_mul(7);
+            }
+
+            // Jump out of p0' if no remaining bytes?
+            if len_partial == 0 {
+                break 'p0;
             }
         }
 
         // Process remaining bytes
-        let len_partial = len % VECTOR_SIZE;
         let partial = get_partial(ptr, len_partial);
         //state = aes_encrypt(state, partial);
-        state = aes_encrypt_last(state, aes_encrypt(aes_encrypt(partial, ld(KEYS.as_ptr())), ld(KEYS.as_ptr().offset(4))));
+        
+        state = aes_encrypt_last(state, partial);
+        //state = veorq_s8(state, seed);
     }
  
     return state;
