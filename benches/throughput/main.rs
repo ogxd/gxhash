@@ -66,23 +66,26 @@ fn main() {
         fnv_hasher.finish()
     });
 
-    // HighwayHash
-    benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
-        use highway::{HighwayHasher, HighwayHash};
-        HighwayHasher::default().hash64(data)
-    });
-
-    // SeaHash
-    benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
-        seahash::hash_seeded(data, seed, 0, 0, 0)
-    });
-
     // MetroHash
     benchmark(processor.as_mut(), slice, "Metrohash", |data: &[u8], seed: i32| -> u64 {
         let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
         metrohash_hasher.write(data);
         metrohash_hasher.finish()
     });
+
+    // Don't benchmark theses when plotting because they're too slow resulting in the Y-axis too zoomed-out
+    if cfg!(not(feature = "bench-plot")) {
+        // HighwayHash
+        benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
+            use highway::{HighwayHasher, HighwayHash};
+            HighwayHasher::default().hash64(data)
+        });
+
+        // SeaHash
+        benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
+            seahash::hash_seeded(data, seed, 0, 0, 0)
+        });
+    }
 
     processor.finish();
 

@@ -150,7 +150,9 @@ impl ResultProcessor for OutputPlot {
 
         chart
             .configure_mesh()
-            .max_light_lines(1)
+            .x_max_light_lines(1)
+            .y_max_light_lines(2)
+            .y_labels(10)
             .x_desc("Input Size (bytes)")
             .y_desc("Throughput (MiB/s)")
             .draw().unwrap();
