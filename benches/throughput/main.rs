@@ -12,7 +12,8 @@ use rand::Rng;
 
 use gxhash::*;
 
-const ITERATIONS: usize = 1000;
+const ITERATIONS: usize = 2000;
+const UNROLL_FACTOR: i32 = 5;
 const MAX_RUN_DURATION: Duration = Duration::from_millis(1000);
 
 fn main() {
@@ -117,7 +118,7 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
             durations_s.push(duration.as_secs_f64());
         }
         let average_duration_s = calculate_average_without_outliers(&mut durations_s);
-        let throughput = (len as f64) / (1024f64 * 1024f64 * (average_duration_s / ITERATIONS as f64));
+        let throughput = (len as f64) / (1024f64 * 1024f64 * (average_duration_s / UNROLL_FACTOR as f64 / ITERATIONS as f64));
 
         processor.on_result(len, throughput);
     }
@@ -143,8 +144,12 @@ fn iter<F, S, const N: usize>(delegate: F, slice: &[u8], seed: S)
     for _ in 0..N {
         // Black box the result to prevent the compiler from optimizing the operation away
         // Black box the slice to prevent the compiler to assume the slice is constant
-        // We don't black box the seed because it's likely to be constant in most real-world usage scenarios
-        black_box(delegate(black_box(slice), seed));
+        // Unroll manually 5 times to disminish the impact of the loop and improve of odds of delegate inlining
+        black_box(delegate(black_box(slice), black_box(seed)));
+        black_box(delegate(black_box(slice), black_box(seed)));
+        black_box(delegate(black_box(slice), black_box(seed)));
+        black_box(delegate(black_box(slice), black_box(seed)));
+        black_box(delegate(black_box(slice), black_box(seed)));
     }
 }
 
