@@ -32,7 +32,10 @@ pub fn gxhash32(input: &[u8], seed: i64) -> u32 {
 pub fn gxhash64(input: &[u8], seed: i64) -> u64 {
     unsafe {
         let p = &gxhash(input, create_seed(seed)) as *const State as *const u64;
-        *p
+        //*p
+        let low = *p;
+        let high = *p.offset(1);
+        return low.wrapping_add(high);
     }
 }
 
@@ -67,7 +70,7 @@ pub(crate) use load_unaligned;
 
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
-    finalize(aes_encrypt(compress_all(input), seed))
+    finalize_ez(compress_all(input))
 }
 
 #[inline(always)]

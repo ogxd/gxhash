@@ -105,8 +105,11 @@ impl Hasher for GxHasher {
     #[inline]
     fn finish(&self) -> u64 {
         unsafe {
-            let p = &finalize(self.state) as *const State as *const u64;
-            *p
+            let p = &finalize_ez(self.state) as *const State as *const u64;
+            // Sum low bits with high bits
+            let low = *p;
+            let high = *p.offset(1);
+            return low.wrapping_add(high);
         }
     }
 

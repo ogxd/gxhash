@@ -33,6 +33,11 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
 }
 
+#[cfg(target_arch = "arm")]
+use core::arch::arm::*;
+#[cfg(target_arch = "aarch64")]
+use core::arch::aarch64::*;
+
 #[inline(always)]
 pub unsafe fn finalize(hash: State) -> State {
     let mut hash = aes_encrypt(hash, ld(KEYS.as_ptr()));
@@ -40,6 +45,38 @@ pub unsafe fn finalize(hash: State) -> State {
     hash = aes_encrypt_last(hash, ld(KEYS.as_ptr().offset(8)));
 
     hash
+}
+
+pub const PRIME_1: u32 = 2_654_435_761;
+pub const PRIME_2: u32 = 2_246_822_519;
+pub const PRIME_3: u32 = 3_266_489_917;
+pub const PRIME_4: u32 = 668_265_263;
+pub const PRIME_5: u32 = 374_761_393;
+
+#[inline(always)]
+pub unsafe fn finalize_ez(hash: State) -> State {
+    // let mut hash = aes_encrypt(hash, ld(KEYS.as_ptr()));
+    // hash = aes_encrypt(hash, ld(KEYS.as_ptr().offset(4)));
+    // hash = aes_encrypt_last(hash, ld(KEYS.as_ptr().offset(8)));
+    
+    let mut hash_u64x2 = vreinterpretq_u64_s8(hash);
+    // let low = vgetq_lane_u64(hash_u64x2, 0);
+    // let high = vgetq_lane_u64(hash_u64x2, 1);
+
+    hash_u64x2 = vreinterpretq_u64_u32(vmulq_n_u32(vreinterpretq_u32_u64(hash_u64x2), PRIME_1));
+    hash_u64x2 = veorq_u64(vshrq_n_u64::<37>(hash_u64x2), hash_u64x2);
+    hash_u64x2 = vreinterpretq_u64_u32(vmulq_n_u32(vreinterpretq_u32_u64(hash_u64x2), PRIME_2));
+    hash_u64x2 = veorq_u64(vshrq_n_u64::<32>(hash_u64x2), hash_u64x2);
+    hash_u64x2 = vreinterpretq_u64_u32(vmulq_n_u32(vreinterpretq_u32_u64(hash_u64x2), PRIME_3));
+
+    return vreinterpretq_s8_u64(hash_u64x2);
+
+    // tl;dr; it's just avalanche((value as i32) * PRIME32_1) * PRIME64_2
+
+    // avalanche:
+    // h64 ^= h64 >> 37;
+    // h64 = h64.wrapping_mul(PRIME64_3);
+    // h64 ^ (h64 >> 32)
 }
 
 pub const KEYS: [u32; 12] = 
