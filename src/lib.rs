@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-// Hybrid SIMD width usage currently requires unstable 'stdsimd'
-#![cfg_attr(feature = "hybrid", feature(stdarch_x86_avx512))]
+// Hybrid feature is only available for x86 processors supporting AVX2 instrinsics and requires nightly rust.
+#![cfg_attr(all(feature = "hybrid", any(target_arch = "x86", target_arch = "x86_64")), feature(stdarch_x86_avx512))]
 
 #[rustfmt::skip]
 mod gxhash;
