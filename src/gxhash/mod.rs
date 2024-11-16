@@ -87,43 +87,36 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
     let mut whole_vector_count = len / VECTOR_SIZE;
 
     let len_partial = len % VECTOR_SIZE;
-    
-    'p0: {
-        'p1: {
-            'p2: {
-                // C-style fallthrough alternative
-                //let lzcnt = len.leading_zeros();
-                if len == 0 {
-                    break 'p0;
-                } else if len <= 16 {
-                    // If length has more 60 zeroes or more, that means length can only be 0b1111 (=15) or smaller
-                    // In such case, we can directly jump to reading a partial vector
-                    break 'p1;
-                } else if len < 128 {
-                    break 'p2;
-                }
 
-                // Process vectors by batches of 8
-                // This method is not inlined because len is large enough to make it not worth it, so we keep the bytecode size small
-                (state, ptr, whole_vector_count) = compress_8(ptr, whole_vector_count, state, len);
+    'p1: {
+        'p2: {
+            // Here we mimic a fall-through behavior (because rust doesn't have goto)
+            // The point is to have less branching for the small inputs (because the overhead of branching is more noticeable for small inputs)
+            // With the fallthrough we're able to inverse the conditions, starting with the smallest input sizes
+            if len < 16 {
+                break 'p1;
+            } else if len < 128 {
+                // Possibly we can have something here
+                break 'p2;
             }
 
-            // Process remaining vectors
-            let end_address = ptr.add(whole_vector_count) as usize;
-            let mut i = 1992388023;
-            while (ptr as usize) < end_address {
-                load_unaligned!(ptr, v0);
-                state = aes_encrypt(aes_encrypt(state, v0), load_i32(i));
-                //state = aes_encrypt(state, v0); // This seems too weak
-                i = i.wrapping_mul(7);
-            }
-
-            // Jump out of p0' if no remaining bytes?
-            if len_partial == 0 {
-                break 'p0;
-            }
+            // Process vectors by batches of 8
+            // This method is not inlined because len is large enough to make it not worth it, so we keep the bytecode size small
+            (state, ptr, whole_vector_count) = compress_8(ptr, whole_vector_count, state, len);
         }
 
+        // Process remaining vectors
+        let end_address = ptr.add(whole_vector_count) as usize;
+        //let mut i = 1992388023;
+        while (ptr as usize) < end_address {
+            load_unaligned!(ptr, v0);
+            state = (aes_encrypt(state, v0));
+            //state = aes_encrypt(state, v0); // This seems too weak
+            //i = i.wrapping_mul(7);
+        }
+    }
+
+    if len_partial > 0 {
         // Process remaining bytes
         let partial = get_partial(ptr, len_partial);
         //state = aes_encrypt(state, partial);
