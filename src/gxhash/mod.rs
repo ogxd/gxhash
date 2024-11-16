@@ -92,14 +92,14 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
         'p1: {
             'p2: {
                 // C-style fallthrough alternative
-                let lzcnt = len.leading_zeros();
-                if lzcnt == 64 {
+                //let lzcnt = len.leading_zeros();
+                if len == 0 {
                     break 'p0;
-                } else if lzcnt >= 60 {
+                } else if len <= 16 {
                     // If length has more 60 zeroes or more, that means length can only be 0b1111 (=15) or smaller
                     // In such case, we can directly jump to reading a partial vector
                     break 'p1;
-                } else if lzcnt >= 56 {
+                } else if len < 128 {
                     break 'p2;
                 }
 
