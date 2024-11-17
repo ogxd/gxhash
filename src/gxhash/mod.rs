@@ -78,15 +78,13 @@ pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
 #[inline(always)]
 pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
 
-    let mut ptr = input.as_ptr() as *const State; // Do we need to check if valid slice?
-
     let len = input.len();
-
-    let mut state = seed;
-
+    let len_partial = len % VECTOR_SIZE;
     let mut whole_vector_count = len / VECTOR_SIZE;
 
-    let len_partial = len % VECTOR_SIZE;
+    // Starting point
+    let mut state = seed;
+    let mut ptr = input.as_ptr() as *const State; // Do we need to check if valid slice?
 
     'p1: {
         'p2: {
@@ -110,7 +108,7 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
         //let mut i = 1992388023;
         while (ptr as usize) < end_address {
             load_unaligned!(ptr, v0);
-            state = (aes_encrypt(state, v0));
+            state = aes_encrypt(aes_encrypt(state, v0), ld(KEYS.as_ptr()));
             //state = aes_encrypt(state, v0); // This seems too weak
             //i = i.wrapping_mul(7);
         }
