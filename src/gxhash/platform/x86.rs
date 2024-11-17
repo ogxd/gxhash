@@ -70,7 +70,7 @@ pub unsafe fn ld(array: *const u32) -> State {
 
 #[cfg(not(feature = "hybrid"))]
 #[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> State {
+pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> (State, *const State, usize) {
 
     let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
 
@@ -109,12 +109,12 @@ pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_
     lane2 = _mm_add_epi8(lane2, len_vec);
 
     // Merge lanes
-    aes_encrypt(lane1, lane2)
+    (aes_encrypt(lane1, lane2), ptr, whole_vector_count % 8)
 }
 
 #[cfg(feature = "hybrid")]
 #[inline(always)]
-pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
+pub unsafe fn compress_8(ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> (State, *const State, usize) {
     macro_rules! load_unaligned_x2 {
         ($ptr:ident, $($var:ident),+) => {
             $(
@@ -124,6 +124,8 @@ pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: Sta
             )+
         };
     }
+
+    let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
     
     let mut ptr = ptr as *const __m256i;
     let mut t = _mm256_setzero_si256();
@@ -149,7 +151,7 @@ pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: Sta
     lane1 = _mm_add_epi8(lane1, len_vec);
     lane2 = _mm_add_epi8(lane2, len_vec);
     // Merge lanes
-    aes_encrypt(lane1, lane2)
+    (aes_encrypt(lane1, lane2), ptr as *const __m128i, whole_vector_count % 8)
 }
 
 #[inline(always)]
