@@ -9,6 +9,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.22.0"
-gxhash = { path = "..", features = ["hybrid"] }
-pyo3-async-runtimes = { version = "0.22.0", features = ["tokio-runtime"] }
-tokio = "1.41.1"
+gxhash = { path = "..", features = ["hybrid"], default-features = false }
