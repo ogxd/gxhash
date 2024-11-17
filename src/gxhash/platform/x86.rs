@@ -69,7 +69,7 @@ pub unsafe fn ld(array: *const u32) -> State {
 }
 
 #[cfg(not(feature = "hybrid"))]
-#[inline(never)]
+#[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> State {
 
     let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
@@ -113,7 +113,7 @@ pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_
 }
 
 #[cfg(feature = "hybrid")]
-#[inline(never)]
+#[inline(always)]
 pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
     macro_rules! load_unaligned_x2 {
         ($ptr:ident, $($var:ident),+) => {

@@ -65,11 +65,6 @@ macro_rules! load_unaligned {
 
 pub(crate) use load_unaligned;
 
-#[cfg(target_arch = "arm")]
-use core::arch::arm::*;
-#[cfg(target_arch = "aarch64")]
-use core::arch::aarch64::*;
-
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
     return finalize(gxhash_no_finish(input, seed));
@@ -94,7 +89,13 @@ pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
             if len < 16 {
                 break 'p1;
             } else if len < 128 {
-                // Possibly we can have something here
+                // Turbo mode, but is it worth the extra code size?
+                // It's not even great quality-wise, and v0 mix v1 may be a source of DOS collision attack
+                // if len >= 32 {
+                //     load_unaligned!(ptr, v0, v1);
+                //     state = aes_encrypt(state, aes_encrypt(v0, v1));
+                //     whole_vector_count -= 2;
+                // }
                 break 'p2;
             }
 

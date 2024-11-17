@@ -77,7 +77,7 @@ pub unsafe fn ld(array: *const u32) -> State {
     vreinterpretq_s8_u32(vld1q_u32(array))
 }
 
-#[inline(never)]
+#[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> (State, *const State, usize) {
 
     let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
