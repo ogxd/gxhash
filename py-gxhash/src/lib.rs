@@ -1,7 +1,4 @@
-use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
-use pyo3_async_runtimes::tokio::future_into_py;
-use tokio::task::spawn_blocking;
 
 #[pyfunction]
 fn gxhash32(input_bytes: &[u8], seed: i64) -> PyResult<u32> {
