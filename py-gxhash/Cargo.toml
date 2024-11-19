@@ -1,3 +1,8 @@
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
 [package]
 name = "py-gxhash"
 version = "0.1.0"
