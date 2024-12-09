@@ -40,7 +40,7 @@ Gxhash requires aes and sse2 intrinsics. Make sure the processor supports it and
 To fix this, simply follow the instructions in the error message. Setting `RUSTFLAGS` to `-C target-cpu=native` should work if your CPU is properly recognized by rustc, which is the case most of the time.
 
 ### Hashes Stability
-All generated hashes for a given version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms.
+All generated hashes for a given major version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms. This also means that the hash may change between majors versions (eg gxhash 2.x and 3.x).
 
 ### Consistency of Hashes When Using the `Hasher` Trait
 The `Hasher` trait defines methods to hash specific types. This allows the implementation to circumvent some tricks used when the size is unknown. For this reason, hashing 4 `u32` using a `Hasher` will return a different hash compared to using the  `gxhash128` method directly with these same 4 `u32` but represented as 16 `u8`. The rationale being that `Hasher` (mostly used for things like `HashMap` or `HashSet`) and  `gxhash128` are used in two different scenarios. Both way are independently stable still. 
