@@ -51,6 +51,9 @@ In order to achieve this magnitude of performance, this crate contains unsafe co
 ### Security
 GxHash is seeded (with seed randomization) to improve DOS resistance and uses a wide (128-bit) internal state to improve multicollision resistance. Yet, such resistances are just basic safeguards and do not make GxHash secure against all attacks.
 
+For use cases that require deterministic repeatability, you can disable random seeding with the feature 
+"deterministic," but this of course disables DOS mitigation. 
+
 Also, it is important to note that GxHash is not a cryptographic hash function and should not be used for cryptographic purposes.
 
 ## Usage
