@@ -20,6 +20,7 @@ bench-csv = []
 bench-md = []
 bench-plot = []
 hybrid = []
+deterministic = []
 
 [dependencies]
 rustversion = "1.0" # Compile-time cfg based on rustc version for compatibility

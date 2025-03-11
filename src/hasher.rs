@@ -7,7 +7,8 @@ use crate::gxhash::*;
 /// # Features
 /// - The fastest [`Hasher`] of its class<sup>1</sup>, for all input sizes
 /// - Highly collision resistant
-/// - DOS resistance thanks to seed randomization when using [`GxHasher::default()`]
+/// - DOS resistance thanks to seed randomization when using [`GxHasher::default()`] unless the
+///   "deterministic" feature is enabled.
 ///
 /// *<sup>1</sup>There might be faster alternatives, such as `fxhash` for very small input sizes,
 /// but that usually have low quality properties.*
@@ -132,9 +133,11 @@ impl Hasher for GxHasher {
 #[derive(Clone, Debug)]
 pub struct GxBuildHasher(State);
 
+#[cfg(not(feature = "deterministic"))]
 #[rustversion::before(1.76)]
 use std::collections::hash_map::RandomState;
 
+#[cfg(not(feature = "deterministic"))]
 #[rustversion::since(1.76)]
 use std::hash::RandomState;
 
@@ -154,7 +157,9 @@ impl GxBuildHasher {
 impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
-
+        #[cfg(feature = "deterministic")]
+        let random_state: u128 = 42;
+        #[cfg(not(feature = "deterministic"))]
         let random_state = RandomState::new();
         unsafe {
             let state: State = std::mem::transmute(random_state);
@@ -286,7 +291,11 @@ mod tests {
         hasher_2.write_i32(42);
         let hash_2 = hasher_2.finish();
 
-        assert_ne!(hash_1, hash_2);
+        if cfg!(feature = "deterministic") {
+            assert_eq!(hash_1, hash_2);
+        } else {
+            assert_ne!(hash_1, hash_2);
+        }
     }
 
     // This is important for DOS resistance
@@ -304,7 +313,11 @@ mod tests {
         hasher_2.write_i32(42);
         let hash_2 = hasher_2.finish();
 
-        assert_ne!(hash_1, hash_2);
+        if cfg!(feature = "deterministic") {
+            assert_eq!(hash_1, hash_2);
+        } else { 
+            assert_ne!(hash_1, hash_2);
+        }
     }
 
     #[test]
