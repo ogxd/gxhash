@@ -3,12 +3,16 @@ use rand::Rng;
 use criterion::black_box;
 
 fn main() {
+    // Passing hash functions ✅
     bench_hasher_quality::<gxhash::GxBuildHasher>("GxHash");
     bench_hasher_quality::<std::collections::hash_map::RandomState>("Default");
     bench_hasher_quality::<twox_hash::xxh3::RandomHashBuilder64>("XxHash (XXH3)");
     bench_hasher_quality::<ahash::RandomState>("AHash");
     bench_hasher_quality::<t1ha::T1haBuildHasher>("T1ha");
+
+    // Not passing hash functions ❌
     bench_hasher_quality::<fnv::FnvBuildHasher>("FNV-1a");
+    bench_hasher_quality::<foldhash::quality::RandomState>("FoldHash");
 }
 
 macro_rules! check {
@@ -31,6 +35,7 @@ fn bench_hasher_quality<B>(name: &str)
 
     check!(avalanche::<B, 4>());
     check!(avalanche::<B, 10>());
+    check!(avalanche::<B, 16>());
     check!(avalanche::<B, 32>());
     check!(avalanche::<B, 128>());
     check!(avalanche::<B, 512>());
