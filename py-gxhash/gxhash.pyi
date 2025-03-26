@@ -1,4 +1,9 @@
-def gxhash32(input_bytes: bytes, seed: int) -> int:
+from typing import Protocol
+
+class File(Protocol):
+    def fileno(self) -> int: ...
+
+def gxhash32(file: File, seed: int) -> int:
     """
     Summary
     -------
@@ -7,28 +12,31 @@ def gxhash32(input_bytes: bytes, seed: int) -> int:
 
     Parameters
     ----------
-    input_bytes (bytes): input bytes to hash
+    file (File)
+        file-like object
 
-    seed (int): seed for the hash function
+    seed (int)
+        seed for the hash function
 
 
     Returns
     -------
-    hash (int): u32 hash of the input bytes
+    hash (int)
+        u32 hash of the input bytes
 
 
     Example
     -------
     ```python
-    import gxhash
-
-    input_bytes =  bytes([42] * 1000)
+    file = TemporaryFile()
+    file.write(bytes([42] * 1000))
+    file.seek(0)
     seed = 1234
-    print(f"Hash is {gxhash.gxhash32(input_bytes, seed)}!")
+    print(f"Hash is {gxhash.gxhash32(file, seed)}!")
     ```
     """
 
-def gxhash32_nogil(input_bytes: bytes, seed: int) -> int:
+async def gxhash32_async(file: File, seed: int) -> int:
     """
     Summary
     -------
@@ -37,28 +45,31 @@ def gxhash32_nogil(input_bytes: bytes, seed: int) -> int:
 
     Parameters
     ----------
-    input_bytes (bytes): input bytes to hash
+    file (File)
+        file-like object
 
-    seed (int): seed for the hash function
+    seed (int)
+        seed for the hash function
 
 
     Returns
     -------
-    hash (int): u32 hash of the input bytes
+    hash (Awaitable[int])
+        u32 hash of the input bytes
 
 
     Example
     -------
     ```python
-    import gxhash
-
-    input_bytes =  bytes([42] * 1000)
+    file = TemporaryFile()
+    file.write(bytes([42] * 1000))
+    file.seek(0)
     seed = 1234
-    print(f"Hash is {gxhash.gxhash32_nogil(input_bytes, seed)}!")
+    print(f"Hash is {gxhash.gxhash32_async(file, seed)}!")
     ```
     """
 
-def gxhash64(input_bytes: bytes, seed: int) -> int:
+def gxhash64(file: File, seed: int) -> int:
     """
     Summary
     -------
@@ -67,28 +78,31 @@ def gxhash64(input_bytes: bytes, seed: int) -> int:
 
     Parameters
     ----------
-    input_bytes (bytes): input bytes to hash
+    file (File)
+        file-like object
 
-    seed (int): seed for the hash function
+    seed (int)
+        seed for the hash function
 
 
     Returns
     -------
-    hash (int): u64 hash of the input bytes
+    hash (int)
+        u64 hash of the input bytes
 
 
     Example
     -------
     ```python
-    import gxhash
-
-    input_bytes =  bytes([42] * 1000)
+    file = TemporaryFile()
+    file.write(bytes([42] * 1000))
+    file.seek(0)
     seed = 1234
-    print(f"Hash is {gxhash.gxhash64(input_bytes, seed)}!")
+    print(f"Hash is {gxhash.gxhash64(file, seed)}!")
     ```
     """
 
-def gxhash64_nogil(input_bytes: bytes, seed: int) -> int:
+async def gxhash64_async(file: File, seed: int) -> int:
     """
     Summary
     -------
@@ -97,28 +111,31 @@ def gxhash64_nogil(input_bytes: bytes, seed: int) -> int:
 
     Parameters
     ----------
-    input_bytes (bytes): input bytes to hash
+    file (File)
+        file-like object
 
-    seed (int): seed for the hash function
+    seed (int)
+        seed for the hash function
 
 
     Returns
     -------
-    hash (int): u64 hash of the input bytes
+    hash (Awaitable[int])
+        u64 hash of the input bytes
 
 
     Example
     -------
     ```python
-    import gxhash
-
-    input_bytes =  bytes([42] * 1000)
+    file = TemporaryFile()
+    file.write(bytes([42] * 1000))
+    file.seek(0)
     seed = 1234
-    print(f"Hash is {gxhash.gxhash64_nogil(input_bytes, seed)}!")
+    print(f"Hash is {gxhash.gxhash64_async(file, seed)}!")
     ```
     """
 
-def gxhash128(input_bytes: bytes, seed: int) -> int:
+def gxhash128(file: File, seed: int) -> int:
     """
     Summary
     -------
@@ -127,28 +144,31 @@ def gxhash128(input_bytes: bytes, seed: int) -> int:
 
     Parameters
     ----------
-    input_bytes (bytes): input bytes to hash
+    file (File)
+        file-like object
 
-    seed (int): seed for the hash function
+    seed (int)
+        seed for the hash function
 
 
     Returns
     -------
-    hash (int): u128 hash of the input bytes
+    hash (int)
+        u128 hash of the input bytes
 
 
     Example
     -------
     ```python
-    import gxhash
-
-    input_bytes =  bytes([42] * 1000)
+    file = TemporaryFile()
+    file.write(bytes([42] * 1000))
+    file.seek(0)
     seed = 1234
-    print(f"Hash is {gxhash.gxhash128(input_bytes, seed)}!")
+    print(f"Hash is {gxhash.gxhash128(file, seed)}!")
     ```
     """
 
-def gxhash128_nogil(input_bytes: bytes, seed: int) -> int:
+async def gxhash128_async(file: File, seed: int) -> int:
     """
     Summary
     -------
@@ -157,23 +177,26 @@ def gxhash128_nogil(input_bytes: bytes, seed: int) -> int:
 
     Parameters
     ----------
-    input_bytes (bytes): input bytes to hash
+    file (File)
+        file-like object
 
-    seed (int): seed for the hash function
+    seed (int)
+        seed for the hash function
 
 
     Returns
     -------
-    hash (int): u128 hash of the input bytes
+    hash (Awaitable[int])
+        u128 hash of the input bytes
 
 
     Example
     -------
     ```python
-    import gxhash
-
-    input_bytes =  bytes([42] * 1000)
+    file = TemporaryFile()
+    file.write(bytes([42] * 1000))
+    file.seek(0)
     seed = 1234
-    print(f"Hash is {gxhash.gxhash128_nogil(input_bytes, seed)}!")
+    print(f"Hash is {gxhash.gxhash128_async(file, seed)}!")
     ```
     """
