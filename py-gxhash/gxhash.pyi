@@ -13,7 +13,7 @@ class File(Protocol):
         Returns
         -------
         file_descriptor (`int`)
-            file descriptor of the file
+            the file descriptor of the file
         """
 
 class Hasher(Protocol):
@@ -28,7 +28,7 @@ class Hasher(Protocol):
         Parameters
         ----------
         seed (`int`)
-            seed for the hasher
+            a seed for the hasher
 
         Example
         -------
@@ -51,7 +51,7 @@ class Hasher(Protocol):
         Returns
         -------
         hash (`int`)
-            hash of the input bytes
+            the hash of the input bytes
 
         Example
         -------
@@ -77,7 +77,7 @@ class Hasher(Protocol):
         Returns
         -------
         hash (`int`)
-            hash of the input bytes
+            the hash of the input bytes
 
         Example
         -------
@@ -102,12 +102,12 @@ class Hasher(Protocol):
         Parameters
         ----------
         file (`File`)
-            file object
+            a file object
 
         Returns
         -------
         hash (`int`)
-            hash of the input file
+            the hash of the input file
 
         Example
         -------
@@ -141,13 +141,13 @@ class Hasher(Protocol):
 
         Parameters
         ----------
-        file (File)
-            file object
+        file (`File`)
+            a file object
 
         Returns
         -------
-        hash (int)
-            hash of the input file
+        hash (`int`)
+            the hash of the input file
 
         Example
         -------
