@@ -6,56 +6,136 @@ fn get_file_descriptor(py: Python, file: PyObject) -> Result<i32, PyErr> {
     file.call_method0(py, pyo3::intern!(py, "fileno"))?.extract(py)
 }
 
-fn gxhash<T>(hasher: fn(&[u8], i64) -> T, file_descriptor: i32, seed: i64) -> PyResult<T> {
+fn gxhash<T>(hasher: fn(&[u8], i64) -> T, bytes: &[u8], seed: i64) -> PyResult<T> {
+    Ok(hasher(bytes, seed))
+}
+
+fn gxhash_nogil<T: Send>(py: Python, hasher: fn(&[u8], i64) -> T, bytes: &[u8], seed: i64) -> PyResult<T> {
+    py.allow_threads(|| gxhash(hasher, bytes, seed))
+}
+
+fn gxhash_file<T>(hasher: fn(&[u8], i64) -> T, file_descriptor: i32, seed: i64) -> PyResult<T> {
     let file = unsafe { std::fs::File::from_raw_fd(libc::dup(file_descriptor)) };
     let mmap = unsafe { memmap2::Mmap::map(&file).unwrap() };
     drop(file);
     Ok(hasher(&mmap, seed))
 }
 
-#[pyfunction]
-fn gxhash32(py: Python, file: PyObject, seed: i64) -> PyResult<u32> {
-    let file_descriptor = get_file_descriptor(py, file)?;
-    gxhash(gxhash::gxhash32, file_descriptor, seed)
+#[pyclass]
+struct GxHash32 {
+    seed: i64,
+    hasher: fn(&[u8], i64) -> u32,
 }
 
-#[pyfunction]
-fn gxhash32_async(py: Python, file: PyObject, seed: i64) -> PyResult<Bound<PyAny>> {
-    let file_descriptor = get_file_descriptor(py, file)?;
-    future_into_py(py, async move { gxhash(gxhash::gxhash32, file_descriptor, seed) })
+#[pyclass]
+struct GxHash64 {
+    seed: i64,
+    hasher: fn(&[u8], i64) -> u64,
 }
 
-#[pyfunction]
-fn gxhash64(py: Python, file: PyObject, seed: i64) -> PyResult<u64> {
-    let file_descriptor = get_file_descriptor(py, file)?;
-    gxhash(gxhash::gxhash64, file_descriptor, seed)
+#[pyclass]
+struct GxHash128 {
+    seed: i64,
+    hasher: fn(&[u8], i64) -> u128,
 }
 
-#[pyfunction]
-fn gxhash64_async(py: Python, file: PyObject, seed: i64) -> PyResult<Bound<PyAny>> {
-    let file_descriptor = get_file_descriptor(py, file)?;
-    future_into_py(py, async move { gxhash(gxhash::gxhash64, file_descriptor, seed) })
+#[pymethods]
+impl GxHash32 {
+    #[new]
+    fn new(seed: i64) -> Self {
+        GxHash32 {
+            seed,
+            hasher: gxhash::gxhash32,
+        }
+    }
+
+    fn hash(&self, bytes: &[u8]) -> PyResult<u32> {
+        gxhash(self.hasher, bytes, self.seed)
+    }
+
+    fn hash_nogil(&self, py: Python, bytes: &[u8]) -> PyResult<u32> {
+        gxhash_nogil(py, self.hasher, bytes, self.seed)
+    }
+
+    fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u32> {
+        gxhash_file(self.hasher, get_file_descriptor(py, file)?, self.seed)
+    }
+
+    fn hash_file_async<'a>(&self, py: Python<'a>, file: PyObject) -> PyResult<Bound<'a, PyAny>> {
+        let seed = self.seed;
+        let hasher = self.hasher;
+        let file_descriptor = get_file_descriptor(py, file)?;
+
+        future_into_py(py, async move { gxhash_file(hasher, file_descriptor, seed) })
+    }
 }
 
-#[pyfunction]
-fn gxhash128(py: Python, file: PyObject, seed: i64) -> PyResult<u128> {
-    let file_descriptor = get_file_descriptor(py, file)?;
-    gxhash(gxhash::gxhash128, file_descriptor, seed)
+#[pymethods]
+impl GxHash64 {
+    #[new]
+    fn new(seed: i64) -> Self {
+        GxHash64 {
+            seed,
+            hasher: gxhash::gxhash64,
+        }
+    }
+
+    fn hash(&self, bytes: &[u8]) -> PyResult<u64> {
+        gxhash(self.hasher, bytes, self.seed)
+    }
+
+    fn hash_nogil(&self, py: Python, bytes: &[u8]) -> PyResult<u64> {
+        gxhash_nogil(py, self.hasher, bytes, self.seed)
+    }
+
+    fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u64> {
+        gxhash_file(self.hasher, get_file_descriptor(py, file)?, self.seed)
+    }
+
+    fn hash_file_async<'a>(&self, py: Python<'a>, file: PyObject) -> PyResult<Bound<'a, PyAny>> {
+        let seed = self.seed;
+        let hasher = self.hasher;
+        let file_descriptor = get_file_descriptor(py, file)?;
+
+        future_into_py(py, async move { gxhash_file(hasher, file_descriptor, seed) })
+    }
 }
 
-#[pyfunction]
-fn gxhash128_async(py: Python, file: PyObject, seed: i64) -> PyResult<Bound<PyAny>> {
-    let file_descriptor = get_file_descriptor(py, file)?;
-    future_into_py(py, async move { gxhash(gxhash::gxhash128, file_descriptor, seed) })
+#[pymethods]
+impl GxHash128 {
+    #[new]
+    fn new(seed: i64) -> Self {
+        GxHash128 {
+            seed,
+            hasher: gxhash::gxhash128,
+        }
+    }
+
+    fn hash(&self, bytes: &[u8]) -> PyResult<u128> {
+        gxhash(self.hasher, bytes, self.seed)
+    }
+
+    fn hash_nogil(&self, py: Python, bytes: &[u8]) -> PyResult<u128> {
+        gxhash_nogil(py, self.hasher, bytes, self.seed)
+    }
+
+    fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u128> {
+        gxhash_file(self.hasher, get_file_descriptor(py, file)?, self.seed)
+    }
+
+    fn hash_file_async<'a>(&self, py: Python<'a>, file: PyObject) -> PyResult<Bound<'a, PyAny>> {
+        let seed = self.seed;
+        let hasher = self.hasher;
+        let file_descriptor = get_file_descriptor(py, file)?;
+
+        future_into_py(py, async move { gxhash_file(hasher, file_descriptor, seed) })
+    }
 }
 
 #[pymodule(name = "gxhash")]
 fn pygxhash(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(gxhash32, m)?)?;
-    m.add_function(wrap_pyfunction!(gxhash32_async, m)?)?;
-    m.add_function(wrap_pyfunction!(gxhash64, m)?)?;
-    m.add_function(wrap_pyfunction!(gxhash64_async, m)?)?;
-    m.add_function(wrap_pyfunction!(gxhash128, m)?)?;
-    m.add_function(wrap_pyfunction!(gxhash128_async, m)?)?;
+    m.add_class::<GxHash32>()?;
+    m.add_class::<GxHash64>()?;
+    m.add_class::<GxHash128>()?;
     Ok(())
 }
