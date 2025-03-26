@@ -65,8 +65,9 @@ class Hasher(Protocol):
         Summary
         -------
         Hashes `bytes` to an `int` without the GIL.
-        This allows you to perform multiple hashes with true multi-threaded parallelism.
+        This method allows you to perform multiple hashes with true multi-threaded parallelism.
         If called sequentially, this method is slightly less performant than the default `hash` method.
+        Otherwise, this variant offers the best raw multi-threaded performance.
 
         Parameters
         ----------
@@ -123,9 +124,9 @@ class Hasher(Protocol):
         Hashing a file directly.
 
         ```python
-        with Path('really_large_file.img').open('rb') as file:
-            hasher = GxHash128(seed=1234)
-            print(f"Hash is {hasher.hash_file(file)}!")
+        file = open('really_large_file.img', 'rb')
+        hasher = GxHash128(seed=1234)
+        print(f"Hash is {hasher.hash_file(file)}!")
         ```
         """
     async def hash_file_async(self, file: File) -> int:
@@ -135,9 +136,8 @@ class Hasher(Protocol):
         Asynchronous variant of `hash_file`.
         This method allows you to perform multiple hashes with true multi-threaded parallelism.
         If called sequentially, this method is slightly less performant than `hash_file`.
-        In terms of multi-threaded performance, this method is less performant than an asynchronous `hash_nogil`.
-        It is only ever faster than `hash_nogil` when the input is a `File`, and that is due to
-        the performance overhead of reading a `File` in Python.
+        It is only ever faster than a multi-threaded `hash_nogil` when the input is a `File`,
+        and that is due to the performance overhead of reading a `File` in Python.
 
         Parameters
         ----------
@@ -164,9 +164,9 @@ class Hasher(Protocol):
         Hashing a file directly.
 
         ```python
-        with Path('really_large_file.img').open('rb') as file:
-            hasher = GxHash128(seed=1234)
-            print(f"Hash is {await hasher.hash_file_async(file)}!")
+        file = open('really_large_file.img', 'rb')
+        hasher = GxHash128(seed=1234)
+        print(f"Hash is {await hasher.hash_file_async(file)}!")
         ```
         """
 
