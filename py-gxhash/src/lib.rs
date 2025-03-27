@@ -16,7 +16,7 @@ fn gxhash_nogil<T: Send>(py: Python, hasher: fn(&[u8], i64) -> T, bytes: &[u8], 
 
 fn gxhash_file<T>(hasher: fn(&[u8], i64) -> T, file_descriptor: i32, seed: i64) -> PyResult<T> {
     let file = unsafe { std::fs::File::from_raw_fd(libc::dup(file_descriptor)) };
-    let mmap = unsafe { memmap2::Mmap::map(&file).unwrap() };
+    let mmap = unsafe { memmap2::Mmap::map(&file)? };
     drop(file);
     Ok(hasher(&mmap, seed))
 }
