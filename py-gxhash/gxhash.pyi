@@ -23,7 +23,7 @@ class Hasher(Protocol):
         -------
         Initialise `Hasher` with a `seed`.
         The `seed` should not be exposed as it is used to deterministically generate the hash.
-        An exposed `seed` would put your service at risk of a DoS attack.
+        An exposed `seed` would put your service at a higher risk of a DoS attack.
 
         Parameters
         ----------
@@ -172,6 +172,23 @@ class Hasher(Protocol):
         ```
         """
 
-class GxHash32(Hasher): ...
-class GxHash64(Hasher): ...
-class GxHash128(Hasher): ...
+class GxHash32(Hasher):
+    """
+    Summary
+    -------
+    This class exposes GxHash's 32-bit hash methods.
+    """
+
+class GxHash64(Hasher):
+    """
+    Summary
+    -------
+    This class exposes GxHash's 64-bit hash methods.
+    """
+
+class GxHash128(Hasher):
+    """
+    Summary
+    -------
+    This class exposes GxHash's 128-bit hash methods.
+    """
