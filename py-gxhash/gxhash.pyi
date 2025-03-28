@@ -97,7 +97,9 @@ class Hasher(Protocol):
         Hashes a `File` to an `int`.
         This method duplicates the file descriptor and memory maps the file entirely in Rust.
         This operation is many times faster than reading the file in Python and passing the bytes to the hasher.
-        If your input is already in `bytes`, this method is slightly less performant than `hash` and `hash_nogil`.
+        If your input is already in `bytes`, this method may be slightly less performant than `hash` and `hash_nogil`.
+        If the `bytes` is really large, writing to a `TemporaryFile` and passing it to this method may be more
+        performant than passing the `bytes` directly to `hash` or `hash_nogil`.
 
         Parameters
         ----------
