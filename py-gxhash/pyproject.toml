@@ -1,9 +1,6 @@
-[build-system]
-requires = ["maturin>=1.7,<2.0"]
-build-backend = "maturin"
-
 [project]
 name = "gxhash"
+version = "0.1.1"
 requires-python = ">=3.7"
 dynamic = ["version"]
 classifiers = [
@@ -12,8 +9,12 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 
-[tool.maturin]
-features = ["pyo3/extension-module"]
-
 [dependency-groups]
 dev = ["maturin>=1.7.4"]
+
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
