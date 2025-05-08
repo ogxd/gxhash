@@ -3,7 +3,7 @@ mod result_processor;
 use result_processor::*;
 
 use std::hint::black_box;
-use std::hash::Hasher;
+use std::hash::{BuildHasher, Hasher};
 use std::time::{Instant, Duration};
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
@@ -46,6 +46,12 @@ fn main() {
     // XxHash (twox-hash)
     benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed)
+    });
+
+    // FoldHash
+    let foldhash_hasher: foldhash::quality::RandomState = foldhash::quality::RandomState::default();
+    benchmark(processor.as_mut(), slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
+        foldhash_hasher.hash_one(data)
     });
     
     // AHash
