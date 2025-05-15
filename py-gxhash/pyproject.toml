@@ -18,10 +18,5 @@ build-backend = "maturin"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
-exclude = [
-    "**/.github/**/*",
-    "**/benches/**/*",
-    "**/examples/**/*",
-    "**/uv.lock",
-]
+exclude = ["**/uv.lock"]
 
