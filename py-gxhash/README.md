@@ -32,6 +32,20 @@ if __name__ == "__main__":
     main()
 ```
 
+Hashing bytes asynchronously.
+
+```python
+from asyncio import run
+from gxhash import GxHash128
+
+async def main():
+    gxhash = GxHash128(seed=0)
+    result = await gxhash.hash_async(b"Hello, world!")
+
+if __name__ == "__main__":
+    run(main())
+```
+
 Hashing a file.
 
 ```python
