@@ -60,11 +60,11 @@ class Hasher(Protocol):
         print(f"Hash is {hasher.hash(bytes([42] * 1000))}!")
         ```
         """
-    def hash_nogil(self, bytes: bytes) -> int:
+    async def hash_async(self, bytes: bytes) -> int:
         """
         Summary
         -------
-        Hashes `bytes` to an `int` without the GIL.
+        Hashes `bytes` to an `int` asynchronously.
         This method allows you to perform multiple hashes with true multi-threaded parallelism.
         If called sequentially, this method is slightly less performant than the default `hash` method.
         Otherwise, this variant offers the best raw multi-threaded performance.
@@ -83,11 +83,7 @@ class Hasher(Protocol):
         -------
         ```python
         hasher = GxHash128(seed=1234)
-        input_bytes = bytes([42] * 1000)
-        thread_pool = ThreadPoolExecutor()
-        future = thread_pool.submit(hasher.hash_nogil, input_bytes)
-        hash_result = await wrap_future(future)
-        print(f"Hash is {hash_result}!")
+        print(f"Hash is {await hasher.hash_async(bytes([42] * 1000))}!")
         ```
         """
     def hash_file(self, file: File) -> int:
@@ -97,9 +93,9 @@ class Hasher(Protocol):
         Hashes a `File` to an `int`.
         This method duplicates the file descriptor and memory maps the file entirely in Rust.
         This operation is many times faster than reading the file in Python and passing the bytes to the hasher.
-        If your input is already in `bytes`, this method may be slightly less performant than `hash` and `hash_nogil`.
+        If your input is already in `bytes`, this method may be slightly less performant than `hash` and `hash_async`.
         If the `bytes` is really large, writing to a `TemporaryFile` and passing it to this method may be more
-        performant than passing the `bytes` directly to `hash` or `hash_nogil`.
+        performant than passing the `bytes` directly to `hash` or `hash_async`.
 
         Parameters
         ----------
@@ -138,7 +134,7 @@ class Hasher(Protocol):
         Asynchronous variant of `hash_file`.
         This method allows you to perform multiple hashes with true multi-threaded parallelism.
         If called sequentially, this method is slightly less performant than `hash_file`.
-        It is only ever faster than a multi-threaded `hash_nogil` when the input is a `File`,
+        It is only ever faster than a multi-threaded `hash_async` when the input is a `File`,
         and that is due to the performance overhead of reading a `File` in Python.
 
         Parameters
