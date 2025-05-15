@@ -10,13 +10,8 @@ fn gxhash<T>(hasher: fn(&[u8], i64) -> T, bytes: &[u8], seed: i64) -> PyResult<T
     Ok(hasher(bytes, seed))
 }
 
-fn gxhash_nogil<T: Send>(py: Python, hasher: fn(&[u8], i64) -> T, bytes: &[u8], seed: i64) -> PyResult<T> {
-    py.allow_threads(|| gxhash(hasher, bytes, seed))
-}
-
 fn gxhash_file<T>(hasher: fn(&[u8], i64) -> T, file_descriptor: i32, seed: i64) -> PyResult<T> {
-    let file = unsafe { std::fs::File::from_raw_fd(libc::dup(file_descriptor)) };
-    let mmap = unsafe { memmap2::Mmap::map(&file)? };
+    let mmap = unsafe { memmap2::Mmap::map(&std::fs::File::from_raw_fd(libc::dup(file_descriptor)))? };
     Ok(hasher(&mmap, seed))
 }
 
@@ -52,8 +47,12 @@ impl GxHash32 {
         gxhash(self.hasher, bytes, self.seed)
     }
 
-    fn hash_nogil(&self, py: Python, bytes: &[u8]) -> PyResult<u32> {
-        gxhash_nogil(py, self.hasher, bytes, self.seed)
+    fn hash_async<'a>(&self, py: Python<'a>, bytes: &'a [u8]) -> PyResult<Bound<'a, PyAny>> {
+        let seed = self.seed;
+        let hasher = self.hasher;
+        let bytes_static = unsafe { std::mem::transmute::<&'a [u8], &'static [u8]>(bytes) };
+
+        future_into_py(py, async move { gxhash(hasher, bytes_static, seed) })
     }
 
     fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u32> {
@@ -83,8 +82,12 @@ impl GxHash64 {
         gxhash(self.hasher, bytes, self.seed)
     }
 
-    fn hash_nogil(&self, py: Python, bytes: &[u8]) -> PyResult<u64> {
-        gxhash_nogil(py, self.hasher, bytes, self.seed)
+    fn hash_async<'a>(&self, py: Python<'a>, bytes: &'a [u8]) -> PyResult<Bound<'a, PyAny>> {
+        let seed = self.seed;
+        let hasher = self.hasher;
+        let bytes_static = unsafe { std::mem::transmute::<&'a [u8], &'static [u8]>(bytes) };
+
+        future_into_py(py, async move { gxhash(hasher, bytes_static, seed) })
     }
 
     fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u64> {
@@ -114,8 +117,12 @@ impl GxHash128 {
         gxhash(self.hasher, bytes, self.seed)
     }
 
-    fn hash_nogil(&self, py: Python, bytes: &[u8]) -> PyResult<u128> {
-        gxhash_nogil(py, self.hasher, bytes, self.seed)
+    fn hash_async<'a>(&self, py: Python<'a>, bytes: &'a [u8]) -> PyResult<Bound<'a, PyAny>> {
+        let seed = self.seed;
+        let hasher = self.hasher;
+        let bytes_static = unsafe { std::mem::transmute::<&'a [u8], &'static [u8]>(bytes) };
+
+        future_into_py(py, async move { gxhash(hasher, bytes_static, seed) })
     }
 
     fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u128> {
