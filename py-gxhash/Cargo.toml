@@ -5,17 +5,21 @@ panic = "abort"
 
 [package]
 name = "py-gxhash"
-version = "0.1.5"
+version = "0.1.7"
 edition = "2021"
 
 [lib]
 name = "gxhash"
 crate-type = ["cdylib"]
 
+[features]
+default = []
+hybrid = ["gxhash/hybrid"]
+
 [dependencies]
 pyo3 = "0.24.0"
 pyo3-async-runtimes = { version = "0.24.0", features = ["tokio-runtime"] }
 tokio = "1.44.1"
-gxhash = { version = "3.5.0", features = ["hybrid"], default-features = false }
+gxhash = { version = "3.5.0", default-features = false }
 memmap2 = "0.9.5"
 libc = "0.2.171"

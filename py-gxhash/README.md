@@ -13,8 +13,22 @@ Python bindings for [GxHash](https://github.com/ogxd/gxhash), a blazingly fast a
 
 ## Installation
 
+You must have [rustup](https://rustup.rs/) installed and set to `nightly`.
+
 ```bash
 pip install gxhash
+```
+
+You can install `gxhash` with the `hybrid` feature with the following.
+
+```bash
+pip install gxhash --config-settings build-args="--features hybrid"
+```
+
+By default, `gxhash` uses your system's vectorisation features. You can disable this by setting the relevant `RUSTFLAGS`.
+
+```bash
+RUSTFLAGS="-C target-cpu=x86-64 -C target-feature=+aes,+avx2" pip install gxhash
 ```
 
 ## Usage
