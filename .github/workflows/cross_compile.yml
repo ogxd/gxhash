@@ -15,7 +15,7 @@ env:
 
 jobs:
 
-  build_x86:
+  build:
     name: Build
 
     strategy:

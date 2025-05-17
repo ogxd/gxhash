@@ -46,7 +46,7 @@ All generated hashes for a given major version of GxHash are stable, meaning tha
 The `Hasher` trait defines methods to hash specific types. This allows the implementation to circumvent some tricks used when the size is unknown. For this reason, hashing 4 `u32` using a `Hasher` will return a different hash compared to using the  `gxhash128` method directly with these same 4 `u32` but represented as 16 `u8`. The rationale being that `Hasher` (mostly used for things like `HashMap` or `HashSet`) and  `gxhash128` are used in two different scenarios. Both way are independently stable still. 
 
 ### Unsafety
-In order to achieve this magnitude of performance, this crate contains unsafe code, and a [trick](https://ogxd.github.io/articles/unsafe-read-beyond-of-death/) that some people qualify as "undefined behavior". For this reason, this crate is not intended for use in safety-critical applications, but rather for applications that require extreme hashing performance and that are less concerned about this aspect.
+In order to achieve this magnitude of performance, this crate contains unsafe code as well as [a rather aggressive optimization technique](https://ogxd.github.io/articles/unsafe-read-beyond-of-death/). For this reason, this crate is not intended for use in safety-critical applications, but rather for applications that require extreme hashing performance and that are less concerned about this aspect.
 
 ### Security
 GxHash is seeded (with seed randomization) to improve DOS resistance and uses a wide (128-bit) internal state to improve multicollision resistance. Yet, such resistances are just basic safeguards and do not make GxHash secure against all attacks.

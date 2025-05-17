@@ -65,5 +65,9 @@ harness = false
 name = "quality"
 harness = false
 
+[[bench]]
+name = "read_beyond"
+harness = false
+
 [[example]]
 name = "hello_world"

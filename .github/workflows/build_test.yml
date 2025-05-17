@@ -10,53 +10,53 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_test_x86:
-    name: Build & Test X86
-    runs-on: ubuntu-latest
+
+  build_and_test:
+    name: Build & Test ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: "aarch64"
+          runner: "ubuntu-24.04-arm"
+          hybrid: false
+        - name: "X86_64"
+          runner: "ubuntu-latest"
+          hybrid: false
+        - name: "x86_64-hybrid"
+          runner: "ubuntu-latest"
+          hybrid: true
+
+    runs-on: ${{ matrix.runner }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - name: Rust version
-      run: cargo rustc -- --version
-
-    - name: Build
-      run: cargo build --release
-
-    - name: Test
-      run: cargo test --release
-
-  build_test_x86_avx2:
-    name: Build & Test X86 AVX2
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
+    - name: Update rust
+      run: rustup update
 
     - name: Switch to nightly rust
+      if: ${{ matrix.hybrid == true }}
       run: rustup default nightly
 
-    - name: Rust version
-      run: cargo rustc -- --version
+    - name: Info
+      run: |
+        cat /proc/cpuinfo | grep 'model name' | uniq
+        cargo rustc -- --version
 
     - name: Build
+      if: ${{ matrix.hybrid == false }}
+      run: cargo build --release
+
+    - name: Build (hybrid)
+      if: ${{ matrix.hybrid == true }}
       run: cargo build --release --features hybrid
 
     - name: Test
-      run: cargo test --release --features hybrid
-
-  build_test_arm:
-    name: Build & Test ARM
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Rust version
-      run: cargo rustc -- --version
-
-    - name: Build
-      run: cargo build --release
-
-    - name: Test
+      if: ${{ matrix.hybrid == false }}
       run: cargo test --release
+
+    - name: Test (hybrid)
+      if: ${{ matrix.hybrid == true }}
+      run: cargo test --release --features hybrid
