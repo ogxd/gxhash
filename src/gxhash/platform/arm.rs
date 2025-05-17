@@ -39,17 +39,19 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
 
 #[inline(always)]
 pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
-    let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
-    let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
-    use std::arch::asm;
-    let mut result: State;
-    asm!(
-        "ld1 {{v2.16b}}, [{src}]",
-        src = in(reg) data, out("v2") result,
-        options(nomem, nostack)
+    // May read out-of-bound, BUT we use inline assembly to ensure we can control the behavior
+    // and prevent the compiler from doing any kind of optimization that might change the behavior.
+    let mut oob_vector: State;
+    core::arch::asm!(
+        "ld1 {{v0.16b}}, [{data}]",
+        data = in(reg) data,
+        out("v0") oob_vector,
+        options(pure, readonly, nostack)
     );
-    let partial_vector = vandq_s8(result, vreinterpretq_s8_u8(mask));
-    vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
+    let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
+    let len_vec = vdupq_n_s8(len as i8);
+    let mask = vcltq_s8(indices, len_vec);
+    vandq_s8(oob_vector, vreinterpretq_s8_u8(mask))
 }
 
 #[inline(always)]

@@ -40,14 +40,14 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
 
 #[inline(always)]
 pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
-    // Using inline assembly to load out-of-bounds
-    use std::arch::asm;
+    // May read out-of-bound, BUT we use inline assembly to ensure we can control the behavior
+    // and prevent the compiler from doing any kind of optimization that might change the behavior.
+    let mut oob_vector: State;
+    core::arch::asm!("movdqu [{}], {}", in(reg) data, out(xmm_reg) oob_vector, options(pure, nomem, nostack));
     let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
-    let mut result: State;
-    asm!("movdqu {0}, [{1}]", out(xmm_reg) result, in(reg) data, options(pure, nomem, nostack));
-    let partial_vector = _mm_and_si128(result, mask);
-    _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
+    let len_vec = _mm_set1_epi8(len as i8);
+    let mask = _mm_cmpgt_epi8(len_vec, indices);
+    _mm_and_si128(oob_vector, mask)
 }
 
 #[inline(always)]
