@@ -28,23 +28,26 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
     _mm_loadu_si128(p)
 }
 
-#[inline(always)]
+// Rarely called, it's worth not inlining it to reduce code size
+#[inline(never)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
     let mut buffer = [0i8; VECTOR_SIZE];
-    // Copy data into the buffer
     core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
-    // Load the buffer into a __m256i vector
     let partial_vector = _mm_loadu_si128(buffer.as_ptr() as *const State);
     _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
 }
 
 #[inline(always)]
 pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
+    // May read out-of-bound, BUT we use inline assembly to ensure we can control the behavior
+    // and prevent the compiler from doing any kind of optimization that might change the behavior.
+    let mut oob_vector: State;
+    core::arch::asm!("movdqu [{}], {}", in(reg) data, out(xmm_reg) oob_vector, options(pure, nomem, nostack));
     let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    let mask = _mm_cmpgt_epi8(_mm_set1_epi8(len as i8), indices);
-    let partial_vector = _mm_and_si128(_mm_loadu_si128(data), mask);
-    _mm_add_epi8(partial_vector, _mm_set1_epi8(len as i8))
+    let len_vec = _mm_set1_epi8(len as i8);
+    let mask = _mm_cmpgt_epi8(len_vec, indices);
+    _mm_and_si128(oob_vector, mask)
 }
 
 #[inline(always)]
@@ -67,7 +70,9 @@ pub unsafe fn ld(array: *const u32) -> State {
 
 #[cfg(not(feature = "hybrid"))]
 #[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
+pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> (State, *const State, usize) {
+
+    let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
 
     // Disambiguation vectors
     let mut t1: State = create_empty();
@@ -102,13 +107,14 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     let len_vec =  _mm_set1_epi32(len as i32);
     lane1 = _mm_add_epi8(lane1, len_vec);
     lane2 = _mm_add_epi8(lane2, len_vec);
+
     // Merge lanes
-    aes_encrypt(lane1, lane2)
+    (aes_encrypt(lane1, lane2), ptr, whole_vector_count % 8)
 }
 
 #[cfg(feature = "hybrid")]
 #[inline(always)]
-pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
+pub unsafe fn compress_8(ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> (State, *const State, usize) {
     macro_rules! load_unaligned_x2 {
         ($ptr:ident, $($var:ident),+) => {
             $(
@@ -118,6 +124,8 @@ pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: Sta
             )+
         };
     }
+
+    let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
     
     let mut ptr = ptr as *const __m256i;
     let mut t = _mm256_setzero_si256();
@@ -134,6 +142,7 @@ pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: Sta
 
         lane = _mm256_aesenclast_epi128(_mm256_aesenc_epi128(tmp, t), lane);
     }
+    
     // Extract the two 128-bit lanes
     let mut lane1 = _mm256_castsi256_si128(lane);
     let mut lane2 = _mm256_extracti128_si256(lane, 1);
@@ -142,7 +151,7 @@ pub unsafe fn compress_8(ptr: *const State, end_address: usize, hash_vector: Sta
     lane1 = _mm_add_epi8(lane1, len_vec);
     lane2 = _mm_add_epi8(lane2, len_vec);
     // Merge lanes
-    aes_encrypt(lane1, lane2)
+    (aes_encrypt(lane1, lane2), ptr as *const __m128i, whole_vector_count % 8)
 }
 
 #[inline(always)]

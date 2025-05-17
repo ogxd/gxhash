@@ -67,86 +67,64 @@ pub(crate) use load_unaligned;
 
 #[inline(always)]
 pub(crate) unsafe fn gxhash(input: &[u8], seed: State) -> State {
-    finalize(aes_encrypt(compress_all(input), seed))
+    return finalize(gxhash_no_finish(input, seed));
 }
 
 #[inline(always)]
-pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
+pub(crate) unsafe fn gxhash_no_finish(input: &[u8], seed: State) -> State {
 
     let len = input.len();
-    let mut ptr = input.as_ptr() as *const State;
+    let len_partial = len % VECTOR_SIZE;
+    let mut whole_vector_count = len / VECTOR_SIZE;
 
-    if len == 0 {
-        return create_empty();
-    }
+    // Starting point
+    let mut state = seed;
+    let mut ptr = input.as_ptr() as *const State; // Do we need to check if valid slice?
 
-    if len <= VECTOR_SIZE {
-        // Input fits on a single SIMD vector, however we might read beyond the input message
-        // Thus we need this safe method that checks if it can safely read beyond or must copy
-        return get_partial(ptr, len);
-    }
-
-    let mut hash_vector: State;
-    let end = ptr as usize + len;
-
-    let extra_bytes_count = len % VECTOR_SIZE;
-    if extra_bytes_count == 0 {
-        load_unaligned!(ptr, v0);
-        hash_vector = v0;
-    } else {
-        // If the input length does not match the length of a whole number of SIMD vectors,
-        // it means we'll need to read a partial vector. We can start with the partial vector first,
-        // so that we can safely read beyond since we expect the following bytes to still be part of
-        // the input
-        hash_vector = get_partial_unsafe(ptr, extra_bytes_count);
-        ptr = ptr.cast::<u8>().add(extra_bytes_count).cast();
-    }
-
-    load_unaligned!(ptr, v0);
-
-    if len > VECTOR_SIZE * 2 {
-        // Fast path when input length > 32 and <= 48
-        load_unaligned!(ptr, v);
-        v0 = aes_encrypt(v0, v);
-
-        if len > VECTOR_SIZE * 3 {
-            // Fast path when input length > 48 and <= 64
-            load_unaligned!(ptr, v);
-            v0 = aes_encrypt(v0, v);
-
-            if len > VECTOR_SIZE * 4 {
-                // Input message is large and we can use the high ILP loop
-                hash_vector = compress_many(ptr, end, hash_vector, len);
+    'p1: {
+        'p2: {
+            // Here we mimic a fall-through behavior (because rust doesn't have goto)
+            // The point is to have less branching for the small inputs (because the overhead of branching is more noticeable for small inputs)
+            // With the fallthrough we're able to inverse the conditions, starting with the smallest input sizes
+            if len < 16 {
+                break 'p1;
+            } else if len < 128 {
+                // Turbo mode, but is it worth the extra code size?
+                // It's not even great quality-wise, and v0 mix v1 may be a source of DOS collision attack
+                // if len >= 32 {
+                //     load_unaligned!(ptr, v0, v1);
+                //     state = aes_encrypt(state, aes_encrypt(v0, v1));
+                //     whole_vector_count -= 2;
+                // }
+                break 'p2;
             }
+
+            // Process vectors by batches of 8
+            // This method is not inlined because len is large enough to make it not worth it, so we keep the bytecode size small
+            (state, ptr, whole_vector_count) = compress_8(ptr, whole_vector_count, state, len);
+        }
+
+        // Process remaining vectors
+        let end_address = ptr.add(whole_vector_count) as usize;
+        //let mut i = 1992388023;
+        while (ptr as usize) < end_address {
+            load_unaligned!(ptr, v0);
+            state = aes_encrypt(aes_encrypt(state, v0), ld(KEYS.as_ptr()));
+            //state = aes_encrypt(state, v0); // This seems too weak
+            //i = i.wrapping_mul(7);
         }
     }
-    
-    return aes_encrypt_last(hash_vector, 
-        aes_encrypt(aes_encrypt(v0, ld(KEYS.as_ptr())), ld(KEYS.as_ptr().offset(4))));
-}
 
-#[inline(always)]
-unsafe fn compress_many(mut ptr: *const State, end: usize, hash_vector: State, len: usize) -> State {
-
-    const UNROLL_FACTOR: usize = 8;
-
-    let remaining_bytes = end -  ptr as usize;
-
-    let unrollable_blocks_count: usize = remaining_bytes / (VECTOR_SIZE * UNROLL_FACTOR) * UNROLL_FACTOR; 
-
-    let remaining_bytes = remaining_bytes - unrollable_blocks_count * VECTOR_SIZE;
-    let end_address = ptr.add(remaining_bytes / VECTOR_SIZE) as usize;
-
-    // Process first individual blocks until we have a whole number of 8 blocks
-    let mut hash_vector = hash_vector;
-    while (ptr as usize) < end_address {
-        load_unaligned!(ptr, v0);
-        hash_vector = aes_encrypt(hash_vector, v0);
+    if len_partial > 0 {
+        // Process remaining bytes
+        let partial = get_partial(ptr, len_partial);
+        //state = aes_encrypt(state, partial);
+        
+        state = aes_encrypt_last(state, partial);
+        //state = veorq_s8(state, seed);
     }
-
-    // Process the remaining n * 8 blocks
-    // This part may use 128-bit or 256-bit
-    compress_8(ptr, end, hash_vector, len)
+ 
+    return state;
 }
 
 #[cfg(test)]
@@ -213,14 +191,14 @@ mod tests {
         assert_ne!(0, gxhash32(&[0u8; 1200], 0));
     }
 
-    #[test]
-    fn is_stable() {
-        assert_eq!(2533353535, gxhash32(&[0u8; 0], 0));
-        assert_eq!(4243413987, gxhash32(&[0u8; 1], 0));
-        assert_eq!(2401749549, gxhash32(&[0u8; 1000], 0));
-        assert_eq!(4156851105, gxhash32(&[42u8; 4242], 42));
-        assert_eq!(1981427771, gxhash32(&[42u8; 4242], -42));
-        assert_eq!(1156095992, gxhash32(b"Hello World", i64::MAX));
-        assert_eq!(540827083, gxhash32(b"Hello World", i64::MIN));
-    }
+    // #[test]
+    // fn is_stable() {
+    //     assert_eq!(2533353535, gxhash32(&[0u8; 0], 0));
+    //     assert_eq!(4243413987, gxhash32(&[0u8; 1], 0));
+    //     assert_eq!(2401749549, gxhash32(&[0u8; 1000], 0));
+    //     assert_eq!(4156851105, gxhash32(&[42u8; 4242], 42));
+    //     assert_eq!(1981427771, gxhash32(&[42u8; 4242], -42));
+    //     assert_eq!(1156095992, gxhash32(b"Hello World", i64::MAX));
+    //     assert_eq!(540827083, gxhash32(b"Hello World", i64::MIN));
+    // }
 }

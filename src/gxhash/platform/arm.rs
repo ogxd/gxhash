@@ -25,7 +25,8 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
     vld1q_s8(p as *const i8)
 }
 
-#[inline(always)]
+// Rarely called, it's worth not inlining it to reduce code size
+#[inline(never)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
     // Temporary buffer filled with zeros
     let mut buffer = [0i8; VECTOR_SIZE];
@@ -38,10 +39,19 @@ pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
 
 #[inline(always)]
 pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
+    // May read out-of-bound, BUT we use inline assembly to ensure we can control the behavior
+    // and prevent the compiler from doing any kind of optimization that might change the behavior.
+    let mut oob_vector: State;
+    core::arch::asm!(
+        "ld1 {{v0.16b}}, [{data}]",
+        data = in(reg) data,
+        out("v0") oob_vector,
+        options(pure, readonly, nostack)
+    );
     let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
-    let mask = vcgtq_s8(vdupq_n_s8(len as i8), indices);
-    let partial_vector = vandq_s8(load_unaligned(data), vreinterpretq_s8_u8(mask));
-    vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
+    let len_vec = vdupq_n_s8(len as i8);
+    let mask = vcltq_s8(indices, len_vec);
+    vandq_s8(oob_vector, vreinterpretq_s8_u8(mask))
 }
 
 #[inline(always)]
@@ -70,7 +80,9 @@ pub unsafe fn ld(array: *const u32) -> State {
 }
 
 #[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
+pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> (State, *const State, usize) {
+
+    let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
 
     // Disambiguation vectors
     let mut t1: State = create_empty();
@@ -105,8 +117,9 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     let len_vec =  vreinterpretq_s8_u32(vdupq_n_u32(len as u32));
     lane1 = vaddq_s8(lane1, len_vec);
     lane2 = vaddq_s8(lane2, len_vec);
+
     // Merge lanes
-    aes_encrypt(lane1, lane2)
+    (aes_encrypt(lane1, lane2), ptr, whole_vector_count % 8)
 }
 
 #[inline(always)]

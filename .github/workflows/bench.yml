@@ -32,6 +32,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Update rust
+      run: rustup update
+
     - name: Switch to nightly rust
       run: rustup default nightly
 
