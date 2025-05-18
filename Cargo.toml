@@ -39,6 +39,7 @@ highway = "1.2.0"
 seahash = "4.1.0"
 metrohash = "1.0.6"
 fnv = "1.0.7"
+foldhash = "0.1.3"
 
 [dev-dependencies.plotters]
 version = "0.3.7"
