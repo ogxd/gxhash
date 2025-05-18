@@ -1,10 +1,11 @@
 use std::time::Duration;
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice;
-use std::hash::Hasher;
+use std::hash::{BuildHasher, Hasher};
 
 use criterion::measurement::WallTime;
 use criterion::{criterion_group, criterion_main, Criterion, Throughput, PlotConfiguration, AxisScale, BenchmarkGroup, BenchmarkId};
+use std::hint::black_box;
 use rand::Rng;
 
 use gxhash::*;
@@ -23,7 +24,7 @@ fn benchmark<F>(c: &mut BenchmarkGroup<WallTime>, data: &[u8], name: &str, deleg
         let slice = &data[0..len]; // Aligned
         // let slice = &data[1..len]; // Unaligned
         c.bench_with_input(BenchmarkId::new(name, len), slice, |bencher, input| {
-            bencher.iter(|| delegate(criterion::black_box(input), criterion::black_box(42)))
+            bencher.iter(|| black_box(delegate(black_box(input), 42)))
         });
     }
 }
@@ -52,6 +53,12 @@ fn benchmark_all(c: &mut Criterion) {
     // XxHash (twox-hash)
     benchmark(&mut group, slice, "XxHash (XXH3)", |data: &[u8], seed: i32| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed as u64)
+    });
+
+    // FoldHash
+    let foldhash_hasher: foldhash::quality::RandomState = foldhash::quality::RandomState::default();
+    benchmark(&mut group, slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
+        foldhash_hasher.hash_one(data)
     });
 
     // AHash
