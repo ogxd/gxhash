@@ -91,11 +91,11 @@ The `std` feature flag enables the `HashMap`/`HashSet` container convenience typ
 default-features = false
 ```
 
-### `hybrid`
+### `hybrid` (experimental)
 
-The `hybrid` feature flag enables a hybrid implementation of GxHash. This is disabled by default. When `hybrid` feature is enabled and for CPUs that supports it, GxHash will use wider registers and instructions (`VAES` + `AVX2`), which can lead to a significant performance improvement for large inputs. This preserves hashes stability, meaning that hashes generated with or without the `hybrid` feature are the same for a given input and seed.
+The `hybrid` feature flag enables a hybrid implementation of GxHash. This is disabled by default. When `hybrid` feature is enabled and for CPUs that supports it, GxHash will use wider registers and instructions (`VAES` + `AVX2`), which can lead to a throughput increase for large inputs. This preserves hashes stability, meaning that hashes generated with or without the `hybrid` feature are the same for a given input and seed.
 
-*Note: Even without this feature enabled GxHash is already the fastest option out there. We recommend enabling this feature only when inputs can be larger than a few hundred bytes, see the benchmarks below.*
+*Note: Even without this feature enabled GxHash is already the fastest option out there. We recommend enabling this feature only when inputs can be larger than a few hundred bytes. Make sure to run benchmarks in your own context.*
 
 ## Benchmarks
 
@@ -125,7 +125,6 @@ The `throughput` benchmark is custom (it does not rely on criterion.rs). In an a
 **Latest Benchmark Results:**    
 ![aarch64](./benches/throughput/aarch64.svg)
 ![x86_64](./benches/throughput/x86_64.svg)
-![x86_64-hybrid](./benches/throughput/x86_64-hybrid.svg)
 
 ## Contributing
 
