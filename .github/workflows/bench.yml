@@ -7,64 +7,59 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  benchmark-x86:
-    name: Benchmark X86
-    runs-on: buildjet-2vcpu-ubuntu-2204
+
+  benchmark:
+    name: Benchmark ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: "aarch64"
+          runner: "buildjet-2vcpu-ubuntu-2204-arm"
+          hybrid: false
+        - name: "x86_64"
+          runner: "buildjet-2vcpu-ubuntu-2204"
+          hybrid: false
+        - name: "x86_64-hybrid"
+          runner: "buildjet-2vcpu-ubuntu-2204"
+          hybrid: true
+
+    runs-on: ${{ matrix.runner }}
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Update rust
       run: rustup update
-
-    - name: Benchmark
-      run: cargo bench --bench throughput --features bench-plot
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: benches
-        path: benches/throughput/x86_64.svg
-
-  benchmark-x86-avx2:
-    name: Benchmark X86 AVX2
-    runs-on: buildjet-2vcpu-ubuntu-2204
-
-    steps:
-    - uses: actions/checkout@v4
 
     - name: Switch to nightly rust
+      if: ${{ matrix.hybrid == true }}
       run: rustup default nightly
 
-    - name: Benchmark
-      run: cargo bench --bench throughput --features bench-plot,hybrid
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: benches
-        path: benches/throughput/x86_64-hybrid.svg
-
-  benchmark-arm:
-    name: Benchmark ARM
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Update rust
-      run: rustup update
+    - name: Info
+      run: |
+        cat /proc/cpuinfo | grep 'model name' | uniq
+        cargo rustc -- --version
 
     - name: Benchmark
       run: cargo bench --bench throughput --features bench-plot
+      if: ${{ matrix.hybrid == false }}
 
-    - uses: actions/upload-artifact@v3
+    - name: Benchmark (hybrid)
+      run: cargo bench --bench throughput --features bench-plot,hybrid
+      if: ${{ matrix.hybrid == true }}
+
+    - uses: actions/upload-artifact@v4
       with:
         name: benches
-        path: benches/throughput/aarch64.svg
+        path: benches/throughput/${{ matrix.name }}.svg
+        overwrite: true
 
   commit:
     name: Commit & Push
     runs-on: buildjet-2vcpu-ubuntu-2204
-    needs: [benchmark-x86, benchmark-x86-avx2, benchmark-arm]
+    needs: [benchmark]
 
     permissions:
       contents: write
@@ -73,7 +68,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Download Benchmark Results
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: benches
         path: benches/throughput
@@ -86,4 +81,3 @@ jobs:
         commit_user_name: Benchmark Bot
         commit_user_email: benchmark-bot@noreply.com
         commit_author: Benchmark Bot <benchmark-bot@noreply.com>
-      
