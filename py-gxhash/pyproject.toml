@@ -1,0 +1,22 @@
+[project]
+name = "gxhash"
+license = "MIT"
+requires-python = ">=3.7"
+dynamic = ["version"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+[dependency-groups]
+dev = ["maturin==1.6.0"]
+
+[build-system]
+requires = ["maturin>=1.6.0, <2.0.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+exclude = ["**/uv.lock"]
+
