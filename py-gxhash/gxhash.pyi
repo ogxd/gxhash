@@ -1,20 +1,5 @@
+from pathlib import Path
 from typing import Protocol
-
-class File(Protocol):
-    def fileno(self) -> int:
-        """
-        Summary
-        -------
-        Returns the file descriptor of the file.
-        Some file-like objects like `io.BytesIO` have an unimplemented `fileno` method.
-        If you are uncertain whether the file has a valid `fileno` method,
-        you should write to a `tempfile.TemporaryFile` and pass that to the hasher.
-
-        Returns
-        -------
-        file_descriptor (`int`)
-            the file descriptor of the file
-        """
 
 class Hasher(Protocol):
     def __init__(self, *, seed: int) -> None:
@@ -86,20 +71,18 @@ class Hasher(Protocol):
         print(f"Hash is {await hasher.hash_async(bytes([42] * 1000))}!")
         ```
         """
-    def hash_file(self, file: File) -> int:
+    def hash_file(self, file_path: str | Path) -> int:
         """
         Summary
         -------
-        Hashes a `File` to an `int`.
-        This method duplicates the file descriptor and memory maps the file entirely in Rust.
+        Hashes a file to an `int`.
+        This method memory maps the file entirely in Rust.
         This operation is many times faster than reading the file in Python and passing the bytes to the hasher.
         If your input is already in `bytes`, this method may be slightly less performant than `hash` and `hash_async`.
-        If the `bytes` is really large, writing to a `TemporaryFile` and passing it to this method may be more
-        performant than passing the `bytes` directly to `hash` or `hash_async`.
 
         Parameters
         ----------
-        file (`File`)
+        file_path (`str | Path`)
             a file object
 
         Returns
@@ -109,37 +92,24 @@ class Hasher(Protocol):
 
         Example
         -------
-        Converting `bytes` to a `TemporaryFile` and hashing.
-
         ```python
         hasher = GxHash128(seed=1234)
-        file = TemporaryFile()
-        file.write(bytes([42] * 1000))
-        file.seek(0)
-        print(f"Hash is {hasher.hash_file(file)}!")
-        ```
-
-        Hashing a file directly.
-
-        ```python
-        file = open('really_large_file.img', 'rb')
-        hasher = GxHash128(seed=1234)
-        print(f"Hash is {hasher.hash_file(file)}!")
+        print(f"Hash is {hasher.hash_file('./data/large_file.bin')}!")
         ```
         """
-    async def hash_file_async(self, file: File) -> int:
+    async def hash_file_async(self, file_path: str | Path) -> int:
         """
         Summary
         -------
         Asynchronous variant of `hash_file`.
         This method allows you to perform multiple hashes with true multi-threaded parallelism.
         If called sequentially, this method is slightly less performant than `hash_file`.
-        It is only ever faster than a multi-threaded `hash_async` when the input is a `File`,
-        and that is due to the performance overhead of reading a `File` in Python.
+        It is only ever faster than a multi-threaded `hash_async` when the input is a file,
+        and that is due to the performance overhead of reading a file in Python.
 
         Parameters
         ----------
-        file (`File`)
+        file_path (`str | Path`)
             a file object
 
         Returns
@@ -149,22 +119,9 @@ class Hasher(Protocol):
 
         Example
         -------
-        Converting `bytes` to a `TemporaryFile` and hashing.
-
         ```python
         hasher = GxHash128(seed=1234)
-        file = TemporaryFile()
-        file.write(bytes([42] * 1000))
-        file.seek(0)
-        print(f"Hash is {await hasher.hash_file_asymc(file)}!")
-        ```
-
-        Hashing a file directly.
-
-        ```python
-        file = open('really_large_file.img', 'rb')
-        hasher = GxHash128(seed=1234)
-        print(f"Hash is {await hasher.hash_file_async(file)}!")
+        print(f"Hash is {await hasher.hash_file_async('./data/large_file.bin')}!")
         ```
         """
 

@@ -1,33 +1,23 @@
+use std::path::PathBuf;
+
 use pyo3::prelude::pyclass;
 use pyo3::prelude::pymethods;
 use pyo3::prelude::Bound;
 use pyo3::prelude::Py;
 use pyo3::prelude::PyAny;
-use pyo3::prelude::PyErr;
-use pyo3::prelude::PyObject;
 use pyo3::prelude::PyResult;
 use pyo3::prelude::Python;
 use pyo3::types::PyBytes;
 use pyo3::types::PyModuleMethods;
 use pyo3_async_runtimes::tokio::future_into_py;
-use std::os::fd::FromRawFd;
-
-fn get_file_descriptor(py: Python, file: PyObject) -> Result<i32, PyErr> {
-    file.call_method0(py, pyo3::intern!(py, "fileno"))?.extract(py)
-}
 
 fn gxhash<T>(hasher: fn(&[u8], i64) -> T, bytes: &[u8], seed: i64) -> PyResult<T> {
     Ok(hasher(bytes, seed))
 }
 
-fn gxhash_file<T>(hasher: fn(&[u8], i64) -> T, file_descriptor: i32, seed: i64) -> PyResult<T> {
-    let duplicated_file_descriptor = unsafe { libc::dup(file_descriptor) };
-
-    if duplicated_file_descriptor == -1 {
-        return Err(PyErr::new::<pyo3::exceptions::PyOSError, _>("Failed to duplicate file descriptor"));
-    }
-
-    let mmap = unsafe { memmap2::Mmap::map(&std::fs::File::from_raw_fd(duplicated_file_descriptor))? };
+fn gxhash_file<T>(hasher: fn(&[u8], i64) -> T, file_path: PathBuf, seed: i64) -> PyResult<T> {
+    let file = std::fs::File::open(file_path)?;
+    let mmap = unsafe { memmap2::Mmap::map(&file)? };
     Ok(hasher(&mmap, seed))
 }
 
@@ -70,16 +60,15 @@ impl GxHash32 {
         future_into_py(py, async move { gxhash(hasher, Python::with_gil(|py| bytes.as_bytes(py)), seed) })
     }
 
-    fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u32> {
-        gxhash_file(self.hasher, get_file_descriptor(py, file)?, self.seed)
+    fn hash_file(&self, file_path: PathBuf) -> PyResult<u32> {
+        gxhash_file(self.hasher, file_path, self.seed)
     }
 
-    fn hash_file_async<'a>(&self, py: Python<'a>, file: PyObject) -> PyResult<Bound<'a, PyAny>> {
+    fn hash_file_async<'a>(&self, py: Python<'a>, file_path: PathBuf) -> PyResult<Bound<'a, PyAny>> {
         let seed = self.seed;
         let hasher = self.hasher;
-        let file_descriptor = get_file_descriptor(py, file)?;
 
-        future_into_py(py, async move { gxhash_file(hasher, file_descriptor, seed) })
+        future_into_py(py, async move { gxhash_file(hasher, file_path, seed) })
     }
 }
 
@@ -104,16 +93,15 @@ impl GxHash64 {
         future_into_py(py, async move { gxhash(hasher, Python::with_gil(|py| bytes.as_bytes(py)), seed) })
     }
 
-    fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u64> {
-        gxhash_file(self.hasher, get_file_descriptor(py, file)?, self.seed)
+    fn hash_file(&self, file_path: PathBuf) -> PyResult<u64> {
+        gxhash_file(self.hasher, file_path, self.seed)
     }
 
-    fn hash_file_async<'a>(&self, py: Python<'a>, file: PyObject) -> PyResult<Bound<'a, PyAny>> {
+    fn hash_file_async<'a>(&self, py: Python<'a>, file_path: PathBuf) -> PyResult<Bound<'a, PyAny>> {
         let seed = self.seed;
         let hasher = self.hasher;
-        let file_descriptor = get_file_descriptor(py, file)?;
 
-        future_into_py(py, async move { gxhash_file(hasher, file_descriptor, seed) })
+        future_into_py(py, async move { gxhash_file(hasher, file_path, seed) })
     }
 }
 
@@ -138,16 +126,15 @@ impl GxHash128 {
         future_into_py(py, async move { gxhash(hasher, Python::with_gil(|py| bytes.as_bytes(py)), seed) })
     }
 
-    fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u128> {
-        gxhash_file(self.hasher, get_file_descriptor(py, file)?, self.seed)
+    fn hash_file(&self, file_path: PathBuf) -> PyResult<u128> {
+        gxhash_file(self.hasher, file_path, self.seed)
     }
 
-    fn hash_file_async<'a>(&self, py: Python<'a>, file: PyObject) -> PyResult<Bound<'a, PyAny>> {
+    fn hash_file_async<'a>(&self, py: Python<'a>, file_path: PathBuf) -> PyResult<Bound<'a, PyAny>> {
         let seed = self.seed;
         let hasher = self.hasher;
-        let file_descriptor = get_file_descriptor(py, file)?;
 
-        future_into_py(py, async move { gxhash_file(hasher, file_descriptor, seed) })
+        future_into_py(py, async move { gxhash_file(hasher, file_path, seed) })
     }
 }
 
