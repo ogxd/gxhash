@@ -6,7 +6,6 @@ Python bindings for [GxHash](https://github.com/ogxd/gxhash), a blazingly fast a
 
 - **Blazingly Fast**: Minimal-overhead binding to leverage the full speed of GxHash.
 - **Zero Python**: Pure Rust backend with zero additional Python runtime overhead.
-- **Fine-Grained Control**: Build true multi-threaded or async hashing pipelines with GIL-free APIs.
 - **Faster File Hashing**: Hash files using memory-mapped I/O via Rust — 3x faster than Python's sequential I/O.
 - **Async-Ready**: Tokio-powered async hashing for fast and efficient concurrency.
 - **Fully Typesafe**: Predictable, clean API with complete type safety.
