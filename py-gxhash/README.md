@@ -63,12 +63,13 @@ if __name__ == "__main__":
 Hashing a file.
 
 ```python
+from pathlib import Path
 from gxhash import GxHash64
 
 def main():
     gxhash = GxHash64(seed=0)
-    file = open("path/to/file.dmg", "rb")
-    result = gxhash.hash_file(file)
+    file_path = Path("path/to/file.dmg")
+    result = gxhash.hash_file(file_path)
 
 if __name__ == "__main__":
     main()
@@ -82,8 +83,7 @@ from gxhash import GxHash128
 
 async def main():
     gxhash = GxHash128(seed=0)
-    file = open("path/to/file.dmg", "rb")
-    result = await gxhash.hash_file_async(file)
+    result = await gxhash.hash_file_async("path/to/file.dmg")
 
 if __name__ == "__main__":
     run(main())
