@@ -1,4 +1,14 @@
-use pyo3::prelude::*;
+use pyo3::prelude::pyclass;
+use pyo3::prelude::pymethods;
+use pyo3::prelude::Bound;
+use pyo3::prelude::Py;
+use pyo3::prelude::PyAny;
+use pyo3::prelude::PyErr;
+use pyo3::prelude::PyObject;
+use pyo3::prelude::PyResult;
+use pyo3::prelude::Python;
+use pyo3::types::PyBytes;
+use pyo3::types::PyModuleMethods;
 use pyo3_async_runtimes::tokio::future_into_py;
 use std::os::fd::FromRawFd;
 
@@ -11,7 +21,13 @@ fn gxhash<T>(hasher: fn(&[u8], i64) -> T, bytes: &[u8], seed: i64) -> PyResult<T
 }
 
 fn gxhash_file<T>(hasher: fn(&[u8], i64) -> T, file_descriptor: i32, seed: i64) -> PyResult<T> {
-    let mmap = unsafe { memmap2::Mmap::map(&std::fs::File::from_raw_fd(libc::dup(file_descriptor)))? };
+    let duplicated_file_descriptor = unsafe { libc::dup(file_descriptor) };
+
+    if duplicated_file_descriptor == -1 {
+        return Err(PyErr::new::<pyo3::exceptions::PyOSError, _>("Failed to duplicate file descriptor"));
+    }
+
+    let mmap = unsafe { memmap2::Mmap::map(&std::fs::File::from_raw_fd(duplicated_file_descriptor))? };
     Ok(hasher(&mmap, seed))
 }
 
@@ -47,12 +63,11 @@ impl GxHash32 {
         gxhash(self.hasher, bytes, self.seed)
     }
 
-    fn hash_async<'a>(&self, py: Python<'a>, bytes: &'a [u8]) -> PyResult<Bound<'a, PyAny>> {
+    fn hash_async<'a>(&self, py: Python<'a>, bytes: Py<PyBytes>) -> PyResult<Bound<'a, PyAny>> {
         let seed = self.seed;
         let hasher = self.hasher;
-        let bytes_static = unsafe { std::mem::transmute::<&'a [u8], &'static [u8]>(bytes) };
 
-        future_into_py(py, async move { gxhash(hasher, bytes_static, seed) })
+        future_into_py(py, async move { gxhash(hasher, Python::with_gil(|py| bytes.as_bytes(py)), seed) })
     }
 
     fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u32> {
@@ -82,12 +97,11 @@ impl GxHash64 {
         gxhash(self.hasher, bytes, self.seed)
     }
 
-    fn hash_async<'a>(&self, py: Python<'a>, bytes: &'a [u8]) -> PyResult<Bound<'a, PyAny>> {
+    fn hash_async<'a>(&self, py: Python<'a>, bytes: Py<PyBytes>) -> PyResult<Bound<'a, PyAny>> {
         let seed = self.seed;
         let hasher = self.hasher;
-        let bytes_static = unsafe { std::mem::transmute::<&'a [u8], &'static [u8]>(bytes) };
 
-        future_into_py(py, async move { gxhash(hasher, bytes_static, seed) })
+        future_into_py(py, async move { gxhash(hasher, Python::with_gil(|py| bytes.as_bytes(py)), seed) })
     }
 
     fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u64> {
@@ -117,12 +131,11 @@ impl GxHash128 {
         gxhash(self.hasher, bytes, self.seed)
     }
 
-    fn hash_async<'a>(&self, py: Python<'a>, bytes: &'a [u8]) -> PyResult<Bound<'a, PyAny>> {
+    fn hash_async<'a>(&self, py: Python<'a>, bytes: Py<PyBytes>) -> PyResult<Bound<'a, PyAny>> {
         let seed = self.seed;
         let hasher = self.hasher;
-        let bytes_static = unsafe { std::mem::transmute::<&'a [u8], &'static [u8]>(bytes) };
 
-        future_into_py(py, async move { gxhash(hasher, bytes_static, seed) })
+        future_into_py(py, async move { gxhash(hasher, Python::with_gil(|py| bytes.as_bytes(py)), seed) })
     }
 
     fn hash_file(&self, py: Python, file: PyObject) -> PyResult<u128> {
@@ -138,8 +151,8 @@ impl GxHash128 {
     }
 }
 
-#[pymodule(name = "gxhash")]
-fn pygxhash(m: &Bound<'_, PyModule>) -> PyResult<()> {
+#[pyo3::prelude::pymodule(name = "gxhash")]
+fn pygxhash(m: &Bound<'_, pyo3::prelude::PyModule>) -> PyResult<()> {
     m.add_class::<GxHash32>()?;
     m.add_class::<GxHash64>()?;
     m.add_class::<GxHash128>()?;
