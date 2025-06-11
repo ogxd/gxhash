@@ -18,7 +18,7 @@ You must have [rustup](https://rustup.rs/) installed and set to `nightly`.
 pip install gxhash
 ```
 
-You can install `gxhash` with the `hybrid` feature with the following.
+For the best performance, you can enable the `hybrid` feature with the following.
 
 ```bash
 pip install gxhash --config-settings build-args="--features hybrid"
