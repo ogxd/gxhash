@@ -40,9 +40,9 @@ macro_rules! impl_gxhash_methods {
                 let seed = self.seed;
 
                 pyo3_async_runtimes::tokio::future_into_py(py, async move {
-                    tokio::task::spawn_blocking(move || Ok($hasher(Python::attach(|py| bytes.as_bytes(py)), seed)))
+                    tokio::task::spawn_blocking(move || $hasher(Python::attach(|py| bytes.as_bytes(py)), seed))
                         .await
-                        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Task Join Error: {}", e)))?
+                        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Task Join Error: {}", e)))
                 })
             }
         }

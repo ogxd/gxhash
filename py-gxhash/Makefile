@@ -4,3 +4,6 @@ all:
 
 publish:
 	uv publish
+
+clean:
+	rm -rf dist target .venv
