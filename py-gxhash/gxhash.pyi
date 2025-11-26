@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Protocol
 
 class Hasher(Protocol):
@@ -69,59 +68,6 @@ class Hasher(Protocol):
         ```python
         hasher = GxHash128(seed=1234)
         print(f"Hash is {await hasher.hash_async(bytes([42] * 1000))}!")
-        ```
-        """
-    def hash_file(self, file_path: str | Path) -> int:
-        """
-        Summary
-        -------
-        Hashes a file to an `int`.
-        This method memory maps the file entirely in Rust.
-        This operation is many times faster than reading the file in Python and passing the bytes to the hasher.
-        If your input is already in `bytes`, this method may be slightly less performant than `hash` and `hash_async`.
-
-        Parameters
-        ----------
-        file_path (`str | Path`)
-            a file object
-
-        Returns
-        -------
-        hash (`int`)
-            the hash of the input file
-
-        Example
-        -------
-        ```python
-        hasher = GxHash128(seed=1234)
-        print(f"Hash is {hasher.hash_file('./data/large_file.bin')}!")
-        ```
-        """
-    async def hash_file_async(self, file_path: str | Path) -> int:
-        """
-        Summary
-        -------
-        Asynchronous variant of `hash_file`.
-        This method allows you to perform multiple hashes with true multi-threaded parallelism.
-        If called sequentially, this method is slightly less performant than `hash_file`.
-        It is only ever faster than a multi-threaded `hash_async` when the input is a file,
-        and that is due to the performance overhead of reading a file in Python.
-
-        Parameters
-        ----------
-        file_path (`str | Path`)
-            a file object
-
-        Returns
-        -------
-        hash (`int`)
-            the hash of the input file
-
-        Example
-        -------
-        ```python
-        hasher = GxHash128(seed=1234)
-        print(f"Hash is {await hasher.hash_file_async('./data/large_file.bin')}!")
         ```
         """
 
