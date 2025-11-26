@@ -9,21 +9,18 @@ use pyo3::types::PyModuleMethods;
 #[cfg_attr(any(Py_3_8, Py_3_9), pyclass(frozen))]
 struct GxHash32 {
     seed: i64,
-    hasher: fn(&[u8], i64) -> u32,
 }
 
 #[cfg_attr(not(any(Py_3_8, Py_3_9)), pyclass(frozen, immutable_type))]
 #[cfg_attr(any(Py_3_8, Py_3_9), pyclass(frozen))]
 struct GxHash64 {
     seed: i64,
-    hasher: fn(&[u8], i64) -> u64,
 }
 
 #[cfg_attr(not(any(Py_3_8, Py_3_9)), pyclass(frozen, immutable_type))]
 #[cfg_attr(any(Py_3_8, Py_3_9), pyclass(frozen))]
 struct GxHash128 {
     seed: i64,
-    hasher: fn(&[u8], i64) -> u128,
 }
 
 macro_rules! impl_gxhash_methods {
@@ -32,20 +29,18 @@ macro_rules! impl_gxhash_methods {
         impl $Self {
             #[new]
             fn new(seed: i64) -> Self {
-                $Self { seed, hasher: $hasher }
+                $Self { seed }
             }
 
-            fn hash(&self, bytes: &[u8]) -> PyResult<$return_type> {
-                let hasher = self.hasher;
-                Ok(hasher(bytes, self.seed))
+            fn hash(&self, bytes: &[u8]) -> $return_type {
+                $hasher(bytes, self.seed)
             }
 
             fn hash_async<'a>(&self, py: Python<'a>, bytes: pyo3::prelude::Py<pyo3::types::PyBytes>) -> PyResult<Bound<'a, pyo3::prelude::PyAny>> {
                 let seed = self.seed;
-                let hasher = self.hasher;
 
                 pyo3_async_runtimes::tokio::future_into_py(py, async move {
-                    tokio::task::spawn_blocking(move || Ok(hasher(Python::attach(|py| bytes.as_bytes(py)), seed)))
+                    tokio::task::spawn_blocking(move || Ok($hasher(Python::attach(|py| bytes.as_bytes(py)), seed)))
                         .await
                         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Task Join Error: {}", e)))?
                 })
