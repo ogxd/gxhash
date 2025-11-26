@@ -31,3 +31,25 @@ locked = true
 strip = true
 features = ["pyo3/extension-module"]
 exclude = ["**/uv.lock", "Makefile"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "PYI021",
+    "A002",
+    "COM812",
+    "D203",
+    "D205",
+    "D211",
+    "D212",
+    "D400",
+    "D413",
+    "D415",
+    "D417",
+]
+
+[tool.pyright]
+typeCheckingMode = "strict"

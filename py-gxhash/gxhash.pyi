@@ -17,10 +17,11 @@ class Hasher(Protocol):
         Example
         -------
         ```python
-        hasher = GxHash128(seed=1234)
+        hasher = GxHash32(seed=1234)
         ```
         """
-    def hash(self, bytes: bytes) -> int:
+
+    def hash(self, bytes: bytes, /) -> int:
         """
         Summary
         -------
@@ -40,11 +41,12 @@ class Hasher(Protocol):
         Example
         -------
         ```python
-        hasher = GxHash128(1234)
+        hasher = GxHash64(seed=1234)
         print(f"Hash is {hasher.hash(bytes([42] * 1000))}!")
         ```
         """
-    async def hash_async(self, bytes: bytes) -> int:
+
+    async def hash_async(self, bytes: bytes, /) -> int:
         """
         Summary
         -------
