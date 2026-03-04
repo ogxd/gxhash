@@ -104,25 +104,33 @@ pub(crate) unsafe fn compress_all(input: &[u8]) -> State {
 
     load_unaligned!(ptr, v0);
 
-    if len > VECTOR_SIZE * 2 {
-        // Fast path when input length > 32 and <= 48
-        load_unaligned!(ptr, v);
-        v0 = aes_encrypt(v0, v);
-
-        if len > VECTOR_SIZE * 3 {
-            // Fast path when input length > 48 and <= 64
-            load_unaligned!(ptr, v);
-            v0 = aes_encrypt(v0, v);
-
-            if len > VECTOR_SIZE * 4 {
-                // Input message is large and we can use the high ILP loop
-                hash_vector = compress_many(ptr, end, hash_vector, len);
-            }
+    // C-style fallthrough using labeled block.
+    'compress: {
+        if len <= VECTOR_SIZE * 2 {
+            break 'compress;
         }
+        load_unaligned!(ptr, v2);
+        v0 = aes_encrypt(v0, v2);
+
+        if len <= VECTOR_SIZE * 3 {
+            break 'compress;
+        }
+        load_unaligned!(ptr, v3);
+        v0 = aes_encrypt(v0, v3);
+
+        if len <= VECTOR_SIZE * 4 {
+            break 'compress;
+        }
+        // Input message is large and we can use the high ILP loop
+        hash_vector = compress_many(ptr, end, hash_vector, len);
     }
-    
-    return aes_encrypt_last(hash_vector, 
-        aes_encrypt(aes_encrypt(v0, ld(KEYS.as_ptr())), ld(KEYS.as_ptr().offset(4))));
+
+    // Parallel final reduction: AES(hash_vector, K0) and AES(v0, K1) are independent
+    // and can execute simultaneously, reducing critical-path latency vs the original
+    // sequential AES(AES(v0, K0), K1) chain.
+    return aes_encrypt_last(
+        aes_encrypt(hash_vector, ld(KEYS.as_ptr())),
+        aes_encrypt(v0, ld(KEYS.as_ptr().offset(4))));
 }
 
 #[inline(always)]
