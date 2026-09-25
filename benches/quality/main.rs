@@ -5,15 +5,15 @@ use criterion::black_box;
 fn main() {
     // Hash functions that pass the quality tests ✅
     bench_hasher_quality::<gxhash::GxBuildHasher>("GxHash");
-    bench_hasher_quality::<std::collections::hash_map::RandomState>("Default");
-	bench_hasher_quality::<BuildHasherDefault<rustc_hash::FxHasher>>("FxHash (rustc_hash)");
-    bench_hasher_quality::<twox_hash::xxh3::RandomHashBuilder64>("XxHash (XXH3)");
-    bench_hasher_quality::<ahash::RandomState>("AHash");
-    bench_hasher_quality::<t1ha::T1haBuildHasher>("T1ha");
+    // bench_hasher_quality::<std::collections::hash_map::RandomState>("Default");
+	// bench_hasher_quality::<BuildHasherDefault<rustc_hash::FxHasher>>("FxHash (rustc_hash)");
+    // bench_hasher_quality::<twox_hash::xxh3::RandomHashBuilder64>("XxHash (XXH3)");
+    // bench_hasher_quality::<ahash::RandomState>("AHash");
+    // bench_hasher_quality::<t1ha::T1haBuildHasher>("T1ha");
 
     // Hash functions that don't pass the quality tests ❌
-    bench_hasher_quality::<fnv::FnvBuildHasher>("FNV-1a");
-    bench_hasher_quality::<foldhash::quality::RandomState>("FoldHash");
+    //bench_hasher_quality::<fnv::FnvBuildHasher>("FNV-1a");
+    //bench_hasher_quality::<foldhash::quality::RandomState>("FoldHash");
 }
 
 macro_rules! check {

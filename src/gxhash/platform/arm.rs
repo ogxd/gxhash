@@ -74,8 +74,110 @@ pub unsafe fn ld(array: *const u32) -> State {
     vreinterpretq_s8_u32(vld1q_u32(array))
 }
 
+/// True Duff's device via computed jump.
+///
+/// ARM instructions are fixed 4 bytes, so each step (ldr + aese + aesmc + eor) is exactly
+/// 16 bytes. `entry = (-whole_vector_count) & 3` maps to the step index to jump into:
+///   entry=0 → step 0 (all 4 steps), entry=1 → step 1 (3 steps), …, entry=3 → step 3 (1 step).
+/// `adr addr, step0; add addr, addr, entry, lsl #4; br addr` dispatches in 3 instructions
+/// with no jump table. Subsequent iterations always start at step 0 (loop-top resets tmp1/tmp2).
 #[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
+pub unsafe fn duff_compress(
+    ptr: *const State,
+    lane1: State,
+    lane2: State,
+    whole_vector_count: usize,
+) -> (State, State) {
+    // entry = (-wvc) & 3: 0→step0, 1→step1, 2→step2, 3→step3
+    let entry: usize = whole_vector_count.wrapping_neg() & 3;
+    let n = (whole_vector_count + 3) / 4;
+    let key1 = ld(KEYS.as_ptr());
+    let key2 = ld(KEYS.as_ptr().offset(4));
+    let mut lane1_out: State;
+    let mut lane2_out: State;
+    core::arch::asm!(
+        // ── Preamble ────────────────────────────────────────────────────
+        // Initialize zero register (stays 0 throughout) and tmp accumulators.
+        // These 3 movi + 3 dispatch instructions = 6 instructions before "1:" (step0).
+        // "1:" is therefore at PC(adr) + 20 bytes, so adr correctly encodes that offset.
+        "movi {zero}.2d, #0",       // [+0]
+        "movi {tmp1}.2d, #0",       // [+4]
+        "movi {tmp2}.2d, #0",       // [+8]
+        "adr {addr}, 1f",           // [+12] addr = address of step0 ("1:")
+        "add {addr}, {addr}, {entry}, lsl #4", // [+16] addr += entry * 16 → step[entry]
+        "br {addr}",                // [+20] jump into the Duff's device
+
+        // ── Loop top (2nd+ iterations): reset accumulators, fall through to step 0 ──
+        "0:",
+        "movi {tmp1}.2d, #0",       // [+24]
+        "movi {tmp2}.2d, #0",       // [+28]
+
+        // ── Step 0: load → tmp1  (entry=0 jumps here; offset = "1:" + 0*16) ──────
+        // Note: on AArch64, the size qualifier belongs on the register operand, not the
+        // instruction mnemonic.  Correct: `aese v0.16b, v1.16b`  (not `aese.16b v0.16b`).
+        "1:",
+        "ldr {data:q}, [{ptr}], #16",
+        "aese {tmp1}.16b, {zero}.16b",
+        "aesmc {tmp1}.16b, {tmp1}.16b",
+        "eor {tmp1}.16b, {tmp1}.16b, {data}.16b",
+
+        // ── Step 1: load → tmp2  (entry=1 jumps here; offset = "1:" + 1*16) ──────
+        "ldr {data:q}, [{ptr}], #16",
+        "aese {tmp2}.16b, {zero}.16b",
+        "aesmc {tmp2}.16b, {tmp2}.16b",
+        "eor {tmp2}.16b, {tmp2}.16b, {data}.16b",
+
+        // ── Step 2: load → tmp1  (entry=2 jumps here; offset = "1:" + 2*16) ──────
+        "ldr {data:q}, [{ptr}], #16",
+        "aese {tmp1}.16b, {zero}.16b",
+        "aesmc {tmp1}.16b, {tmp1}.16b",
+        "eor {tmp1}.16b, {tmp1}.16b, {data}.16b",
+
+        // ── Step 3: load → tmp2  (entry=3 jumps here; offset = "1:" + 3*16) ──────
+        "ldr {data:q}, [{ptr}], #16",
+        "aese {tmp2}.16b, {zero}.16b",
+        "aesmc {tmp2}.16b, {tmp2}.16b",
+        "eor {tmp2}.16b, {tmp2}.16b, {data}.16b",
+
+        // ── Combine: lane1 = aes_encrypt_last(aes_encrypt(tmp1, key1), lane1) ────
+        "aese {tmp1}.16b, {zero}.16b",
+        "aesmc {tmp1}.16b, {tmp1}.16b",
+        "eor {tmp1}.16b, {tmp1}.16b, {key1:v}.16b",  // aes_encrypt(tmp1, key1)
+        "aese {tmp1}.16b, {zero}.16b",
+        "eor {lane1:v}.16b, {tmp1}.16b, {lane1:v}.16b", // aes_encrypt_last(., lane1)
+
+        // ── Combine: lane2 = aes_encrypt_last(aes_encrypt(tmp2, key2), lane2) ────
+        "aese {tmp2}.16b, {zero}.16b",
+        "aesmc {tmp2}.16b, {tmp2}.16b",
+        "eor {tmp2}.16b, {tmp2}.16b, {key2:v}.16b",  // aes_encrypt(tmp2, key2)
+        "aese {tmp2}.16b, {zero}.16b",
+        "eor {lane2:v}.16b, {tmp2}.16b, {lane2:v}.16b", // aes_encrypt_last(., lane2)
+
+        // ── Loop control ─────────────────────────────────────────────────────────
+        "subs {n}, {n}, #1",
+        "b.ne 0b",
+
+        ptr   = inout(reg)  ptr    => _,
+        n     = inout(reg)  n      => _,
+        entry = in(reg)     entry,
+        addr  = out(reg)    _,
+        data  = out(vreg)   _,
+        tmp1  = out(vreg)   _,
+        tmp2  = out(vreg)   _,
+        zero  = out(vreg)   _,
+        lane1 = inout(vreg) lane1  => lane1_out,
+        lane2 = inout(vreg) lane2  => lane2_out,
+        key1  = in(vreg)    key1,
+        key2  = in(vreg)    key2,
+        options(nostack),
+    );
+    (lane1_out, lane2_out)
+}
+
+#[inline(always)]
+pub unsafe fn compress_8(mut ptr: *const State, whole_vector_count: usize, hash_vector: State, len: usize) -> (State, *const State, usize) {
+
+    let end_address = ptr.add((whole_vector_count / 8) * 8) as usize;
 
     // Disambiguation vectors
     let mut t1: State = create_empty();
@@ -110,8 +212,9 @@ pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector:
     let len_vec =  vreinterpretq_s8_u32(vdupq_n_u32(len as u32));
     lane1 = vaddq_s8(lane1, len_vec);
     lane2 = vaddq_s8(lane2, len_vec);
+
     // Merge lanes
-    aes_encrypt(lane1, lane2)
+    (aes_encrypt(lane1, lane2), ptr, whole_vector_count % 8)
 }
 
 #[inline(always)]

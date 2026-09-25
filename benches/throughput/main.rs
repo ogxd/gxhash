@@ -44,62 +44,62 @@ fn main() {
     });
 
     // XxHash (twox-hash)
-    benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
-        twox_hash::xxh3::hash64_with_seed(data, seed)
-    });
+    // benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
+    //     twox_hash::xxh3::hash64_with_seed(data, seed)
+    // });
     
-    // FxHash (rustc-hash)
-    benchmark(processor.as_mut(), slice, "FxHasher (rustc_hash)", |data: &[u8], seed: u64| -> u64 {
-        let mut fxhasher = rustc_hash::FxHasher::default();
-        fxhasher.write_u64(seed); // Better way to seed?
-        fxhasher.write(data);
-        fxhasher.finish()
-    });
+    // // FxHash (rustc-hash)
+    // benchmark(processor.as_mut(), slice, "FxHasher (rustc_hash)", |data: &[u8], seed: u64| -> u64 {
+    //     let mut fxhasher = rustc_hash::FxHasher::default();
+    //     fxhasher.write_u64(seed); // Better way to seed?
+    //     fxhasher.write(data);
+    //     fxhasher.finish()
+    // });
 
-    // AHash
-    let ahash_hasher = ahash::RandomState::with_seed(42);
-    benchmark(processor.as_mut(), slice, "AHash", |data: &[u8], _: i32| -> u64 {
-        ahash_hasher.hash_one(data)
-    });
+    // // AHash
+    // let ahash_hasher = ahash::RandomState::with_seed(42);
+    // benchmark(processor.as_mut(), slice, "AHash", |data: &[u8], _: i32| -> u64 {
+    //     ahash_hasher.hash_one(data)
+    // });
 
-    // T1ha0
-    benchmark(processor.as_mut(), slice, "T1ha0", |data: &[u8], seed: u64| -> u64 {
-        t1ha::t1ha0(data, seed)
-    });
+    // // T1ha0
+    // benchmark(processor.as_mut(), slice, "T1ha0", |data: &[u8], seed: u64| -> u64 {
+    //     t1ha::t1ha0(data, seed)
+    // });
 
-    // FoldHash
-    let foldhash_hasher: foldhash::quality::RandomState = foldhash::quality::RandomState::default();
-    benchmark(processor.as_mut(), slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
-        foldhash_hasher.hash_one(data)
-    });
+    // // FoldHash
+    // let foldhash_hasher: foldhash::quality::RandomState = foldhash::quality::RandomState::default();
+    // benchmark(processor.as_mut(), slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
+    //     foldhash_hasher.hash_one(data)
+    // });
 
-    // FNV-1a
-    benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
-        let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
-        fnv_hasher.write(data);
-        fnv_hasher.finish()
-    });
+    // // FNV-1a
+    // benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
+    //     let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
+    //     fnv_hasher.write(data);
+    //     fnv_hasher.finish()
+    // });
 
-    // MetroHash
-    benchmark(processor.as_mut(), slice, "MetroHash", |data: &[u8], seed: i32| -> u64 {
-        let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
-        metrohash_hasher.write(data);
-        metrohash_hasher.finish()
-    });
+    // // MetroHash
+    // benchmark(processor.as_mut(), slice, "MetroHash", |data: &[u8], seed: i32| -> u64 {
+    //     let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
+    //     metrohash_hasher.write(data);
+    //     metrohash_hasher.finish()
+    // });
 
-    // Don't benchmark theses when plotting because they're too slow resulting in the Y-axis too zoomed-out
-    if cfg!(not(feature = "bench-plot")) {
-        // HighwayHash
-        benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
-            use highway::{HighwayHasher, HighwayHash};
-            HighwayHasher::default().hash64(data)
-        });
+    // // Don't benchmark theses when plotting because they're too slow resulting in the Y-axis too zoomed-out
+    // if cfg!(not(feature = "bench-plot")) {
+    //     // HighwayHash
+    //     benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
+    //         use highway::{HighwayHasher, HighwayHash};
+    //         HighwayHasher::default().hash64(data)
+    //     });
 
-        // SeaHash
-        benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
-            seahash::hash_seeded(data, seed, 0, 0, 0)
-        });
-    }
+    //     // SeaHash
+    //     benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
+    //         seahash::hash_seeded(data, seed, 0, 0, 0)
+    //     });
+    // }
 
     processor.finish();
 

@@ -1,5 +1,5 @@
 #![feature(portable_simd)]
-#![feature(core_intrinsics)]
+// #![feature(core_intrinsics)]
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::simd::*;
@@ -59,12 +59,12 @@ mod arch {
         vandq_s8(oob_vector, vreinterpretq_s8_u8(mask))
     }
 
-    #[inline(always)]
-    pub unsafe fn simd_masked_load(data: *const State, len: usize) -> State {
-        let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
-        let mask = vreinterpretq_s8_u8(vcgtq_s8(vdupq_n_s8(len as i8), indices));
-        std::intrinsics::simd::simd_masked_load(mask, data as *const i8, vdupq_n_s8(len as i8))
-    }
+    // #[inline(always)]
+    // pub unsafe fn simd_masked_load(data: *const State, len: usize) -> State {
+    //     let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
+    //     let mask = vreinterpretq_s8_u8(vcgtq_s8(vdupq_n_s8(len as i8), indices));
+    //     std::intrinsics::simd::simd_masked_load(mask, data as *const i8, vdupq_n_s8(len as i8))
+    // }
 
     #[inline(always)]
     pub unsafe fn portable_simd(data: *const State, len: usize) -> State {
@@ -196,14 +196,14 @@ fn benchmark(c: &mut Criterion) {
             })
         });
 
-        group.bench_function(format!("simd_masked_load ({})", len), |b| {
-            b.iter(|| unsafe {
-                black_box(arch::simd_masked_load(
-                    black_box(&test_data as *const arch::State),
-                    black_box(len),
-                ))
-            })
-        });
+        // group.bench_function(format!("simd_masked_load ({})", len), |b| {
+        //     b.iter(|| unsafe {
+        //         black_box(arch::simd_masked_load(
+        //             black_box(&test_data as *const arch::State),
+        //             black_box(len),
+        //         ))
+        //     })
+        // });
 
         group.bench_function(format!("portable_simd ({})", len), |b| {
             b.iter(|| unsafe {

@@ -70,6 +70,47 @@ pub unsafe fn ld(array: *const u32) -> State {
     _mm_loadu_si128(array as *const State)
 }
 
+/// Duff's device via Rust labeled blocks (x86 instructions are variable-width so a
+/// computed jump like ARM's `adr+lsl+br` isn't clean; labeled blocks are equivalent here).
+#[inline(always)]
+pub unsafe fn duff_compress(
+    mut ptr: *const State,
+    mut lane1: State,
+    mut lane2: State,
+    whole_vector_count: usize,
+) -> (State, State) {
+    let mut entry = whole_vector_count % 4;
+    let mut n = (whole_vector_count + 3) / 4;
+    'duff: loop {
+        let mut tmp1 = create_empty();
+        let mut tmp2 = create_empty();
+        'exec3: {
+            'exec2: {
+                'exec1: {
+                    'exec0: {
+                        match entry {
+                            1 => break 'exec3,
+                            2 => break 'exec2,
+                            3 => break 'exec1,
+                            _ => {}
+                        }
+                    }
+                    { let v = load_unaligned(ptr); ptr = ptr.offset(1); tmp1 = aes_encrypt(tmp1, v); }
+                }
+                { let v = load_unaligned(ptr); ptr = ptr.offset(1); tmp2 = aes_encrypt(tmp2, v); }
+            }
+            { let v = load_unaligned(ptr); ptr = ptr.offset(1); tmp1 = aes_encrypt(tmp1, v); }
+        }
+        { let v = load_unaligned(ptr); ptr = ptr.offset(1); tmp2 = aes_encrypt(tmp2, v); }
+        lane1 = aes_encrypt_last(aes_encrypt(tmp1, ld(KEYS.as_ptr())), lane1);
+        lane2 = aes_encrypt_last(aes_encrypt(tmp2, ld(KEYS.as_ptr().offset(4))), lane2);
+        entry = 0;
+        n -= 1;
+        if n == 0 { break 'duff; }
+    }
+    (lane1, lane2)
+}
+
 #[cfg(not(feature = "hybrid"))]
 #[inline(always)]
 pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
