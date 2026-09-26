@@ -9,8 +9,8 @@ const PAGE_SIZE: usize = 0x1000;
 
 #[inline(always)]
 unsafe fn get_partial(p: *const State, len: usize) -> State {
-    // Safety check
-    if check_same_page(p) {
+    // Safety check. Miri can't run the inline assembly of the read beyond the input, so it always takes the other path.
+    if !cfg!(miri) && check_same_page(p) {
         get_partial_unsafe(p, len)
     } else {
         cold_path();

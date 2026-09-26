@@ -4,12 +4,12 @@ authors = ["Olivier Giniaux"]
 version = "4.0.0"
 edition = "2021"
 rust-version = "1.89"
-description = "GxHash non-cryptographic algorithm"
+description = "Fast, high-quality non-cryptographic hash function and Hasher for HashMap and HashSet, using AES instructions on x86_64 and ARM"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/ogxd/gxhash"
 documentation = "https://docs.rs/gxhash/latest/gxhash"
-keywords = ["hash", "hasher", "hashmap", "no-std", "crypto"]
+keywords = ["hash", "hasher", "hashmap", "simd", "no-std"]
 categories = ["algorithms", "data-structures", "no-std"]
 exclude = ["article/*"]
 

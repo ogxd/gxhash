@@ -16,9 +16,9 @@ jobs:
       matrix:
         include:
         - name: "aarch64"
-          runner: "buildjet-2vcpu-ubuntu-2204-arm"
+          runner: "ubuntu-24.04-arm"
         - name: "x86_64"
-          runner: "buildjet-2vcpu-ubuntu-2204"
+          runner: "ubuntu-latest"
 
     runs-on: ${{ matrix.runner }}
 
@@ -33,18 +33,25 @@ jobs:
         cat /proc/cpuinfo | grep 'model name' | uniq
         cargo rustc -- --version
 
+    # Plots the throughput to an .svg, and writes the results as markdown tables, which the commit job puts in the README
     - name: Benchmark
-      run: cargo bench --bench throughput --features bench-plot
+      run: |
+        cargo bench --bench hashset > hashset.md
+        cargo bench --bench throughput --features bench-plot,bench-md > throughput.md
+        cpu=$(lscpu | sed -n 's/^Model name: *//p' | head -n 1)
+        { echo "$cpu, $(rustc --version | cut -d ' ' -f 1-2), $(date -u +%F)"; echo; cat hashset.md; echo; cat throughput.md; } > benches/throughput/${{ matrix.name }}.md
 
     - uses: actions/upload-artifact@v4
       with:
         name: artifact-${{ matrix.name }}
-        path: benches/throughput/${{ matrix.name }}.svg
+        path: |
+          benches/throughput/${{ matrix.name }}.svg
+          benches/throughput/${{ matrix.name }}.md
         overwrite: true
 
   commit:
     name: Commit & Push
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     needs: [benchmark]
 
     permissions:
@@ -59,10 +66,24 @@ jobs:
         path: benches/throughput
         merge-multiple: true
 
+    # Replaces the results of each architecture in the README, between its <!-- bench:arch --> markers
+    - name: Update README
+      run: |
+        python3 - <<'PY'
+        import pathlib, re
+        readme = pathlib.Path("README.md")
+        text = readme.read_text()
+        for results in pathlib.Path("benches/throughput").glob("*.md"):
+            block = results.read_text().strip()
+            pattern = rf"(<!-- bench:{results.stem} -->\n).*?(\n<!-- /bench:{results.stem} -->)"
+            text = re.sub(pattern, lambda m: m[1] + block + m[2], text, flags=re.S)
+        readme.write_text(text)
+        PY
+
     - name: Commit & Push Benchmark Results
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        file_pattern: '*.svg'
+        file_pattern: 'README.md benches/throughput/*.svg'
         commit_message: Update Benchmark Results
         commit_user_name: Benchmark Bot
         commit_user_email: benchmark-bot@noreply.com

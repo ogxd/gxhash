@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![cfg_attr(not(feature = "std"), no_std)]
 // Parts of the backends are only used by the Hasher, which requires std
 #![cfg_attr(not(feature = "std"), allow(dead_code))]

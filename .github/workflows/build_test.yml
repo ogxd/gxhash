@@ -54,3 +54,33 @@ jobs:
 
     - name: Build (no_std)
       run: cargo build --release --no-default-features
+
+  # Checks the unsafe code for undefined behavior. Miri can't run the inline assembly that loads beyond the input, so it
+  # runs an equivalent that copies the input instead (see load_end). It doesn't support ARM AES intrinsics.
+  miri:
+    name: Miri ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: "AES-NI"
+          rustflags: "-C target-feature=+aes"
+        - name: "AES-NI + VAES"
+          rustflags: "-C target-feature=+aes,+ssse3,+vaes,+avx2"
+        # No AES instructions enabled at compile time, and Miri detects none at runtime
+        - name: "Software"
+          rustflags: "-C target-cpu=x86-64"
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Miri
+      run: rustup toolchain install nightly --profile minimal --component miri
+
+    - name: Test
+      run: cargo +nightly miri test --lib
+      env:
+        RUSTFLAGS: ${{ matrix.rustflags }}

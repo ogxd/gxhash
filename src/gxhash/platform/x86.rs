@@ -75,12 +75,23 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 // Reading 16 bytes from data would cross a page boundary. Instead, we read the 16 bytes ending at the end of
 // the input: they belong to the page of the first and/or last byte of the input, so the read is always valid.
 // The input bytes are then moved to the front of the vector, followed by padding bytes set to the input length.
+#[cfg(not(miri))]
 #[inline(always)]
 unsafe fn load_end(data: *const State, len: usize) -> State {
     let end_vector: State;
     let start = (data as *const u8).add(len).sub(VECTOR_SIZE);
     core::arch::asm!("movdqu {0}, [{1}]", out(xmm_reg) end_vector, in(reg) start, options(nostack, preserves_flags, readonly));
     end_vector
+}
+
+// Miri can't run inline assembly. This builds the same vector, but with the bytes before the input set to 0 instead of
+// read, which makes no difference as they are masked afterward.
+#[cfg(miri)]
+#[inline(always)]
+unsafe fn load_end(data: *const State, len: usize) -> State {
+    let mut buffer = [0u8; VECTOR_SIZE];
+    core::ptr::copy_nonoverlapping(data as *const u8, buffer.as_mut_ptr().add(VECTOR_SIZE - len), len);
+    _mm_loadu_si128(buffer.as_ptr() as *const State)
 }
 
 #[cfg(target_feature = "ssse3")]

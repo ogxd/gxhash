@@ -175,6 +175,7 @@ mod tests {
     use rand::Rng;
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Too slow for Miri
     fn all_blocks_are_consumed() {
         for s in 1..1200 {
             let mut bytes = vec![42u8; s];
@@ -208,6 +209,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Too slow for Miri
     fn does_not_hash_outside_of_bounds() {
         let mut bytes = [0u8; 1200];
         const OFFSET: usize = 100;
@@ -222,6 +224,18 @@ mod tests {
             rng.fill(&mut bytes[i+OFFSET..]);
             let new_hash = gxhash32(&bytes[OFFSET..i+OFFSET], 42);
             assert_eq!(new_hash, hash, "Hashed changed for input size {i} ({new_hash} != {hash})");
+        }
+    }
+
+    // Each input is an allocation of its exact size, so that Miri reports any read outside of it. The lengths cover
+    // all the code paths.
+    #[test]
+    fn reads_stay_in_bounds() {
+        for len in (0..=140).chain(500..=520).chain(2040..=2060) {
+            let input: Vec<u8> = (0..len).map(|i| i as u8).collect();
+            gxhash128(&input, 0);
+            #[cfg(feature = "std")]
+            core::hash::Hasher::write(&mut crate::GxHasher::with_seed(0), &input);
         }
     }
 
@@ -272,6 +286,7 @@ mod tests {
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
     #[test]
+    #[cfg_attr(miri, ignore)] // Too slow for Miri
     fn backends_compute_the_same_hashes() {
         if !hw::has_aes() {
             return;
@@ -316,6 +331,7 @@ mod tests {
     // Keys with a few bits set, of the same length or not. A difference of a few bits that went through a
     // single AES round is still sparse, and can be cancelled by the sparse difference of another block.
     #[test]
+    #[cfg_attr(miri, ignore)] // Too slow for Miri
     fn sparse_inputs_do_not_collide() {
         fn flip_bits(key: &mut [u8], start: usize, bits_left: usize, hashes: &mut Vec<u64>) {
             hashes.push(gxhash64(key, 0));

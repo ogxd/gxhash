@@ -27,28 +27,20 @@ fn main() {
     // Fill with random bytes
     rng.fill(slice);
 
-    let mut processor: Box<dyn ResultProcessor> = if cfg!(feature = "bench-csv") {
-        Box::new(OutputCsv::default())
-    } else if cfg!(feature = "bench-md") {
-        Box::new(OutputMd::default())
-    } else if cfg!(feature = "bench-plot") {
-        Box::new(OutputPlot::default())
-    } else {
-        Box::new(OutputSimple::default())
-    };
+    let mut results = Results::new();
 
     // GxHash
-    benchmark(processor.as_mut(), slice, "GxHash", |data: &[u8], seed: i64| -> u64 {
+    benchmark(&mut results, slice, "GxHash", |data: &[u8], seed: i64| -> u64 {
         gxhash64(data, seed)
     });
 
     // XxHash (twox-hash)
-    benchmark(processor.as_mut(), slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
+    benchmark(&mut results, slice, "XxHash (XXH3)", |data: &[u8], seed: u64| -> u64 {
         twox_hash::xxh3::hash64_with_seed(data, seed)
     });
     
     // FxHash (rustc-hash)
-    benchmark(processor.as_mut(), slice, "FxHasher (rustc_hash)", |data: &[u8], seed: u64| -> u64 {
+    benchmark(&mut results, slice, "FxHasher (rustc_hash)", |data: &[u8], seed: u64| -> u64 {
         let mut fxhasher = rustc_hash::FxHasher::default();
         fxhasher.write_u64(seed); // Better way to seed?
         fxhasher.write(data);
@@ -57,30 +49,30 @@ fn main() {
 
     // AHash
     let ahash_hasher = ahash::RandomState::with_seed(42);
-    benchmark(processor.as_mut(), slice, "AHash", |data: &[u8], _: i32| -> u64 {
+    benchmark(&mut results, slice, "AHash", |data: &[u8], _: i32| -> u64 {
         ahash_hasher.hash_one(data)
     });
 
     // T1ha0
-    benchmark(processor.as_mut(), slice, "T1ha0", |data: &[u8], seed: u64| -> u64 {
+    benchmark(&mut results, slice, "T1ha0", |data: &[u8], seed: u64| -> u64 {
         t1ha::t1ha0(data, seed)
     });
 
     // FoldHash
     let foldhash_hasher: foldhash::quality::RandomState = foldhash::quality::RandomState::default();
-    benchmark(processor.as_mut(), slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
+    benchmark(&mut results, slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
         foldhash_hasher.hash_one(data)
     });
 
     // FNV-1a
-    benchmark(processor.as_mut(), slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
+    benchmark(&mut results, slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
         let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
         fnv_hasher.write(data);
         fnv_hasher.finish()
     });
 
     // MetroHash
-    benchmark(processor.as_mut(), slice, "MetroHash", |data: &[u8], seed: i32| -> u64 {
+    benchmark(&mut results, slice, "MetroHash", |data: &[u8], seed: i32| -> u64 {
         let mut metrohash_hasher = metrohash::MetroHash64::with_seed(seed as u64);
         metrohash_hasher.write(data);
         metrohash_hasher.finish()
@@ -89,27 +81,36 @@ fn main() {
     // Don't benchmark theses when plotting because they're too slow resulting in the Y-axis too zoomed-out
     if cfg!(not(feature = "bench-plot")) {
         // HighwayHash
-        benchmark(processor.as_mut(), slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
+        benchmark(&mut results, slice, "HighwayHash", |data: &[u8], _: i32| -> u64 {
             use highway::{HighwayHasher, HighwayHash};
             HighwayHasher::default().hash64(data)
         });
 
         // SeaHash
-        benchmark(processor.as_mut(), slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
+        benchmark(&mut results, slice, "SeaHash", |data: &[u8], seed: u64| -> u64 {
             seahash::hash_seeded(data, seed, 0, 0, 0)
         });
     }
 
-    processor.finish();
+    if cfg!(feature = "bench-csv") {
+        print_csv(&results);
+    }
+    if cfg!(feature = "bench-md") {
+        print_md(&results);
+    }
+    if cfg!(feature = "bench-plot") {
+        plot(&results);
+    }
 
     // Free benchmark data
     unsafe { dealloc(ptr, layout) };
 }
 
-fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str, delegate: F)
+fn benchmark<F, S>(results: &mut Results, data: &[u8], name: &str, delegate: F)
     where F: Fn(&[u8], S) -> u64, S: Default + TryFrom<u128> + TryInto<usize> + Clone + Copy
 {
-    processor.on_start(name);
+    eprintln!("{}", name);
+    let mut throughputs = vec![];
     for i in 2.. {
         let len = usize::pow(2, i);
         if len > data.len() {
@@ -136,9 +137,10 @@ fn benchmark<F, S>(processor: &mut dyn ResultProcessor, data: &[u8], name: &str,
         let average_duration_s = calculate_average_without_outliers(&mut durations_s);
         let throughput = (len as f64) / (1024f64 * 1024f64 * (average_duration_s / UNROLL_FACTOR as f64 / ITERATIONS as f64));
 
-        processor.on_result(len, throughput);
+        eprintln!("  | {} > {:.2}", len, throughput);
+        throughputs.push((len, throughput));
     }
-    processor.on_end();
+    results.push((name.to_string(), throughputs));
 }
 
 fn time<F, S, const N: usize>(delegate: F, slice: &[u8], seed: S) -> Duration
