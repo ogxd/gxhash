@@ -119,11 +119,7 @@ impl ResultProcessor for OutputPlot {
     fn on_end(&mut self) {}
 
     fn finish(&self) {
-        let mut arch = std::env::consts::ARCH.to_string();
-        if cfg!(feature = "hybrid") {
-            println!("Hybrid feature enabled");
-            arch += "-hybrid";
-        }
+        let arch = std::env::consts::ARCH;
         let file_name = format!("benches/throughput/{}.svg", arch);
 
         let canvas = SVGBackend::new(file_name.as_str(), (600, 400)).into_drawing_area();

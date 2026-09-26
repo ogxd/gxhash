@@ -1,26 +1,70 @@
-#[cfg(not(any(all(target_feature = "aes", target_feature = "sse2"), docsrs, doc)))] // docs.rs bypasses the target_feature check
-compile_error!{"Gxhash requires aes and sse2 intrinsics. Make sure the processor supports it and build with RUSTFLAGS=\"-C target-cpu=native\" or RUSTFLAGS=\"-C target-feature=+aes,+sse2\"."}
-
-#[cfg(all(feature = "hybrid", not(all(target_feature = "aes", target_feature = "avx2"))))]
-compile_error!{"Hybrid feature is only available on x86 processors with aes and avx2 intrinsics."}
-
 #[cfg(target_arch = "x86")]
 use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
+use core::sync::atomic::{AtomicU8, Ordering};
 
-use super::*;
+use super::{cold_path, Run, KEYS, VECTOR_SIZE};
+
+// Whether the features of this backend are enabled at compile time, in which case it is inlined
+pub(crate) const STATIC: bool = cfg!(all(target_feature = "aes", target_feature = "sse2"));
+
+// Functions of the algorithm that are not inlined are compiled with the features of this backend, as they may
+// not be enabled at compile time. The ones marked inline may still be inlined in callers with these features.
+macro_rules! with_features {
+    (inline: $($item:item)*) => { $(#[target_feature(enable = "aes,sse2")] #[inline] $item)* };
+    ($($item:item)*) => { $(#[target_feature(enable = "aes,sse2")] #[inline(never)] $item)* };
+}
+
+#[path = "../algorithm.rs"]
+mod algorithm;
+pub(crate) use algorithm::*;
+
+// CPU features, detected once at runtime (0 until then)
+static FEATURES: AtomicU8 = AtomicU8::new(0);
+const DETECTED: u8 = 1;
+const AES: u8 = 2;
+const WIDE_AES: u8 = 4;
+
+#[inline(always)]
+fn features() -> u8 {
+    match FEATURES.load(Ordering::Relaxed) {
+        0 => detect(),
+        features => features,
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn detect() -> u8 {
+    #[cfg(feature = "std")]
+    let features = DETECTED
+        | if std::is_x86_feature_detected!("aes") { AES } else { 0 }
+        | if std::is_x86_feature_detected!("vaes") && std::is_x86_feature_detected!("avx2") { WIDE_AES } else { 0 };
+    // Without std, 256-bit AES is not detected, as it also requires checking that the OS saves 256-bit registers
+    #[cfg(not(feature = "std"))]
+    #[allow(unused_unsafe)] // Safe since Rust 1.94
+    let features = DETECTED | if unsafe { __cpuid(1) }.ecx & (1 << 25) != 0 { AES } else { 0 };
+    FEATURES.store(features, Ordering::Relaxed);
+    features
+}
+
+#[inline(always)]
+pub(crate) fn has_aes() -> bool {
+    STATIC || features() & AES != 0
+}
+
+// Whether 256-bit AES instructions (VAES) are available, to process two lanes per instruction
+#[inline(always)]
+pub(crate) fn has_wide_aes() -> bool {
+    cfg!(all(target_feature = "vaes", target_feature = "avx2")) || features() & WIDE_AES != 0
+}
 
 pub type State = __m128i;
 
 #[inline(always)]
 pub unsafe fn create_empty() -> State {
     _mm_setzero_si128()
-}
-
-#[inline(always)]
-pub unsafe fn create_seed(seed: i64) -> State {
-    _mm_set1_epi64x(seed)
 }
 
 #[inline(always)]
@@ -131,11 +175,11 @@ pub unsafe fn load_len(len: usize) -> State {
     load_u64(len as u64)
 }
 
-// Same as the generic compress_16, but each 256-bit instruction processes two consecutive lanes.
-#[cfg(feature = "hybrid")]
+// Same as compress_16, but each 256-bit instruction processes two consecutive lanes
 #[allow(improper_ctypes_definitions)]
+#[target_feature(enable = "aes,vaes,avx2")]
 #[inline(never)]
-pub unsafe extern "C" fn compress_16<const GXHASH: bool>(ptr: *const State, len: usize, seed: State) -> State {
+pub unsafe extern "C" fn compress_16_wide<const GXHASH: bool>(ptr: *const State, len: usize, seed: State) -> State {
     let ptr = ptr as *const __m256i;
     let last = ptr.cast::<u8>().add(len - 16 * VECTOR_SIZE).cast::<__m256i>();
     let seed = _mm256_set_m128i(seed, seed);
@@ -163,26 +207,11 @@ pub unsafe extern "C" fn compress_16<const GXHASH: bool>(ptr: *const State, len:
         lanes[i] = _mm256_aesenc_epi128(_mm256_aesenc_epi128(lanes[i], zero), lanes[i + 2]);
     }
     let lanes = _mm256_aesenc_epi128(_mm256_aesenc_epi128(lanes[0], zero), lanes[1]);
-    let hash = crate::gxhash::merge(_mm256_castsi256_si128(lanes), _mm256_extracti128_si256(lanes, 1));
-    crate::gxhash::finish::<GXHASH>(xor(hash, load_len(len)))
+    let hash = merge(_mm256_castsi256_si128(lanes), _mm256_extracti128_si256(lanes, 1));
+    finish::<GXHASH>(xor(hash, load_len(len)))
 }
 
-// Values are loaded in the lowest bits of the vector, the rest being zeroes.
-#[inline(always)]
-pub unsafe fn load_u8(x: u8) -> State {
-    _mm_cvtsi32_si128(x as i32)
-}
-
-#[inline(always)]
-pub unsafe fn load_u16(x: u16) -> State {
-    _mm_cvtsi32_si128(x as i32)
-}
-
-#[inline(always)]
-pub unsafe fn load_u32(x: u32) -> State {
-    _mm_cvtsi32_si128(x as i32)
-}
-
+// Values are loaded in the lowest bits of the vector, the rest being zeroes
 #[inline(always)]
 pub unsafe fn load_u64(x: u64) -> State {
     _mm_set_epi64x(0, x as i64)
@@ -192,29 +221,4 @@ pub unsafe fn load_u64(x: u64) -> State {
 pub unsafe fn load_u128(x: u128) -> State {
     let ptr = &x as *const u128 as *const State;
     _mm_loadu_si128(ptr)
-}
-
-#[inline(always)]
-pub unsafe fn load_i8(x: i8) -> State {
-    load_u8(x as u8)
-}
-
-#[inline(always)]
-pub unsafe fn load_i16(x: i16) -> State {
-    load_u16(x as u16)
-}
-
-#[inline(always)]
-pub unsafe fn load_i32(x: i32) -> State {
-    load_u32(x as u32)
-}
-
-#[inline(always)]
-pub unsafe fn load_i64(x: i64) -> State {
-    load_u64(x as u64)
-}
-
-#[inline(always)]
-pub unsafe fn load_i128(x: i128) -> State {
-    load_u128(x as u128)
 }

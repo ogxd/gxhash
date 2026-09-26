@@ -1,23 +1,49 @@
-#[cfg(not(any(all(target_feature = "aes", target_feature = "neon"), docsrs)))] // docs.rs bypasses the target_feature check
-compile_error!{"Gxhash requires aes and neon intrinsics. Make sure the processor supports it and build with RUSTFLAGS=\"-C target-cpu=native\" or RUSTFLAGS=\"-C target-feature=+aes,+neon\"."}
+// Primitives call intrinsics that require the features of this backend. They are not inlined in the primitives,
+// but in the functions compiled with these features that the primitives are inlined in (see with_features).
+#![allow(unknown_lints, inline_always_mismatching_target_features)]
 
-#[cfg(target_arch = "arm")]
-use core::arch::arm::*;
-#[cfg(target_arch = "aarch64")]
+#[cfg(not(any(feature = "std", all(target_feature = "aes", target_feature = "neon"))))]
+compile_error!{"Without the std feature, gxhash requires aes and neon intrinsics. Enable the std feature for runtime detection, or build with RUSTFLAGS=\"-C target-cpu=native\" or RUSTFLAGS=\"-C target-feature=+aes,+neon\"."}
+
 use core::arch::aarch64::*;
 
-use super::*;
+use super::{cold_path, Run, KEYS, VECTOR_SIZE};
+
+// Whether the features of this backend are enabled at compile time, in which case it is inlined
+pub(crate) const STATIC: bool = cfg!(all(target_feature = "aes", target_feature = "neon"));
+
+// Functions of the algorithm that are not inlined are compiled with the features of this backend, as they may
+// not be enabled at compile time. The ones marked inline may still be inlined in callers with these features.
+macro_rules! with_features {
+    (inline: $($item:item)*) => { $(#[target_feature(enable = "aes,neon")] #[inline] $item)* };
+    ($($item:item)*) => { $(#[target_feature(enable = "aes,neon")] #[inline(never)] $item)* };
+}
+
+#[path = "../algorithm.rs"]
+mod algorithm;
+pub(crate) use algorithm::*;
+
+// Without std, the features must be enabled at compile time (see the compile_error above)
+#[inline(always)]
+pub(crate) fn has_aes() -> bool {
+    #[cfg(feature = "std")]
+    return STATIC || std::arch::is_aarch64_feature_detected!("aes");
+    #[cfg(not(feature = "std"))]
+    return STATIC;
+}
+
+// No wider AES instructions on this platform
+#[inline(always)]
+pub(crate) fn has_wide_aes() -> bool {
+    false
+}
+pub(crate) use algorithm::compress_16 as compress_16_wide;
 
 pub type State = int8x16_t;
 
 #[inline(always)]
 pub unsafe fn create_empty() -> State {
     vdupq_n_s8(0)
-}
-
-#[inline(always)]
-pub unsafe fn create_seed(seed: i64) -> State {
-    vreinterpretq_s8_s64(vdupq_n_s64(seed))
 }
 
 #[inline(always)]
@@ -133,22 +159,7 @@ pub unsafe fn ld(array: *const u32) -> State {
     vreinterpretq_s8_u32(vld1q_u32(array))
 }
 
-// Values are loaded in the lowest bits of the vector, the rest being zeroes.
-#[inline(always)]
-pub unsafe fn load_u8(x: u8) -> State {
-    load_u64(x as u64)
-}
-
-#[inline(always)]
-pub unsafe fn load_u16(x: u16) -> State {
-    load_u64(x as u64)
-}
-
-#[inline(always)]
-pub unsafe fn load_u32(x: u32) -> State {
-    load_u64(x as u64)
-}
-
+// Values are loaded in the lowest bits of the vector, the rest being zeroes
 #[inline(always)]
 pub unsafe fn load_u64(x: u64) -> State {
     // fmov zeroes the upper half of the vector. LLVM otherwise emits a movi + mov pair for this.
@@ -161,29 +172,4 @@ pub unsafe fn load_u64(x: u64) -> State {
 pub unsafe fn load_u128(x: u128) -> State {
     let ptr = &x as *const u128 as *const i8;
     vld1q_s8(ptr)
-}
-
-#[inline(always)]
-pub unsafe fn load_i8(x: i8) -> State {
-    load_u8(x as u8)
-}
-
-#[inline(always)]
-pub unsafe fn load_i16(x: i16) -> State {
-    load_u16(x as u16)
-}
-
-#[inline(always)]
-pub unsafe fn load_i32(x: i32) -> State {
-    load_u32(x as u32)
-}
-
-#[inline(always)]
-pub unsafe fn load_i64(x: i64) -> State {
-    load_u64(x as u64)
-}
-
-#[inline(always)]
-pub unsafe fn load_i128(x: i128) -> State {
-    load_u128(x as u128)
 }

@@ -1,6 +1,5 @@
-use std::hash::{BuildHasher, Hasher};
+use std::hash::{BuildHasher, Hash, Hasher};
 
-use crate::gxhash::platform::*;
 use crate::gxhash::*;
 
 /// A `Hasher` for hashing an arbitrary stream of bytes.
@@ -47,7 +46,7 @@ impl Default for GxHasher {
     /// ```
     #[inline]
     fn default() -> GxHasher {
-        GxHasher::with_state(unsafe { create_empty() })
+        GxHasher::with_state(from_u128(0))
     }
 }
 
@@ -75,79 +74,77 @@ impl GxHasher {
     #[inline]
     pub fn with_seed(seed: i64) -> GxHasher {
         // Use gxhash64 to generate an initial state from a seed
-        GxHasher::with_state(unsafe { create_seed(seed) })
+        GxHasher::with_state(create_seed(seed))
     }
 
     /// Finish this hasher and return the hashed value as a 128-bit
     /// unsigned integer.
     #[inline]
     pub fn finish_u128(&self) -> u128 {
-        debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
-
-        unsafe {
-            let p = &finalize(self.state) as *const State as *const u128;
-            *p
-        }
+        to_u128(dispatched::finalize(self.state))
     }
 }
 
-macro_rules! write {
-    ($name:ident, $type:ty, $load:expr) => {
-        #[inline]
-        fn $name(&mut self, value: $type) {
-            // The value of the previous write went through two rounds when it meets this one.
-            // The key breaks the symmetry of states such as the one of a zero seed.
-            self.state = unsafe { aes_encrypt(aes_encrypt(self.state, $load(value)), ld(KEYS.as_ptr())) };
-        }
-    }
-}
-
-impl Hasher for GxHasher {
-    #[inline]
-    fn finish(&self) -> u64 {
-        unsafe {
-            let p = &finalize(self.state) as *const State as *const u64;
-            *p
-        }
-    }
-
-    #[inline]
-    fn write(&mut self, bytes: &[u8]) {
-        // The state seeds the compression, after a round so that the previous write went through two
-        // rounds when it meets these bytes. Finalization only happens in finish.
-        self.state = unsafe {
-            let hash = compress_all::<false>(bytes, aes_encrypt(self.state, ld(KEYS.as_ptr())));
-            if bytes.len() < VECTOR_SIZE {
-                hash
-            } else {
-                // See compress_all: the length it includes must go through a round before the next write
-                aes_encrypt(hash, create_empty())
+// Implements Hasher with the operations of a backend. Integers are zero-extended to 64 bits, and signed integers are
+// written as unsigned integers (default implementation).
+macro_rules! impl_hasher {
+    ($hasher:ident, $($ops:ident)::+) => {
+        #[allow(unused_unsafe)]
+        impl Hasher for $hasher {
+            #[inline]
+            fn finish(&self) -> u64 {
+                to_u128(unsafe { $($ops)::+::finalize(self.state) }) as u64
             }
-        };
-    }
 
-    write!(write_u8, u8, load_u8);
-    write!(write_u16, u16, load_u16);
-    write!(write_u32, u32, load_u32);
-    write!(write_u64, u64, load_u64);
-    write!(write_u128, u128, load_u128);
-    write!(write_i8, i8, load_i8);
-    write!(write_i16, i16, load_i16);
-    write!(write_i32, i32, load_i32);
-    write!(write_i64, i64, load_i64);
-    write!(write_i128, i128, load_i128);
+            #[inline]
+            fn write(&mut self, bytes: &[u8]) {
+                self.state = unsafe { $($ops)::+::absorb(self.state, bytes) };
+            }
+
+            #[inline]
+            fn write_u8(&mut self, value: u8) {
+                self.write_u64(value as u64);
+            }
+
+            #[inline]
+            fn write_u16(&mut self, value: u16) {
+                self.write_u64(value as u64);
+            }
+
+            #[inline]
+            fn write_u32(&mut self, value: u32) {
+                self.write_u64(value as u64);
+            }
+
+            #[inline]
+            fn write_u64(&mut self, value: u64) {
+                self.state = unsafe { $($ops)::+::absorb_u64(self.state, value) };
+            }
+
+            #[inline]
+            fn write_u128(&mut self, value: u128) {
+                self.state = unsafe { $($ops)::+::absorb_u128(self.state, value) };
+            }
+        }
+    };
 }
+
+impl_hasher!(GxHasher, dispatched);
+
+// Hasher of the hardware backend, once detected at runtime (see hash_one)
+#[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
+struct HwHasher {
+    state: State,
+}
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
+impl_hasher!(HwHasher, hw::outlined);
 
 /// A builder for building GxHasher with randomized seeds by default, for improved DOS resistance.
 #[derive(Clone, Debug)]
 pub struct GxBuildHasher(State);
 
 #[cfg(not(feature = "deterministic"))]
-#[rustversion::before(1.76)]
-use std::collections::hash_map::RandomState;
-
-#[cfg(not(feature = "deterministic"))]
-#[rustversion::since(1.76)]
 use std::hash::RandomState;
 
 impl GxBuildHasher {
@@ -159,7 +156,7 @@ impl GxBuildHasher {
     #[inline]
     pub fn with_seed(seed: i64) -> GxBuildHasher {
         // Use gxhash64 to generate an initial state from a seed
-        GxBuildHasher(unsafe { create_seed(seed) })
+        GxBuildHasher(create_seed(seed))
     }
 }
 
@@ -167,13 +164,10 @@ impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
         #[cfg(feature = "deterministic")]
-        let random_state: u128 = 42;
+        let state = from_u128(42);
         #[cfg(not(feature = "deterministic"))]
-        let random_state = RandomState::new();
-        unsafe {
-            let state: State = std::mem::transmute(random_state);
-            GxBuildHasher(state)
-        }
+        let state = unsafe { std::mem::transmute::<RandomState, State>(RandomState::new()) };
+        GxBuildHasher(state)
     }
 }
 
@@ -183,6 +177,35 @@ impl BuildHasher for GxBuildHasher {
     fn build_hasher(&self) -> GxHasher {
         GxHasher::with_state(self.0)
     }
+
+    // A single runtime dispatch for all the writes of the value, rather than one per write
+    #[inline]
+    fn hash_one<T: Hash>(&self, x: T) -> u64 {
+        with_backend(HashOne(self.0, x))
+    }
+}
+
+struct HashOne<T>(State, T);
+
+impl<T: Hash> Run for HashOne<T> {
+    type Output = u64;
+
+    #[inline(always)]
+    fn run(self) -> u64 {
+        hash_with(GxHasher::with_state(self.0), self.1)
+    }
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
+    #[inline(always)]
+    unsafe fn run_hw(self) -> u64 {
+        hash_with(HwHasher { state: self.0 }, self.1)
+    }
+}
+
+#[inline(always)]
+fn hash_with<H: Hasher, T: Hash>(mut hasher: H, x: T) -> u64 {
+    x.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// A `HashMap` using a (DOS-resistant) [`GxBuildHasher`].
@@ -331,7 +354,7 @@ mod tests {
 
     #[test]
     fn hasher_is_stable() {
-        // Hashes must be the same on all platforms, with or without the hybrid feature
+        // Hashes must be the same on all platforms and backends
         let data: Vec<u8> = (0..300usize).map(|i| (i * 31 + 7) as u8).collect();
         let mut hasher = GxHasher::with_seed(1234);
         hasher.write_u8(1);

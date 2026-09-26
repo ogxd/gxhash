@@ -17,13 +17,8 @@ jobs:
         include:
         - name: "aarch64"
           runner: "buildjet-2vcpu-ubuntu-2204-arm"
-          hybrid: false
         - name: "x86_64"
           runner: "buildjet-2vcpu-ubuntu-2204"
-          hybrid: false
-        - name: "x86_64-hybrid"
-          runner: "buildjet-2vcpu-ubuntu-2204"
-          hybrid: true
 
     runs-on: ${{ matrix.runner }}
 
@@ -33,10 +28,6 @@ jobs:
     - name: Update rust
       run: rustup update
 
-    - name: Switch to nightly rust
-      if: ${{ matrix.hybrid == true }}
-      run: rustup default nightly
-
     - name: Info
       run: |
         cat /proc/cpuinfo | grep 'model name' | uniq
@@ -44,11 +35,6 @@ jobs:
 
     - name: Benchmark
       run: cargo bench --bench throughput --features bench-plot
-      if: ${{ matrix.hybrid == false }}
-
-    - name: Benchmark (hybrid)
-      run: cargo bench --bench throughput --features bench-plot,hybrid
-      if: ${{ matrix.hybrid == true }}
 
     - uses: actions/upload-artifact@v4
       with:
