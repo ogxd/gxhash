@@ -46,12 +46,15 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     // and prevent the compiler from doing any kind of optimization that might change the behavior.
     let mut oob_vector: State;
     core::arch::asm!("ld1 {{v0.16b}}, [{data}]", data = in(reg) data, out("v0") oob_vector, options(nostack, preserves_flags, readonly));
-    let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
-    let len_vec = vdupq_n_s8(len as i8);
-    let mask = vcltq_s8(indices, len_vec);
+    // The mask of the input bytes is a window over a table, which saves a vector op and a vector register
+    let mask = vld1q_u8(PARTIAL_MASKS.as_ptr().add(VECTOR_SIZE - len));
     // Input bytes, followed by padding bytes set to the input length
-    vbslq_s8(mask, oob_vector, len_vec)
+    vbslq_s8(mask, oob_vector, vdupq_n_s8(len as i8))
 }
+
+const PARTIAL_MASKS: [u8; 2 * VECTOR_SIZE] = [
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 #[inline(always)]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a
@@ -95,6 +98,24 @@ pub unsafe fn lane_absorb(mut lane: State, block: State) -> State {
 #[inline(always)]
 pub unsafe fn lane_end(lane: State) -> State {
     lane
+}
+
+// Ends a lane and xors x to it. The result is the xor of the returned pair: on ARM, the xor is deferred so that
+// it can be done by the AESE of the next round, as AESE xors its operands.
+#[inline(always)]
+pub unsafe fn lane_end_xor(lane: State, x: State) -> (State, State) {
+    (lane, x)
+}
+
+// aes_encrypt(data ^ pending, keys). Pins the result to the data register: AESE xors its operands, so LLVM may
+// otherwise write the result in the register of pending, which is then lost if it is a reused constant.
+#[inline(always)]
+pub unsafe fn aes_encrypt_xor(mut data: State, pending: State, keys: State) -> State {
+    core::arch::asm!(
+        "aese {data:v}.16b, {pending:v}.16b",
+        "aesmc {data:v}.16b, {data:v}.16b",
+        data = inout(vreg) data, pending = in(vreg) pending, options(pure, nomem, nostack, preserves_flags));
+    veorq_s8(data, keys)
 }
 
 #[inline(always)]

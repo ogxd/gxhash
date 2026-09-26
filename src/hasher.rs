@@ -343,8 +343,8 @@ mod tests {
         hasher.write(&data[..16]);
         hasher.write(&data[..40]);
         hasher.write(&data[..300]);
-        assert_eq!(0x7811c0405f505958, hasher.finish());
-        assert_eq!(0x47a4a4bc28efc8ac7811c0405f505958, hasher.finish_u128());
+        assert_eq!(0x9b9eb762bf1373aa, hasher.finish());
+        assert_eq!(0xc12991e14a52e3289b9eb762bf1373aa, hasher.finish_u128());
     }
 
     #[test]

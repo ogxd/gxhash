@@ -108,6 +108,19 @@ pub unsafe fn lane_end(lane: State) -> State {
     _mm_aesenc_si128(lane, _mm_setzero_si128())
 }
 
+// Ends a lane and xors x to it. The result is the xor of the returned pair: on x86, AESENC xors its key after
+// the round, so the xor is done by the last round of the lane.
+#[inline(always)]
+pub unsafe fn lane_end_xor(lane: State, x: State) -> (State, State) {
+    (_mm_aesenc_si128(lane, x), _mm_setzero_si128())
+}
+
+// aes_encrypt(data ^ pending, keys)
+#[inline(always)]
+pub unsafe fn aes_encrypt_xor(data: State, pending: State, keys: State) -> State {
+    _mm_aesenc_si128(_mm_xor_si128(data, pending), keys)
+}
+
 #[inline(always)]
 pub unsafe fn xor(a: State, b: State) -> State {
     _mm_xor_si128(a, b)
@@ -122,7 +135,7 @@ pub unsafe fn load_len(len: usize) -> State {
 #[cfg(feature = "hybrid")]
 #[allow(improper_ctypes_definitions)]
 #[inline(never)]
-pub unsafe extern "C" fn compress_16(ptr: *const State, len: usize, seed: State) -> State {
+pub unsafe extern "C" fn compress_16<const GXHASH: bool>(ptr: *const State, len: usize, seed: State) -> State {
     let ptr = ptr as *const __m256i;
     let last = ptr.cast::<u8>().add(len - 16 * VECTOR_SIZE).cast::<__m256i>();
     let seed = _mm256_set_m128i(seed, seed);
@@ -151,7 +164,7 @@ pub unsafe extern "C" fn compress_16(ptr: *const State, len: usize, seed: State)
     }
     let lanes = _mm256_aesenc_epi128(_mm256_aesenc_epi128(lanes[0], zero), lanes[1]);
     let hash = crate::gxhash::merge(_mm256_castsi256_si128(lanes), _mm256_extracti128_si256(lanes, 1));
-    xor(hash, load_len(len))
+    crate::gxhash::finish::<GXHASH>(xor(hash, load_len(len)))
 }
 
 // Values are loaded in the lowest bits of the vector, the rest being zeroes.
