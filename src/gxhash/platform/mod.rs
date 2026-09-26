@@ -20,9 +20,21 @@ pub unsafe fn get_partial(p: *const State, len: usize) -> State {
     if check_same_page(p) {
         get_partial_unsafe(p, len)
     } else {
+        cold_path();
         get_partial_safe(p, len)
     }
 }
+
+// Hints that the branch is unlikely, so that the likely branch is the one that doesn't jump
+#[rustversion::since(1.95)]
+#[inline(always)]
+fn cold_path() {
+    core::hint::cold_path()
+}
+
+#[rustversion::before(1.95)]
+#[inline(always)]
+fn cold_path() {}
 
 #[inline(always)]
 unsafe fn check_same_page(ptr: *const State) -> bool {
@@ -35,14 +47,22 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
 
 #[inline(always)]
 pub unsafe fn finalize(hash: State) -> State {
-    let mut hash = aes_encrypt(hash, ld(KEYS.as_ptr()));
-    hash = aes_encrypt(hash, ld(KEYS.as_ptr().offset(4)));
-    hash = aes_encrypt_last(hash, ld(KEYS.as_ptr().offset(8)));
+    finalize_xor(hash, create_empty())
+}
+
+// Finalizes hash ^ pending
+#[inline(always)]
+pub unsafe fn finalize_xor(hash: State, pending: State) -> State {
+    // A single key is enough to break the symmetry of states preserved by AES rounds. Other keys would only
+    // xor constants to intermediate states, which doesn't change the quality, but costs a register each.
+    let mut hash = aes_encrypt_xor(hash, pending, ld(KEYS.as_ptr()));
+    hash = aes_encrypt(hash, create_empty());
+    hash = aes_encrypt_last(hash, create_empty());
 
     hash
 }
 
-pub const KEYS: [u32; 12] = 
+pub const KEYS: [u32; 12] =
    [0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E,
     0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39132BD9,
     0xD0012E32, 0x689D2B7D, 0x5544B1B7, 0xC78B122B];

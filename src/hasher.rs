@@ -95,9 +95,9 @@ macro_rules! write {
     ($name:ident, $type:ty, $load:expr) => {
         #[inline]
         fn $name(&mut self, value: $type) {
-            self.state = unsafe {
-                aes_encrypt_last($load(value), aes_encrypt(self.state, ld(KEYS.as_ptr())))
-            };
+            // The value of the previous write went through two rounds when it meets this one.
+            // The key breaks the symmetry of states such as the one of a zero seed.
+            self.state = unsafe { aes_encrypt(aes_encrypt(self.state, $load(value)), ld(KEYS.as_ptr())) };
         }
     }
 }
@@ -113,8 +113,17 @@ impl Hasher for GxHasher {
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        // Improvement: only compress at this stage and finalize in finish
-        self.state = unsafe { aes_encrypt_last(compress_all(bytes), aes_encrypt(self.state, ld(KEYS.as_ptr()))) };
+        // The state seeds the compression, after a round so that the previous write went through two
+        // rounds when it meets these bytes. Finalization only happens in finish.
+        self.state = unsafe {
+            let hash = compress_all::<false>(bytes, aes_encrypt(self.state, ld(KEYS.as_ptr())));
+            if bytes.len() < VECTOR_SIZE {
+                hash
+            } else {
+                // See compress_all: the length it includes must go through a round before the next write
+                aes_encrypt(hash, create_empty())
+            }
+        };
     }
 
     write!(write_u8, u8, load_u8);
@@ -318,6 +327,42 @@ mod tests {
         } else { 
             assert_ne!(hash_1, hash_2);
         }
+    }
+
+    #[test]
+    fn hasher_is_stable() {
+        // Hashes must be the same on all platforms, with or without the hybrid feature
+        let data: Vec<u8> = (0..300usize).map(|i| (i * 31 + 7) as u8).collect();
+        let mut hasher = GxHasher::with_seed(1234);
+        hasher.write_u8(1);
+        hasher.write_u16(2);
+        hasher.write_u32(3);
+        hasher.write_u64(4);
+        hasher.write_u128(5);
+        hasher.write(&data[..15]);
+        hasher.write(&data[..16]);
+        hasher.write(&data[..40]);
+        hasher.write(&data[..300]);
+        assert_eq!(0x9b9eb762bf1373aa, hasher.finish());
+        assert_eq!(0xc12991e14a52e3289b9eb762bf1373aa, hasher.finish_u128());
+    }
+
+    #[test]
+    fn hasher_inputs_of_different_lengths_do_not_collide() {
+        let build_hasher = GxBuildHasher::default();
+        let hash = |bytes: &[u8]| {
+            let mut hasher = build_hasher.build_hasher();
+            hasher.write(bytes);
+            hasher.finish()
+        };
+        for len in 0..16u8 {
+            // An input of less than 16 bytes vs the same bytes followed by its padding
+            let short: Vec<u8> = (0..len).collect();
+            let mut long = short.clone();
+            long.resize(16, len);
+            assert_ne!(hash(&short), hash(&long), "length {len}");
+        }
+        assert_ne!(hash(&[0u8; 20]), hash(&[0u8; 21]));
     }
 
     #[test]
