@@ -26,21 +26,40 @@ GxHash has 0 cargo dependency. The `Hasher` and `Hashset`/`Hashmap` convenience 
 ## Important Considerations
 
 ### Hardware Acceleration
-GxHash requires a few specific hardware acceleration features, which are supported on *most* modern processors, but not all of them.
-- X86 processors with `AES-NI` & `SSE2` intrinsics
-- ARM processors with `AES` & `NEON` intrinsics
-> **Warning**
-> Other platforms are currently not supported (there is no fallback). GxHash will not build on these platforms.
+GxHash relies on AES instructions, supported by *most* modern processors: `AES-NI` on x86 and `AES` on ARM (aarch64). How GxHash uses them depends on how your code is compiled and on the processor it runs on, with three tiers that all produce the same hashes:
 
-In case you are building gxhash without the required features, the crate will fail to build with an error message like this (even if you know your target supports the required features): 
-```
-Gxhash requires aes and sse2 intrinsics. Make sure the processor supports it and build with RUSTFLAGS="-C target-cpu=native" or RUSTFLAGS="-C target-feature=+aes,+sse2"
-```
+1. **Hardware, inlined**: the required target features are enabled at compile time (`aes` and `sse2` on x86, `aes` and `neon` on aarch64). This is the fastest tier, as GxHash is inlined in your code. It is the default on Apple ARM targets (macOS, iOS, ...). On other targets, including x86 PCs (AES-NI is not part of any x86-64 microarchitecture level, so no x86 target enables it by default), build with:
+   ```bash
+   # When the binary runs on the machine that builds it
+   RUSTFLAGS="-C target-cpu=native" cargo build --release
+   # Or, for any processor with AES instructions (the binary won't run on processors without them)
+   RUSTFLAGS="-C target-feature=+aes" cargo build --release
+   ```
+   To set this once for a project, add it to `.cargo/config.toml`:
+   ```toml
+   [build]
+   rustflags = ["-C", "target-feature=+aes"]
+   ```
+2. **Hardware, detected at runtime**: the target features are not enabled at compile time, but GxHash detects that the processor supports them. It then uses the same instructions, through a function call rather than inlined, which costs a few tenths of a nanosecond per hash. This mostly matters for small inputs.
+3. **Software**: the processor has no AES instructions (some old or low-end processors, some virtual machines), or GxHash has no hardware implementation for the architecture (32-bit ARM, RISC-V, WebAssembly, ...). GxHash still works, but is roughly 10 to 40 times slower.
 
-To fix this, simply follow the instructions in the error message. Setting `RUSTFLAGS` to `-C target-cpu=native` should work if your CPU is properly recognized by rustc, which is the case most of the time.
+Indicative timings, measured on an Apple M5 Pro:
+
+| | Tier 1 | Tier 2 | Tier 3 |
+|---|---|---|---|
+| `gxhash64`, 16 bytes | 0.8 ns | 1.1 ns | 12 ns |
+| `gxhash64`, 1 KiB | 6.4 ns | 6.8 ns | 202 ns |
+| `HashMap<u64>` lookup | 1.1 ns | 1.4 ns | 14 ns |
+| `HashMap<&str>` lookup | 3.9 ns | 4.1 ns | 43 ns |
+
+On x86 processors with `VAES` and `AVX2`, tiers 1 and 2 also use 256-bit AES instructions for inputs larger than 2 KiB, for higher throughput. These are detected at runtime, unless enabled at compile time (`-C target-cpu=native` or `-C target-feature=+aes,+vaes,+avx2`).
+
+Without the `std` feature, runtime detection is limited:
+- On x86, only AES instructions are detected, not `VAES`.
+- On aarch64, nothing is detected: the crate fails to build unless the `aes` and `neon` target features are enabled at compile time.
 
 ### Hashes Stability
-All generated hashes for a given major version of GxHash are stable, meaning that for a given input the output hash will be the same across all supported platforms. This also means that the hash may change between majors versions (eg gxhash 3.x and 4.x).
+All generated hashes for a given major version of GxHash are stable, meaning that for a given input the output hash will be the same across all platforms and [tiers](#hardware-acceleration). This also means that the hash may change between majors versions (eg gxhash 3.x and 4.x).
 
 ### Consistency of Hashes When Using the `Hasher` Trait
 The `Hasher` trait defines methods to hash specific types. This allows the implementation to circumvent some tricks used when the size is unknown. For this reason, hashing 4 `u32` using a `Hasher` will return a different hash compared to using the  `gxhash128` method directly with these same 4 `u32` but represented as 16 `u8`. The rationale being that `Hasher` (mostly used for things like `HashMap` or `HashSet`) and  `gxhash128` are used in two different scenarios. Both way are independently stable still. 
@@ -54,12 +73,16 @@ GxHash is seeded (with seed randomization) to improve DOS resistance and uses a 
 For use cases that require deterministic repeatability, you can disable random seeding with the feature 
 "deterministic," but this of course disables DOS mitigation. 
 
+The software implementation ([tier 3](#hardware-acceleration)) uses lookup tables, whose access times depend on the input and the seed. An attacker able to measure them could learn about the seed, which weakens DOS mitigation.
+
 Also, it is important to note that GxHash is not a cryptographic hash function and should not be used for cryptographic purposes.
 
 ## Usage
 ```bash
 cargo add gxhash
 ```
+GxHash requires Rust 1.89 or later.
+
 Used directly as a hash function:
 ```rust
 let bytes: &[u8] = "hello world".as_bytes();
@@ -83,19 +106,13 @@ map.insert("answer", 42);
 
 ### `no_std`
 
-The `std` feature flag enables the `HashMap`/`HashSet` container convenience type aliases. This is on by default. Disable to make the crate `no_std`:
+The `std` feature flag enables the `Hasher` implementation, the `HashMap`/`HashSet` container convenience type aliases, and full runtime detection of hardware features (see [Hardware Acceleration](#hardware-acceleration)). This is on by default. Disable to make the crate `no_std`:
 
 ```toml
 [dependencies.gxhash]
 ...
 default-features = false
 ```
-
-### `hybrid` (experimental)
-
-The `hybrid` feature flag enables a hybrid implementation of GxHash. This is disabled by default. When `hybrid` feature is enabled and for CPUs that supports it, GxHash will use wider registers and instructions (`VAES` + `AVX2`), which can lead to a throughput increase for large inputs. This preserves hashes stability, meaning that hashes generated with or without the `hybrid` feature are the same for a given input and seed.
-
-*Note: Even without this feature enabled GxHash is already the fastest option out there. We recommend enabling this feature only when inputs can be larger than a few hundred bytes. Make sure to run benchmarks in your own context.*
 
 ## Benchmarks
 

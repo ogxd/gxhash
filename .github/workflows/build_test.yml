@@ -20,13 +20,10 @@ jobs:
         include:
         - name: "aarch64"
           runner: "ubuntu-24.04-arm"
-          hybrid: false
+          baseline: "generic"
         - name: "X86_64"
           runner: "ubuntu-latest"
-          hybrid: false
-        - name: "x86_64-hybrid"
-          runner: "ubuntu-latest"
-          hybrid: true
+          baseline: "x86-64"
 
     runs-on: ${{ matrix.runner }}
 
@@ -36,27 +33,24 @@ jobs:
     - name: Update rust
       run: rustup update
 
-    - name: Switch to nightly rust
-      if: ${{ matrix.hybrid == true }}
-      run: rustup default nightly
-
     - name: Info
       run: |
         cat /proc/cpuinfo | grep 'model name' | uniq
         cargo rustc -- --version
 
     - name: Build
-      if: ${{ matrix.hybrid == false }}
       run: cargo build --release
 
-    - name: Build (hybrid)
-      if: ${{ matrix.hybrid == true }}
-      run: cargo build --release --features hybrid
-
+    # Target features of the CPU enabled at compile time (see .cargo/config.toml): hardware backend inlined
     - name: Test
-      if: ${{ matrix.hybrid == false }}
       run: cargo test --release
 
-    - name: Test (hybrid)
-      if: ${{ matrix.hybrid == true }}
-      run: cargo test --release --features hybrid
+    # Baseline CPU: hardware backend detected at runtime
+    - name: Test (runtime detection)
+      run: cargo test --release
+      env:
+        RUSTFLAGS: "-C target-cpu=${{ matrix.baseline }}"
+        RUSTDOCFLAGS: "-C target-cpu=${{ matrix.baseline }}"
+
+    - name: Build (no_std)
+      run: cargo build --release --no-default-features

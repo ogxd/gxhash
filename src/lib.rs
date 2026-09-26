@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-// Hybrid SIMD width usage currently requires unstable 'stdsimd'
-#![cfg_attr(feature = "hybrid", feature(stdarch_x86_avx512))]
+// Parts of the backends are only used by the Hasher, which requires std
+#![cfg_attr(not(feature = "std"), allow(dead_code))]
 
 #[rustfmt::skip]
 mod gxhash;

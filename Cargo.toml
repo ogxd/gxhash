@@ -3,6 +3,7 @@ name = "gxhash"
 authors = ["Olivier Giniaux"]
 version = "4.0.0"
 edition = "2021"
+rust-version = "1.89"
 description = "GxHash non-cryptographic algorithm"
 license = "MIT"
 readme = "README.md"
@@ -19,7 +20,6 @@ std = []
 bench-csv = []
 bench-md = []
 bench-plot = []
-hybrid = []
 deterministic = []
 
 [dependencies]
