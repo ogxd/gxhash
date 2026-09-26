@@ -20,8 +20,6 @@ std = []
 bench-csv = []
 bench-md = []
 bench-plot = []
-# Deprecated: no effect, 256-bit AES instructions are used automatically when available
-hybrid = []
 deterministic = []
 
 [dependencies]

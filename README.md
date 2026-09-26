@@ -28,12 +28,17 @@ GxHash has 0 cargo dependency. The `Hasher` and `Hashset`/`Hashmap` convenience 
 ### Hardware Acceleration
 GxHash relies on AES instructions, supported by *most* modern processors: `AES-NI` on x86 and `AES` on ARM (aarch64). How GxHash uses them depends on how your code is compiled and on the processor it runs on, with three tiers that all produce the same hashes:
 
-1. **Hardware, inlined**: the required target features are enabled at compile time (`aes` and `sse2` on x86, `aes` and `neon` on aarch64). This is the fastest tier, as GxHash is inlined in your code. It is the default on Apple Silicon (`aarch64-apple-darwin`). On other targets, build with:
+1. **Hardware, inlined**: the required target features are enabled at compile time (`aes` and `sse2` on x86, `aes` and `neon` on aarch64). This is the fastest tier, as GxHash is inlined in your code. It is the default on Apple ARM targets (macOS, iOS, ...). On other targets, including x86 PCs (AES-NI is not part of any x86-64 microarchitecture level, so no x86 target enables it by default), build with:
    ```bash
    # When the binary runs on the machine that builds it
    RUSTFLAGS="-C target-cpu=native" cargo build --release
    # Or, for any processor with AES instructions (the binary won't run on processors without them)
    RUSTFLAGS="-C target-feature=+aes" cargo build --release
+   ```
+   To set this once for a project, add it to `.cargo/config.toml`:
+   ```toml
+   [build]
+   rustflags = ["-C", "target-feature=+aes"]
    ```
 2. **Hardware, detected at runtime**: the target features are not enabled at compile time, but GxHash detects that the processor supports them. It then uses the same instructions, through a function call rather than inlined, which costs a few tenths of a nanosecond per hash. This mostly matters for small inputs.
 3. **Software**: the processor has no AES instructions (some old or low-end processors, some virtual machines), or GxHash has no hardware implementation for the architecture (32-bit ARM, RISC-V, WebAssembly, ...). GxHash still works, but is roughly 10 to 40 times slower.
@@ -108,10 +113,6 @@ The `std` feature flag enables the `Hasher` implementation, the `HashMap`/`HashS
 ...
 default-features = false
 ```
-
-### `hybrid` (deprecated)
-
-This feature flag has no effect anymore: 256-bit AES instructions (`VAES` + `AVX2`) are now used automatically when available (see [Hardware Acceleration](#hardware-acceleration)). It is kept so that existing builds enabling it keep working.
 
 ## Benchmarks
 
