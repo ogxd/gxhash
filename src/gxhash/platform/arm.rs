@@ -27,13 +27,17 @@ pub unsafe fn load_unaligned(p: *const State) -> State {
 
 #[inline(always)]
 pub unsafe fn get_partial_safe(data: *const State, len: usize) -> State {
-    // Temporary buffer filled with zeros
-    let mut buffer = [0i8; VECTOR_SIZE];
-    // Copy data into the buffer
-    core::ptr::copy(data as *const i8, buffer.as_mut_ptr(), len);
-    // Load the buffer into a __m256i vector
-    let partial_vector = vld1q_s8(buffer.as_ptr());
-    vaddq_s8(partial_vector, vdupq_n_s8(len as i8))
+    // Reading 16 bytes from data would cross a page boundary. Instead, we read the 16 bytes ending at
+    // the end of the input: they belong to the page of the first and/or last byte of the input, so the
+    // read is always valid. The table lookup then moves the input bytes to the front of the vector,
+    // and indices beyond 15 pick the padding from the second table register.
+    let end_vector: uint8x16_t;
+    let start = (data as *const u8).add(len).sub(VECTOR_SIZE);
+    core::arch::asm!("ld1 {{v0.16b}}, [{start}]", start = in(reg) start, out("v0") end_vector, options(nostack, preserves_flags, readonly));
+    let indices = vld1q_u8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
+    let shifted_indices = vaddq_u8(indices, vdupq_n_u8((VECTOR_SIZE - len) as u8));
+    let table = uint8x16x2_t(end_vector, vdupq_n_u8(len as u8));
+    vreinterpretq_s8_u8(vqtbl2q_u8(table, shifted_indices))
 }
 
 #[inline(always)]
@@ -45,8 +49,8 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     let indices = vld1q_s8([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].as_ptr());
     let len_vec = vdupq_n_s8(len as i8);
     let mask = vcltq_s8(indices, len_vec);
-    let partial_vector = vandq_s8(oob_vector, vreinterpretq_s8_u8(mask));
-    vaddq_s8(partial_vector, len_vec)
+    // Input bytes, followed by padding bytes set to the input length
+    vbslq_s8(mask, oob_vector, len_vec)
 }
 
 #[inline(always)]
@@ -69,69 +73,67 @@ pub unsafe fn aes_encrypt_last(data: State, keys: State) -> State {
     vreinterpretq_s8_u8(veorq_u8(encrypted, vreinterpretq_u8_s8(keys)))
 }
 
+// Lane primitives: a chain lane_start, lane_absorb*, lane_end computes F(..F(F(key ^ b0) ^ b1).. ^ bn),
+// F being an AES round without key (SubBytes, ShiftRows, MixColumns). On ARM, AESE xors its operands
+// before SubBytes, so each block costs a single (fused) AESE + AESMC.
+#[inline(always)]
+pub unsafe fn lane_start(key: State, block: State) -> State {
+    vreinterpretq_s8_u8(vaesmcq_u8(vaeseq_u8(vreinterpretq_u8_s8(key), vreinterpretq_u8_s8(block))))
+}
+
+#[inline(always)]
+pub unsafe fn lane_absorb(mut lane: State, block: State) -> State {
+    // Same as lane_start, but pins the result to the lane register. AESE xors its operands, so LLVM
+    // may otherwise write the result in the block register, costing a move per block in loops.
+    core::arch::asm!(
+        "aese {lane:v}.16b, {block:v}.16b",
+        "aesmc {lane:v}.16b, {lane:v}.16b",
+        lane = inout(vreg) lane, block = in(vreg) block, options(pure, nomem, nostack, preserves_flags));
+    lane
+}
+
+#[inline(always)]
+pub unsafe fn lane_end(lane: State) -> State {
+    lane
+}
+
+#[inline(always)]
+pub unsafe fn xor(a: State, b: State) -> State {
+    veorq_s8(a, b)
+}
+
+#[inline(always)]
+pub unsafe fn load_len(len: usize) -> State {
+    load_u64(len as u64)
+}
+
 #[inline(always)]
 pub unsafe fn ld(array: *const u32) -> State {
     vreinterpretq_s8_u32(vld1q_u32(array))
 }
 
-#[inline(always)]
-pub unsafe fn compress_8(mut ptr: *const State, end_address: usize, hash_vector: State, len: usize) -> State {
-
-    // Disambiguation vectors
-    let mut t1: State = create_empty();
-    let mut t2: State = create_empty();
-
-    // Hash is processed in two separate 128-bit parallel lanes
-    // This allows the same processing to be applied using 256-bit V-AES intrinsics
-    // so that hashes are stable in both cases. 
-    let mut lane1 = hash_vector;
-    let mut lane2 = hash_vector;
-
-    while (ptr as usize) < end_address {
-
-        crate::gxhash::load_unaligned!(ptr, v0, v1, v2, v3, v4, v5, v6, v7);
-
-        let mut tmp1 = aes_encrypt(v0, v2);
-        let mut tmp2 = aes_encrypt(v1, v3);
-
-        tmp1 = aes_encrypt(tmp1, v4);
-        tmp2 = aes_encrypt(tmp2, v5);
-
-        tmp1 = aes_encrypt(tmp1, v6);
-        tmp2 = aes_encrypt(tmp2, v7);
-
-        t1 = vaddq_s8(t1, ld(KEYS.as_ptr()));
-        t2 = vaddq_s8(t2, ld(KEYS.as_ptr().offset(4)));
-
-        lane1 = aes_encrypt_last(aes_encrypt(tmp1, t1), lane1);
-        lane2 = aes_encrypt_last(aes_encrypt(tmp2, t2), lane2);
-    }
-    // For 'Zeroes' test
-    let len_vec =  vreinterpretq_s8_u32(vdupq_n_u32(len as u32));
-    lane1 = vaddq_s8(lane1, len_vec);
-    lane2 = vaddq_s8(lane2, len_vec);
-    // Merge lanes
-    aes_encrypt(lane1, lane2)
-}
-
+// Values are loaded in the lowest bits of the vector, the rest being zeroes.
 #[inline(always)]
 pub unsafe fn load_u8(x: u8) -> State {
-    vreinterpretq_s8_u8(vdupq_n_u8(x))
+    load_u64(x as u64)
 }
 
 #[inline(always)]
 pub unsafe fn load_u16(x: u16) -> State {
-    vreinterpretq_s8_u16(vdupq_n_u16(x))
+    load_u64(x as u64)
 }
 
 #[inline(always)]
 pub unsafe fn load_u32(x: u32) -> State {
-    vreinterpretq_s8_u32(vdupq_n_u32(x))
+    load_u64(x as u64)
 }
 
 #[inline(always)]
 pub unsafe fn load_u64(x: u64) -> State {
-    vreinterpretq_s8_u64(vdupq_n_u64(x))
+    // fmov zeroes the upper half of the vector. LLVM otherwise emits a movi + mov pair for this.
+    let v: State;
+    core::arch::asm!("fmov {v:d}, {x}", v = out(vreg) v, x = in(reg) x, options(pure, nomem, nostack, preserves_flags));
+    v
 }
 
 #[inline(always)]
@@ -142,26 +144,25 @@ pub unsafe fn load_u128(x: u128) -> State {
 
 #[inline(always)]
 pub unsafe fn load_i8(x: i8) -> State {
-    vdupq_n_s8(x)
+    load_u8(x as u8)
 }
 
 #[inline(always)]
 pub unsafe fn load_i16(x: i16) -> State {
-    vreinterpretq_s8_s16(vdupq_n_s16(x))
+    load_u16(x as u16)
 }
 
 #[inline(always)]
 pub unsafe fn load_i32(x: i32) -> State {
-    vreinterpretq_s8_s32(vdupq_n_s32(x))
+    load_u32(x as u32)
 }
 
 #[inline(always)]
 pub unsafe fn load_i64(x: i64) -> State {
-    vreinterpretq_s8_s64(vdupq_n_s64(x))
+    load_u64(x as u64)
 }
 
 #[inline(always)]
 pub unsafe fn load_i128(x: i128) -> State {
-    let ptr = &x as *const i128 as *const i8;
-    vld1q_s8(ptr)
+    load_u128(x as u128)
 }
