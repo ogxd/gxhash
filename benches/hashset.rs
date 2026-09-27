@@ -1,11 +1,12 @@
-// Time of a HashSet lookup, for common key types and hashers. Prints the results as a markdown table.
+// Time of a HashSet lookup, for common key types and hashers. Prints the results as a markdown table. Hashers marked ❌
+// fail the quality tests (see benches/quality).
 
 use std::collections::HashSet;
 use std::hash::{BuildHasher, BuildHasherDefault, Hash};
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-const HASHERS: [&str; 10] = ["GxHash", "std (SipHash-1-3)", "FoldHash", "FxHasher (rustc_hash)", "AHash", "XxHash (XXH3)", "T1ha", "FNV-1a", "HighwayHash", "MetroHash"];
+const HASHERS: [&str; 11] = ["GxHash", "std (SipHash-1-3)", "FoldHash (fast) ❌", "FoldHash (quality)", "FxHasher (rustc_hash) ❌", "AHash", "XxHash (XXH3)", "T1ha", "FNV-1a ❌", "HighwayHash", "MetroHash"];
 const BATCH: usize = 10_000;
 const RUN_DURATION: Duration = Duration::from_millis(500);
 
@@ -36,6 +37,7 @@ fn row<T: Eq + Hash + Default>(name: &str, key: T) -> (&str, Vec<f64>) {
         lookup_ns(&key, gxhash::GxBuildHasher::default()),
         lookup_ns(&key, std::collections::hash_map::RandomState::new()),
         lookup_ns(&key, foldhash::fast::RandomState::default()),
+        lookup_ns(&key, foldhash::quality::RandomState::default()),
         lookup_ns(&key, BuildHasherDefault::<rustc_hash::FxHasher>::default()),
         lookup_ns(&key, ahash::RandomState::new()),
         lookup_ns(&key, BuildHasherDefault::<twox_hash::xxh3::Hash64>::default()),

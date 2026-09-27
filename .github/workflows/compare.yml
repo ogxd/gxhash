@@ -1,0 +1,51 @@
+name: Compare
+
+# Compares the performance of this revision with a base revision, on the same machine. The results are in the summary
+# of the run.
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Base revision (branch, tag or commit)"
+        default: "main"
+      sizes:
+        description: "Input sizes, in bytes"
+        default: "4 8 12 16 24 32 40 48 56 64 80 96 112 128 256"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+
+  compare:
+    name: Compare ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: "aarch64"
+          runner: "ubuntu-24.04-arm"
+        - name: "x86_64"
+          runner: "ubuntu-latest"
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.base }}
+        path: base
+
+    - name: Update rust
+      run: rustup update
+
+    # Two path dependencies can't have the same name and version. Tier 1, as for the Benchmark workflow.
+    - name: Compare
+      run: |
+        sed -i 's/^version = .*/version = "0.0.0"/' base/Cargo.toml
+        rustc --print cfg -C target-cpu=native | grep -q 'target_feature="aes"' || { echo "::error::AES not enabled at compile time"; exit 1; }
+        cpu=$(lscpu | sed -n 's/^Model name: *//p' | head -n 1)
+        { echo "### ${{ matrix.name }}: $cpu, base \`${{ inputs.base }}\`"; echo; cargo run --release --manifest-path tools/compare/Cargo.toml -- ${{ inputs.sizes }}; } >> $GITHUB_STEP_SUMMARY

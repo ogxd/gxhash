@@ -1,0 +1,14 @@
+# Compares the performance of two revisions of gxhash on the same machine: this checkout, and the one checked out in
+# base/ at the root of the repository, with another version number (see .github/workflows/compare.yml)
+[package]
+name = "compare"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+base = { package = "gxhash", path = "../../base" }
+head = { package = "gxhash", path = "../.." }
+
+[profile.release]
+codegen-units = 1

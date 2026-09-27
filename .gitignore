@@ -23,3 +23,5 @@ article/*.blg
 article/*.bbl
 
 .idea/**/*
+# Base revision of tools/compare
+/base/

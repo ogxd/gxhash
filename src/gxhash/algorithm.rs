@@ -176,29 +176,31 @@ unsafe fn prepare_seed<const GXHASH: bool>(seed: State) -> State {
     if GXHASH { lane_end(lane_start(seed, ld(KEYS.as_ptr()))) } else { seed }
 }
 
-// Inputs of 17 to 128 bytes. Each size class extends the work of the smaller one (early exit rather than
-// jumping into the steps), so that steps are not duplicated and small inputs don't jump over steps.
+// Inputs of 17 to 128 bytes. A lane of n blocks is a chain of 2n - 1 rounds (with its end), and merging two lanes
+// adds 2. From 4 blocks, the blocks are split between two lanes, which shortens the chain, as the rounds are latency
+// bound on some CPUs. Up to 3 blocks, two lanes would not shorten the chain, and would cost a round.
 #[inline(always)]
 unsafe fn compress_upto_128(ptr: *const State, len: usize, seed: State) -> (State, State) {
     let end = ptr.cast::<u8>().add(len).cast::<State>();
     let mut a = lane_start(seed, load_unaligned(ptr));
     a = absorb_after_two_rounds(a, load_unaligned(end.sub(1)));
     if len > VECTOR_SIZE * 2 {
-        a = absorb_after_two_rounds(a, load_unaligned(ptr.add(1)));
         if len > VECTOR_SIZE * 3 {
-            a = absorb_after_two_rounds(a, load_unaligned(end.sub(2)));
+            let mut b = lane_start(seed, load_unaligned(ptr.add(1)));
+            b = absorb_after_two_rounds(b, load_unaligned(end.sub(2)));
             if len > VECTOR_SIZE * 4 {
-                let mut b = lane_start(seed, load_unaligned(ptr.add(2)));
+                a = absorb_after_two_rounds(a, load_unaligned(ptr.add(2)));
                 b = absorb_after_two_rounds(b, load_unaligned(end.sub(3)));
                 if len > VECTOR_SIZE * 6 {
-                    b = absorb_after_two_rounds(b, load_unaligned(ptr.add(3)));
+                    a = absorb_after_two_rounds(a, load_unaligned(ptr.add(3)));
                     b = absorb_after_two_rounds(b, load_unaligned(end.sub(4)));
                 }
-                // merge(a, b) ^ len == merge(a, b ^ len)
-                let (b, pending) = lane_end_xor(b, load_len(len));
-                return (merge(lane_end(a), b), pending);
             }
+            // merge(a, b) ^ len == merge(a, b ^ len)
+            let (b, pending) = lane_end_xor(b, load_len(len));
+            return (merge(lane_end(a), b), pending);
         }
+        a = absorb_after_two_rounds(a, load_unaligned(ptr.add(1)));
     }
     lane_end_xor(a, load_len(len))
 }

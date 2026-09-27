@@ -3,17 +3,17 @@ use rand::Rng;
 use criterion::black_box;
 
 fn main() {
-    // Hash functions that pass the quality tests ✅
     bench_hasher_quality::<gxhash::GxBuildHasher>("GxHash");
     bench_hasher_quality::<std::collections::hash_map::RandomState>("Default");
-	bench_hasher_quality::<BuildHasherDefault<rustc_hash::FxHasher>>("FxHash (rustc_hash)");
+    bench_hasher_quality::<BuildHasherDefault<rustc_hash::FxHasher>>("FxHash (rustc_hash)");
     bench_hasher_quality::<twox_hash::xxh3::RandomHashBuilder64>("XxHash (XXH3)");
     bench_hasher_quality::<ahash::RandomState>("AHash");
     bench_hasher_quality::<t1ha::T1haBuildHasher>("T1ha");
-
-    // Hash functions that don't pass the quality tests ❌
     bench_hasher_quality::<fnv::FnvBuildHasher>("FNV-1a");
-    bench_hasher_quality::<foldhash::quality::RandomState>("FoldHash");
+    bench_hasher_quality::<foldhash::quality::RandomState>("FoldHash (quality)");
+    bench_hasher_quality::<foldhash::fast::RandomState>("FoldHash (fast)");
+    bench_hasher_quality::<metrohash::MetroBuildHasher>("MetroHash");
+    bench_hasher_quality::<highway::HighwayBuildHasher>("HighwayHash");
 }
 
 macro_rules! check {
@@ -82,6 +82,49 @@ fn bench_hasher_quality<B>(name: &str)
 
     check!(hasher_collisions_powerset::<B, u32>(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]));
     check!(hasher_collisions_powerset::<B, u32>(&[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]));
+
+    check!(avalanche_u64::<B>());
+    check!(buckets_high_bits_u64::<B>());
+}
+
+// Worst bias of an output bit when flipping a bit of a u64 key hashed with hash_one, as a HashMap does: 0 if the output
+// bit flips with a probability of 0.5, 1 if it never or always flips. Below 0.05, the bias is sampling noise.
+fn avalanche_u64<B>() -> f64
+    where B : BuildHasher + Default
+{
+    const ITERATIONS: usize = 20000;
+    let build_hasher = B::default();
+    let mut rng = rand::thread_rng();
+    let mut flips = [[0u32; 64]; 64];
+    for _ in 0..ITERATIONS {
+        let key: u64 = rng.gen();
+        let hash = build_hasher.hash_one(key);
+        for i in 0..64 {
+            let diff = hash ^ build_hasher.hash_one(key ^ (1 << i));
+            for j in 0..64 {
+                flips[i][j] += ((diff >> j) & 1) as u32;
+            }
+        }
+    }
+    let worst = flips.iter().flatten().map(|&f| (f as f64 / ITERATIONS as f64 - 0.5).abs() * 2.0).fold(0.0, f64::max);
+    if worst < 0.05 { 0.0 } else { worst }
+}
+
+// Keys that differ only in their high bits, in a table of 2^16 buckets indexed by the low bits of the hash, as in
+// hashbrown: 1 minus the ratio of buckets used to the number expected with random hashes. Above 0.9 of it, 0.
+fn buckets_high_bits_u64<B>() -> f64
+    where B : BuildHasher + Default
+{
+    const BUCKETS: usize = 1 << 16;
+    const KEYS: i32 = 1 << 15;
+    let build_hasher = B::default();
+    let mut used = vec![false; BUCKETS];
+    for i in 0..KEYS as u64 {
+        used[build_hasher.hash_one(i << 49) as usize % BUCKETS] = true;
+    }
+    let expected = BUCKETS as f64 * (1.0 - (1.0 - 1.0 / BUCKETS as f64).powi(KEYS));
+    let ratio = used.iter().filter(|&&used| used).count() as f64 / expected;
+    if ratio > 0.9 { 0.0 } else { 1.0 - ratio }
 }
 
 fn hasher_collisions_permute<B, D>(data: &[impl Hash]) -> f64

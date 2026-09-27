@@ -11,7 +11,7 @@ repository = "https://github.com/ogxd/gxhash"
 documentation = "https://docs.rs/gxhash/latest/gxhash"
 keywords = ["hash", "hasher", "hashmap", "simd", "no-std"]
 categories = ["algorithms", "data-structures", "no-std"]
-exclude = ["article/*"]
+exclude = ["article/*", "tools/*"]
 
 [features]
 default = ["std"]

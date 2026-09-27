@@ -13,7 +13,7 @@ pub fn print_csv(results: &Results) {
 }
 
 // One row per input size, in GiB/s, with the fastest in bold, followed by the throughput of GxHash divided by the one
-// of the fastest other algorithm
+// of the fastest other algorithm that passes the quality tests (not marked ❌)
 pub fn print_md(results: &Results) {
     let names: Vec<&str> = results.iter().map(|(name, _)| name.as_str()).collect();
     let gxhash = names.iter().position(|&name| name == "GxHash").unwrap();
@@ -22,7 +22,7 @@ pub fn print_md(results: &Results) {
     for (i, (size, _)) in results[0].1.iter().enumerate() {
         let row: Vec<f64> = results.iter().map(|(_, values)| values[i].1 / 1024.0).collect();
         let best = row.iter().copied().fold(0.0, f64::max);
-        let best_other = row.iter().enumerate().filter(|&(j, _)| j != gxhash).map(|(_, &t)| t).fold(0.0, f64::max);
+        let best_other = row.iter().enumerate().filter(|&(j, _)| j != gxhash && !names[j].contains('❌')).map(|(_, &t)| t).fold(0.0, f64::max);
         let cells: Vec<String> = row.iter().map(|&t| if t == best { format!("**{t:.2}**") } else { format!("{t:.2}") }).collect();
         println!("| {} B | {} | {:.2}× |", size, cells.join(" | "), row[gxhash] / best_other);
     }

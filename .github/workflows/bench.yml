@@ -36,6 +36,8 @@ jobs:
     # Plots the throughput to an .svg, and writes the results as markdown tables, which the commit job puts in the README
     - name: Benchmark
       run: |
+        # The README presents the results as tier 1: fail if AES instructions are not enabled at compile time
+        rustc --print cfg -C target-cpu=native | grep -q 'target_feature="aes"' || { echo "::error::AES not enabled at compile time"; exit 1; }
         cargo bench --bench hashset > hashset.md
         cargo bench --bench throughput --features bench-plot,bench-md > throughput.md
         cpu=$(lscpu | sed -n 's/^Model name: *//p' | head -n 1)

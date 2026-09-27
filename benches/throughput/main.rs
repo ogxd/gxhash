@@ -27,6 +27,7 @@ fn main() {
     // Fill with random bytes
     rng.fill(slice);
 
+    // Hash functions marked ❌ fail the quality tests (see benches/quality)
     let mut results = Results::new();
 
     // GxHash
@@ -40,7 +41,7 @@ fn main() {
     });
     
     // FxHash (rustc-hash)
-    benchmark(&mut results, slice, "FxHasher (rustc_hash)", |data: &[u8], seed: u64| -> u64 {
+    benchmark(&mut results, slice, "FxHasher (rustc_hash) ❌", |data: &[u8], seed: u64| -> u64 {
         let mut fxhasher = rustc_hash::FxHasher::default();
         fxhasher.write_u64(seed); // Better way to seed?
         fxhasher.write(data);
@@ -59,13 +60,17 @@ fn main() {
     });
 
     // FoldHash
-    let foldhash_hasher: foldhash::quality::RandomState = foldhash::quality::RandomState::default();
-    benchmark(&mut results, slice, "FoldHash", |data: &[u8], _: i32| -> u64 {
-        foldhash_hasher.hash_one(data)
+    let foldhash_fast = foldhash::fast::RandomState::default();
+    benchmark(&mut results, slice, "FoldHash (fast) ❌", |data: &[u8], _: i32| -> u64 {
+        foldhash_fast.hash_one(data)
+    });
+    let foldhash_quality = foldhash::quality::RandomState::default();
+    benchmark(&mut results, slice, "FoldHash (quality)", |data: &[u8], _: i32| -> u64 {
+        foldhash_quality.hash_one(data)
     });
 
     // FNV-1a
-    benchmark(&mut results, slice, "FNV-1a", |data: &[u8], seed: u64| -> u64 {
+    benchmark(&mut results, slice, "FNV-1a ❌", |data: &[u8], seed: u64| -> u64 {
         let mut fnv_hasher = fnv::FnvHasher::with_key(seed);
         fnv_hasher.write(data);
         fnv_hasher.finish()
