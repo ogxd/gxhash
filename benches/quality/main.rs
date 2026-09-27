@@ -4,6 +4,7 @@ use criterion::black_box;
 
 fn main() {
     bench_hasher_quality::<gxhash::GxBuildHasher>("GxHash");
+    bench_hasher_quality::<Gxhash64Builder>("GxHash (gxhash64)");
     bench_hasher_quality::<std::collections::hash_map::RandomState>("Default");
     bench_hasher_quality::<BuildHasherDefault<rustc_hash::FxHasher>>("FxHash (rustc_hash)");
     bench_hasher_quality::<twox_hash::xxh3::RandomHashBuilder64>("XxHash (XXH3)");
@@ -14,6 +15,35 @@ fn main() {
     bench_hasher_quality::<foldhash::fast::RandomState>("FoldHash (fast)");
     bench_hasher_quality::<metrohash::MetroBuildHasher>("MetroHash");
     bench_hasher_quality::<highway::HighwayBuildHasher>("HighwayHash");
+}
+
+// gxhash64 as a Hasher, to test the hash function rather than GxHasher: the writes are hashed at once in finish
+struct Gxhash64(Vec<u8>, i64);
+
+impl Hasher for Gxhash64 {
+    fn write(&mut self, bytes: &[u8]) {
+        self.0.extend_from_slice(bytes);
+    }
+
+    fn finish(&self) -> u64 {
+        gxhash::gxhash64(&self.0, self.1)
+    }
+}
+
+struct Gxhash64Builder(i64);
+
+impl Default for Gxhash64Builder {
+    fn default() -> Self {
+        Gxhash64Builder(rand::random())
+    }
+}
+
+impl BuildHasher for Gxhash64Builder {
+    type Hasher = Gxhash64;
+
+    fn build_hasher(&self) -> Gxhash64 {
+        Gxhash64(Vec::new(), self.0)
+    }
 }
 
 macro_rules! check {
@@ -32,6 +62,12 @@ macro_rules! check {
 fn bench_hasher_quality<B>(name: &str)
     where B : BuildHasher + Default
 {
+    // Hash functions can be filtered by name: cargo bench --bench quality -- <name>
+    if let Some(filter) = std::env::args().skip(1).find(|arg| !arg.starts_with("--")) {
+        if !name.contains(&filter) {
+            return;
+        }
+    }
     println!("Bench {}", name);
 
     check!(avalanche::<B, 4>());

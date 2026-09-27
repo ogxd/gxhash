@@ -27,9 +27,11 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
 }
 
+// Finalizes the Hasher (in finish) and inputs of less than 16 bytes, whose last bytes then went through three full
+// rounds. Unlike finalize_xor, it doesn't add a last round without MixColumns: these pass SMHasher all the same.
 #[inline(always)]
 pub(crate) unsafe fn finalize(hash: State) -> State {
-    finalize_xor(hash, create_empty())
+    aes_encrypt(aes_encrypt(hash, ld(KEYS.as_ptr())), create_empty())
 }
 
 // Finalizes hash ^ pending
@@ -113,6 +115,33 @@ pub(crate) mod outlined {
     }
 }
 
+// The operations of the Hasher of the hardware backend, which runs in with_features (see HwHasher). On x86, LLVM doesn't
+// inline a function without the features of the backend, such as the Hash implementations of core, in one with them,
+// if it passes vectors in registers to a function with them (C ABI). So these use the Rust ABI, which passes vectors in
+// memory, and once everything is inlined in with_features, the vectors stay in registers.
+#[allow(dead_code)]
+pub(crate) mod rust_abi {
+    use super::*;
+
+    with_features! { inline:
+        pub(crate) unsafe fn absorb(state: State, bytes: &[u8]) -> State {
+            super::absorb(state, bytes)
+        }
+
+        pub(crate) unsafe fn absorb_u64(state: State, value: u64) -> State {
+            super::absorb_u64(state, value)
+        }
+
+        pub(crate) unsafe fn absorb_u128(state: State, value: u128) -> State {
+            super::absorb_u128(state, value)
+        }
+
+        pub(crate) unsafe fn finalize(state: State) -> State {
+            super::finalize(state)
+        }
+    }
+}
+
 // Blocks of 16 bytes are absorbed with AES rounds (F: SubBytes, ShiftRows and MixColumns, without key).
 // When the differences of two blocks meet in a xor, they may cancel each other out with a probability that
 // depends on how many rounds each went through: after one round, a sparse difference is still sparse, and
@@ -149,7 +178,7 @@ unsafe fn compress_all<const GXHASH: bool>(input: &[u8], seed: State) -> State {
             lane_end(lane_start(seed, get_partial(ptr, len)))
         };
         // Finalized separately from larger inputs, which have a pending xor
-        return finish::<GXHASH>(hash);
+        return if GXHASH { finalize(hash) } else { hash };
     }
 
     // The hash is (hash ^ pending): see lane_end_xor
@@ -215,7 +244,7 @@ unsafe fn absorb_after_two_rounds(lane: State, block: State) -> State {
 // gxhash finalizes the hash, while the Hasher only does it in finish
 #[inline(always)]
 pub(crate) unsafe fn finish<const GXHASH: bool>(hash: State) -> State {
-    if GXHASH { finalize(hash) } else { hash }
+    if GXHASH { finalize_xor(hash, create_empty()) } else { hash }
 }
 
 with_features! {

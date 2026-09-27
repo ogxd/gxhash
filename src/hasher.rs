@@ -138,7 +138,7 @@ struct HwHasher {
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
-impl_hasher!(HwHasher, hw::outlined);
+impl_hasher!(HwHasher, hw::rust_abi);
 
 /// A builder for building GxHasher with randomized seeds by default, for improved DOS resistance.
 #[derive(Clone, Debug)]
@@ -366,8 +366,8 @@ mod tests {
         hasher.write(&data[..16]);
         hasher.write(&data[..40]);
         hasher.write(&data[..300]);
-        assert_eq!(0x9b9eb762bf1373aa, hasher.finish());
-        assert_eq!(0xc12991e14a52e3289b9eb762bf1373aa, hasher.finish_u128());
+        assert_eq!(0x5c4c8fabe848ac62, hasher.finish());
+        assert_eq!(0xf4df4de0dd8220ee5c4c8fabe848ac62, hasher.finish_u128());
     }
 
     #[test]
@@ -386,6 +386,24 @@ mod tests {
             assert_ne!(hash(&short), hash(&long), "length {len}");
         }
         assert_ne!(hash(&[0u8; 20]), hash(&[0u8; 21]));
+    }
+
+    // When the hardware backend is detected at runtime, hash_one runs on it with another Hasher (see HwHasher)
+    #[test]
+    fn hash_one_matches_hasher() {
+        fn check<T: Hash>(build_hasher: &GxBuildHasher, x: T) {
+            let mut hasher = build_hasher.build_hasher();
+            x.hash(&mut hasher);
+            assert_eq!(hasher.finish(), build_hasher.hash_one(x));
+        }
+        let build_hasher = GxBuildHasher::with_seed(42);
+        check(&build_hasher, 42u8);
+        check(&build_hasher, 42u32);
+        check(&build_hasher, 42u64);
+        check(&build_hasher, 42u128);
+        check(&build_hasher, "gxhash");
+        check(&build_hasher, "a".repeat(300));
+        check(&build_hasher, (1u32, "gxhash", [7u8; 20]));
     }
 
     #[test]

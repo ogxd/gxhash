@@ -252,10 +252,10 @@ mod tests {
         let data: Vec<u8> = (0..4242usize).map(|i| (i * 31 + 7) as u8).collect();
         let seeds = [0i64, 42, -1, i64::MIN];
         let expected: [(usize, [u64; 4]); 22] = [
-            (0, [0x9e2a74d6323c1e7e, 0xd638e4bb0b02c811, 0xed134192d1162902, 0x5e3515741951d182]),
-            (1, [0xbd1d4a1906c5d74a, 0xfd039c40ccc371b6, 0x7ee15d54f5363997, 0xf4945e7dab41f445]),
-            (7, [0x7b52fc7f0b725c24, 0x3af624c643b91323, 0x3d5bde93db94bed4, 0x935d237644019699]),
-            (15, [0x102cac080b0aaa2f, 0x62054297e134d44f, 0x8e68b70dda47714d, 0x9ca5ba6ced8c590a]),
+            (0, [0x740ee94adf80f28a, 0x22e2b1fe4a514ce3, 0xb93a4c7453cd546a, 0xb3ec51ca9d485911]),
+            (1, [0x45600d8ecd16fc5c, 0xba102c72210aa679, 0x8a255bfd8aacc785, 0x2498ba13ba6e3b68]),
+            (7, [0x6461a76b0369fda6, 0xb42582c7a24ee732, 0x4f285a228ba80619, 0x1b01350f22059bf9]),
+            (15, [0x378562bf7c7a804e, 0x20f51985abc7e892, 0xfd752cf3e61e0f65, 0x1f9715b81cccd9a3]),
             (16, [0xe15d40b9c011ade5, 0xffc7d0191ea25a21, 0x27016e699ed0947a, 0x426f7b5b3cc5e8fe]),
             (17, [0x40791975698e21b9, 0x088af766ea213939, 0x7b8cc3a63d500b3b, 0xe66543dcdbc639ba]),
             (31, [0xf6b8d10583aff73d, 0x002835620b7a9da3, 0xd4d13870ab672dcd, 0x672940b6f9a96639]),
@@ -280,8 +280,8 @@ mod tests {
                 assert_eq!(hash, gxhash64(&data[..len], *seed), "len {len}, seed {seed}");
             }
         }
-        assert_eq!(3930652002, gxhash32(b"Hello World", 0));
-        assert_eq!(0xc270913193acccf4aa07094dea48fd62, gxhash128(b"Hello World", 0));
+        assert_eq!(1655352491, gxhash32(b"Hello World", 0));
+        assert_eq!(0xbb38272ea8d440ba22d0216562aaacab, gxhash128(b"Hello World", 0));
     }
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]

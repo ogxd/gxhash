@@ -11,6 +11,11 @@ on:
       sizes:
         description: "Input sizes, in bytes"
         default: "4 8 12 16 24 32 40 48 56 64 80 96 112 128 256"
+      tier:
+        description: "Tier: 1 (AES enabled at compile time) or 2 (detected at runtime)"
+        type: choice
+        options: ["1", "2"]
+        default: "1"
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,8 +31,10 @@ jobs:
         include:
         - name: "aarch64"
           runner: "ubuntu-24.04-arm"
+          baseline: "generic"
         - name: "x86_64"
           runner: "ubuntu-latest"
+          baseline: "x86-64"
 
     runs-on: ${{ matrix.runner }}
 
@@ -42,10 +49,14 @@ jobs:
     - name: Update rust
       run: rustup update
 
-    # Two path dependencies can't have the same name and version. Tier 1, as for the Benchmark workflow.
+    # Two path dependencies can't have the same name and version. Tier 1 uses the flags of .cargo/config.toml, and tier 2
+    # the baseline CPU, whose target features don't include AES.
     - name: Compare
       run: |
         sed -i 's/^version = .*/version = "0.0.0"/' base/Cargo.toml
-        rustc --print cfg -C target-cpu=native | grep -q 'target_feature="aes"' || { echo "::error::AES not enabled at compile time"; exit 1; }
+        flags="-C target-cpu=native"
+        if [ "${{ inputs.tier }}" = 2 ]; then flags="-C target-cpu=${{ matrix.baseline }}"; export RUSTFLAGS="$flags"; fi
+        if rustc --print cfg $flags | grep -q 'target_feature="aes"'; then tier=1; else tier=2; fi
+        [ "$tier" = "${{ inputs.tier }}" ] || { echo "::error::Expected tier ${{ inputs.tier }}, got tier $tier"; exit 1; }
         cpu=$(lscpu | sed -n 's/^Model name: *//p' | head -n 1)
-        { echo "### ${{ matrix.name }}: $cpu, base \`${{ inputs.base }}\`"; echo; cargo run --release --manifest-path tools/compare/Cargo.toml -- ${{ inputs.sizes }}; } >> $GITHUB_STEP_SUMMARY
+        { echo "### ${{ matrix.name }}: $cpu, tier $tier, base \`${{ inputs.base }}\`"; echo; cargo run --release --manifest-path tools/compare/Cargo.toml -- ${{ inputs.sizes }}; } >> $GITHUB_STEP_SUMMARY
