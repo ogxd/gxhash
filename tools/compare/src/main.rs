@@ -40,8 +40,8 @@ fn main() {
     for len in std::env::args().skip(1).map(|arg| arg.parse::<usize>().unwrap()) {
         row(&format!("gxhash64, {len} bytes"), &data[..len], |d, s| base::gxhash64(d, s), |d, s| head::gxhash64(d, s));
     }
-    row("hash_one(u64)", &42u64, |k, s| base_hasher.hash_one(k ^ s as u64), |k, s| head_hasher.hash_one(k ^ s as u64));
+    row("hash_one(u64)", &42u64, |k, s| black_box(&base_hasher).hash_one(k ^ s as u64), |k, s| black_box(&head_hasher).hash_one(k ^ s as u64));
     for key in ["gxhash", "https://github.com/ogxd/gxhash"] {
-        row(&format!("hash_one(&str), {} bytes", key.len()), key, |k, _| base_hasher.hash_one(k), |k, _| head_hasher.hash_one(k));
+        row(&format!("hash_one(&str), {} bytes", key.len()), key, |k, _| black_box(&base_hasher).hash_one(k), |k, _| black_box(&head_hasher).hash_one(k));
     }
 }

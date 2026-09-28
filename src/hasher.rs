@@ -13,13 +13,14 @@ use crate::gxhash::*;
 /// but that usually have low quality properties.*
 #[derive(Clone, Debug)]
 pub struct GxHasher {
+    // Prepared state (see prepare in algorithm.rs)
     state: State,
 }
 
 impl GxHasher {
     #[inline]
     fn with_state(state: State) -> GxHasher {
-        GxHasher { state }
+        GxHasher { state: dispatched::prepare(state) }
     }
 }
 
@@ -142,6 +143,7 @@ impl_hasher!(HwHasher, hw::rust_abi);
 
 /// A builder for building GxHasher with randomized seeds by default, for improved DOS resistance.
 #[derive(Clone, Debug)]
+// Prepared state (see prepare in algorithm.rs), so that building a hasher costs nothing
 pub struct GxBuildHasher(State);
 
 #[cfg(not(feature = "deterministic"))]
@@ -156,7 +158,7 @@ impl GxBuildHasher {
     #[inline]
     pub fn with_seed(seed: i64) -> GxBuildHasher {
         // Use gxhash64 to generate an initial state from a seed
-        GxBuildHasher(create_seed(seed))
+        GxBuildHasher(dispatched::prepare(create_seed(seed)))
     }
 }
 
@@ -167,7 +169,7 @@ impl Default for GxBuildHasher {
         let state = from_u128(42);
         #[cfg(not(feature = "deterministic"))]
         let state = unsafe { std::mem::transmute::<RandomState, State>(RandomState::new()) };
-        GxBuildHasher(state)
+        GxBuildHasher(dispatched::prepare(state))
     }
 }
 
@@ -175,7 +177,7 @@ impl BuildHasher for GxBuildHasher {
     type Hasher = GxHasher;
     #[inline]
     fn build_hasher(&self) -> GxHasher {
-        GxHasher::with_state(self.0)
+        GxHasher { state: self.0 }
     }
 
     // A single runtime dispatch for all the writes of the value, rather than one per write
@@ -192,7 +194,7 @@ impl<T: Hash> Run for HashOne<T> {
 
     #[inline(always)]
     fn run(self) -> u64 {
-        hash_with(GxHasher::with_state(self.0), self.1)
+        hash_with(GxHasher { state: self.0 }, self.1)
     }
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]

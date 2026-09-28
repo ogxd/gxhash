@@ -15,6 +15,28 @@ pub(crate) type State = [u8; 16];
 
 pub(crate) const VECTOR_SIZE: usize = core::mem::size_of::<State>();
 
+// For each length of less than 16 bytes, the mask of the input bytes of a block, then its padding: bytes set to the
+// length beyond the input (see get_partial_unsafe of the hardware backends). Loading these rather than computing them
+// from the length leaves the vector units to the AES rounds. A const rather than a static, as the code using it is
+// inlined in other crates, where a static would be addressed through the GOT.
+#[repr(C, align(64))]
+pub(crate) struct Partials(pub(crate) [[[u8; VECTOR_SIZE]; 2]; VECTOR_SIZE]);
+
+#[allow(dead_code)]
+pub(crate) const PARTIALS: Partials = {
+    let mut rows = [[[0u8; VECTOR_SIZE]; 2]; VECTOR_SIZE];
+    let mut len = 0;
+    while len < VECTOR_SIZE {
+        let mut i = 0;
+        while i < VECTOR_SIZE {
+            if i < len { rows[len][0][i] = 0xFF } else { rows[len][1][i] = len as u8 }
+            i += 1;
+        }
+        len += 1;
+    }
+    Partials(rows)
+};
+
 pub(crate) const KEYS: [u32; 12] =
    [0xF2784542, 0xB09D3E21, 0x89C222E5, 0xFC3BC28E,
     0x03FCE279, 0xCB6B2E9B, 0xB361DC58, 0x39132BD9,
@@ -81,6 +103,11 @@ pub(crate) mod dispatched {
     #[inline(always)]
     pub(crate) fn finalize(state: State) -> State {
         dispatch!(finalize(state))
+    }
+
+    #[inline(always)]
+    pub(crate) fn prepare(state: State) -> State {
+        dispatch!(prepare(state))
     }
 }
 
@@ -303,6 +330,7 @@ mod tests {
                 assert_eq!(to_u128(hw::outlined::absorb_u64(state, value as u64)), to_u128(soft::outlined::absorb_u64(state, value as u64)));
                 assert_eq!(to_u128(hw::outlined::absorb_u128(state, value)), to_u128(soft::outlined::absorb_u128(state, value)));
                 assert_eq!(to_u128(hw::outlined::finalize(state)), to_u128(soft::outlined::finalize(state)));
+                assert_eq!(to_u128(hw::outlined::prepare(state)), to_u128(soft::outlined::prepare(state)));
             }
         }
     }

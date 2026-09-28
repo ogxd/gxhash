@@ -7,7 +7,7 @@ compile_error!{"Without the std feature, gxhash requires aes and neon intrinsics
 
 use core::arch::aarch64::*;
 
-use super::{cold_path, Run, KEYS, VECTOR_SIZE};
+use super::{cold_path, Run, KEYS, PARTIALS, VECTOR_SIZE};
 
 // Whether the features of this backend are enabled at compile time, in which case it is inlined
 pub(crate) const STATIC: bool = cfg!(all(target_feature = "aes", target_feature = "neon"));
@@ -72,15 +72,10 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     // and prevent the compiler from doing any kind of optimization that might change the behavior.
     let mut oob_vector: State;
     core::arch::asm!("ld1 {{v0.16b}}, [{data}]", data = in(reg) data, out("v0") oob_vector, options(nostack, preserves_flags, readonly));
-    // The mask of the input bytes is a window over a table, which saves a vector op and a vector register
-    let mask = vld1q_u8(PARTIAL_MASKS.as_ptr().add(VECTOR_SIZE - len));
-    // Input bytes, followed by padding bytes set to the input length
-    vbslq_s8(mask, oob_vector, vdupq_n_s8(len as i8))
+    // Input bytes, followed by padding bytes set to the input length (see PARTIALS)
+    let row = PARTIALS.0.get_unchecked(len);
+    vbslq_s8(vld1q_u8(row[0].as_ptr()), oob_vector, vld1q_s8(row[1].as_ptr() as *const i8))
 }
-
-const PARTIAL_MASKS: [u8; 2 * VECTOR_SIZE] = [
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 #[inline(always)]
 // See https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a

@@ -27,11 +27,20 @@ unsafe fn check_same_page(ptr: *const State) -> bool {
     offset_within_page < PAGE_SIZE - VECTOR_SIZE
 }
 
-// Finalizes the Hasher (in finish) and inputs of less than 16 bytes, whose last bytes then went through three full
-// rounds. Unlike finalize_xor, it doesn't add a last round without MixColumns: these pass SMHasher all the same.
+// The Hasher keeps its state one round ahead: F(state) rather than state, F being an AES round without key. Each
+// write starts with a round on the state, which doesn't depend on the value written: it is done at the end of the
+// previous write instead, or once for all the hashers of a GxBuildHasher (see prepare). Hashes are the same.
 #[inline(always)]
-pub(crate) unsafe fn finalize(hash: State) -> State {
-    aes_encrypt(aes_encrypt(hash, ld(KEYS.as_ptr())), create_empty())
+pub(crate) unsafe fn prepare(state: State) -> State {
+    aes_encrypt(state, create_empty())
+}
+
+// Finalizes the prepared state of the Hasher (in finish), and inputs of less than 16 bytes once prepared. Their last
+// bytes then went through three full rounds. Unlike finalize_xor, it doesn't add a last round without MixColumns:
+// these pass SMHasher all the same.
+#[inline(always)]
+pub(crate) unsafe fn finalize(state: State) -> State {
+    aes_encrypt(xor(state, ld(KEYS.as_ptr())), create_empty())
 }
 
 // Finalizes hash ^ pending
@@ -51,29 +60,26 @@ pub(crate) unsafe fn hash(input: &[u8], seed: State) -> State {
     compress_all::<true>(input, seed)
 }
 
-// Hasher::write. The state seeds the compression, after a round so that the previous write went through two
+// Hasher::write, on the prepared state. The state seeds the compression, so that the previous write went through two
 // rounds when it meets these bytes. Finalization only happens in finish.
 #[inline(always)]
 pub(crate) unsafe fn absorb(state: State, bytes: &[u8]) -> State {
-    let hash = compress_all::<false>(bytes, aes_encrypt(state, ld(KEYS.as_ptr())));
-    if bytes.len() < VECTOR_SIZE {
-        hash
-    } else {
-        // See compress_all: the length it includes must go through a round before the next write
-        aes_encrypt(hash, create_empty())
-    }
+    let hash = compress_all::<false>(bytes, xor(state, ld(KEYS.as_ptr())));
+    // See compress_all: the length it includes for 16 bytes or more must go through a round before the next write
+    let hash = if bytes.len() < VECTOR_SIZE { hash } else { aes_encrypt(hash, create_empty()) };
+    prepare(hash)
 }
 
-// Hasher::write_* for integers. The value of the previous write went through two rounds when it meets this one.
-// The key breaks the symmetry of states such as the one of a zero seed.
+// Hasher::write_* for integers, on the prepared state. The value of the previous write went through two rounds when
+// it meets this one. The key breaks the symmetry of states such as the one of a zero seed.
 #[inline(always)]
 pub(crate) unsafe fn absorb_u64(state: State, value: u64) -> State {
-    aes_encrypt(aes_encrypt(state, load_u64(value)), ld(KEYS.as_ptr()))
+    prepare(aes_encrypt(xor(state, load_u64(value)), ld(KEYS.as_ptr())))
 }
 
 #[inline(always)]
 pub(crate) unsafe fn absorb_u128(state: State, value: u128) -> State {
-    aes_encrypt(aes_encrypt(state, load_u128(value)), ld(KEYS.as_ptr()))
+    prepare(aes_encrypt(xor(state, load_u128(value)), ld(KEYS.as_ptr())))
 }
 
 // The operations above, compiled with the features of the backend so that the runtime dispatch can call them (see
@@ -105,6 +111,11 @@ pub(crate) mod outlined {
         #[allow(improper_ctypes_definitions)]
         pub(crate) unsafe extern "C" fn finalize(state: State) -> State {
             super::finalize(state)
+        }
+
+        #[allow(improper_ctypes_definitions)]
+        pub(crate) unsafe extern "C" fn prepare(state: State) -> State {
+            super::prepare(state)
         }
 
         // See Run
@@ -178,7 +189,7 @@ unsafe fn compress_all<const GXHASH: bool>(input: &[u8], seed: State) -> State {
             lane_end(lane_start(seed, get_partial(ptr, len)))
         };
         // Finalized separately from larger inputs, which have a pending xor
-        return if GXHASH { finalize(hash) } else { hash };
+        return if GXHASH { finalize(prepare(hash)) } else { hash };
     }
 
     // The hash is (hash ^ pending): see lane_end_xor

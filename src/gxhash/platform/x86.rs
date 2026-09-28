@@ -4,7 +4,7 @@ use core::arch::x86::*;
 use core::arch::x86_64::*;
 use core::sync::atomic::{AtomicU8, Ordering};
 
-use super::{cold_path, Run, KEYS, VECTOR_SIZE};
+use super::{cold_path, Run, KEYS, PARTIALS, VECTOR_SIZE};
 
 // Whether the features of this backend are enabled at compile time, in which case it is inlined
 pub(crate) const STATIC: bool = cfg!(all(target_feature = "aes", target_feature = "sse2"));
@@ -119,11 +119,9 @@ pub unsafe fn get_partial_unsafe(data: *const State, len: usize) -> State {
     // and prevent the compiler from doing any kind of optimization that might change the behavior.
     let mut oob_vector: State;
     core::arch::asm!("movdqu {0}, [{1}]", out(xmm_reg) oob_vector, in(reg) data, options(nostack, preserves_flags, readonly));
-    let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    let len_vec = _mm_set1_epi8(len as i8);
-    let mask = _mm_cmpgt_epi8(len_vec, indices);
-    // Input bytes, followed by padding bytes set to the input length
-    _mm_xor_si128(_mm_and_si128(_mm_xor_si128(oob_vector, len_vec), mask), len_vec)
+    // Input bytes, followed by padding bytes set to the input length (see PARTIALS)
+    let row = PARTIALS.0.get_unchecked(len).as_ptr() as *const State;
+    _mm_or_si128(_mm_and_si128(oob_vector, _mm_load_si128(row)), _mm_load_si128(row.add(1)))
 }
 
 #[inline(always)]
